@@ -13,4 +13,11 @@
 //   appId: "1:123456789:web:abc123"
 // };
 
-window.FIREBASE_CONFIG = null;
+window.FIREBASE_CONFIG = {
+  apiKey: "AIzaSyATqzHH30ySDKr7I0IYd5erCEUpKPscVjI",
+  authDomain: "producao-blooming-app.firebaseapp.com",
+  projectId: "producao-blooming-app",
+  storageBucket: "producao-blooming-app.firebasestorage.app",
+  messagingSenderId: "409421556320",
+  appId: "1:409421556320:web:cf6de6c7036a01384b7105"
+};
