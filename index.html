@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Produção</title>
+  <meta name="description" content="Controle de produção e pedidos do Grupo Blooming">
+  <meta name="theme-color" content="#1A1714">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Produção">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Tela de login (só aparece quando o Firebase está configurado) -->
+  <section id="login" class="login" hidden>
+    <form id="loginForm" class="login-card" novalidate>
+      <img src="icons/icon-192.png" alt="" width="64" height="64" class="login-logo">
+      <h1>Produção</h1>
+      <p class="muted">Entre com o e-mail cadastrado pela administração.</p>
+      <label>E-mail<input type="email" name="email" autocomplete="username" required></label>
+      <label>Senha<input type="password" name="senha" autocomplete="current-password" required></label>
+      <p id="loginErro" class="erro" role="alert"></p>
+      <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+      <button type="button" id="esqueci" class="btn-link">Esqueci minha senha</button>
+    </form>
+  </section>
+
+  <div id="app" hidden>
+    <header class="topo">
+      <div class="topo-linha">
+        <h1 class="titulo">Produção</h1>
+        <select id="filtroEmpresa" aria-label="Filtrar por empresa"></select>
+        <button id="abrirAjustes" class="icon-btn" aria-label="Ajustes">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 7h10.2a3 3 0 0 0 5.6 0H20a1 1 0 1 0 0-2h-.2a3 3 0 0 0-5.6 0H4a1 1 0 1 0 0 2Zm13-2a1 1 0 1 1 0 2 1 1 0 0 1 0-2ZM20 11h-8.2a3 3 0 0 0-5.6 0H4a1 1 0 1 0 0 2h2.2a3 3 0 0 0 5.6 0H20a1 1 0 1 0 0-2ZM9 13a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm11 4h-2.2a3 3 0 0 0-5.6 0H4a1 1 0 1 0 0 2h8.2a3 3 0 0 0 5.6 0H20a1 1 0 1 0 0-2Zm-5 2a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></svg>
+        </button>
+      </div>
+      <div id="resumo" class="resumo"></div>
+      <div id="avisoLocal" class="aviso" hidden>
+        Modo de teste: os pedidos ficam só neste aparelho. Configure o Firebase para a equipe compartilhar.
+      </div>
+      <div id="avisoInstalar" class="aviso aviso-instalar" hidden></div>
+      <nav class="abas" role="tablist">
+        <button role="tab" data-view="fila" aria-selected="true">Fila</button>
+        <button role="tab" data-view="entregues" aria-selected="false">Entregues</button>
+        <button role="tab" data-view="todos" aria-selected="false">Todos</button>
+      </nav>
+      <div class="filtros">
+        <input id="busca" type="search" placeholder="Buscar" aria-label="Buscar">
+        <select id="filtroPagamento" aria-label="Filtrar por pagamento">
+          <option value="">Pagamento</option>
+          <option value="aberto">A receber</option>
+          <option value="pago">Pago</option>
+        </select>
+      </div>
+    </header>
+
+    <main id="lista" class="lista" aria-live="polite"></main>
+
+    <button id="novoPedido" class="fab" aria-label="Novo pedido">
+      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M11 5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5Z"/></svg>
+      <span>Novo pedido</span>
+    </button>
+  </div>
+
+  <!-- Formulário do pedido -->
+  <dialog id="dlgPedido" class="sheet">
+    <form id="formPedido" method="dialog" novalidate>
+      <div class="sheet-topo">
+        <h2 id="formTitulo">Novo pedido</h2>
+        <button type="button" class="icon-btn" data-fechar aria-label="Fechar">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg>
+        </button>
+      </div>
+      <div class="sheet-corpo">
+        <label>Cliente<input name="cliente" required autocomplete="off" placeholder="Nome do cliente ou empresa"></label>
+        <div class="grid2">
+          <label>Empresa<select name="empresa"></select></label>
+          <label>Nº do pedido<input name="ref" autocomplete="off" placeholder="Opcional"></label>
+        </div>
+        <label>WhatsApp / contato<input name="contato" inputmode="tel" autocomplete="off" placeholder="(11) 99999-9999"></label>
+        <label>Descrição<textarea name="descricao" rows="3" required placeholder="O que produzir: produto, arte, embalagem, personalização"></textarea></label>
+        <div class="grid2">
+          <label>Quantidade<input name="quantidade" inputmode="numeric" autocomplete="off"></label>
+          <label>Valor total (R$)<input name="valor" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
+        </div>
+
+        <fieldset>
+          <legend>Prioridade</legend>
+          <div class="segmentado" data-campo="prioridade">
+            <label class="p1"><input type="radio" name="prioridade" value="1"><span>Urgente</span></label>
+            <label class="p2"><input type="radio" name="prioridade" value="2"><span>Alta</span></label>
+            <label class="p3"><input type="radio" name="prioridade" value="3" checked><span>Normal</span></label>
+            <label class="p4"><input type="radio" name="prioridade" value="4"><span>Baixa</span></label>
+          </div>
+        </fieldset>
+
+        <div class="grid2">
+          <label>Prazo de entrega<input type="date" name="prazo"></label>
+          <label>Etapa
+            <select name="status">
+              <option value="fila">A produzir</option>
+              <option value="producao">Em produção</option>
+              <option value="pronto">Pronto</option>
+              <option value="entregue">Entregue</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </label>
+        </div>
+        <label id="campoEntregue" hidden>Entregue em<input type="date" name="entregueEm"></label>
+
+        <fieldset>
+          <legend>Pagamento</legend>
+          <div class="segmentado" data-campo="pagamento">
+            <label><input type="radio" name="pagamento" value="nao" checked><span>Não pago</span></label>
+            <label><input type="radio" name="pagamento" value="parcial"><span>Sinal pago</span></label>
+            <label><input type="radio" name="pagamento" value="pago"><span>Pago</span></label>
+          </div>
+        </fieldset>
+        <label id="campoValorPago" hidden>Valor já recebido (R$)<input name="valorPago" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
+
+        <label>Observações<textarea name="obs" rows="2" placeholder="Arte aprovada? Endereço? Combinados com o cliente"></textarea></label>
+        <p id="formMeta" class="meta"></p>
+        <p id="formErro" class="erro" role="alert"></p>
+      </div>
+      <div class="sheet-rodape">
+        <button type="button" id="excluirPedido" class="btn btn-perigo" hidden>Excluir</button>
+        <span class="espaco"></span>
+        <button type="button" class="btn" data-fechar>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar pedido</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Ajustes -->
+  <dialog id="dlgAjustes" class="sheet">
+    <div class="sheet-topo">
+      <h2>Ajustes</h2>
+      <button type="button" class="icon-btn" data-fechar aria-label="Fechar">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg>
+      </button>
+    </div>
+    <div class="sheet-corpo">
+      <section class="bloco">
+        <h3>Empresas</h3>
+        <p class="muted">Aparecem no formulário e no filtro do topo.</p>
+        <ul id="listaEmpresas" class="lista-empresas"></ul>
+        <form id="formEmpresa" class="linha-add">
+          <input name="nome" placeholder="Nova empresa" autocomplete="off" aria-label="Nome da nova empresa">
+          <button class="btn" type="submit">Adicionar</button>
+        </form>
+      </section>
+      <section class="bloco">
+        <h3>Dados</h3>
+        <p id="infoConexao" class="muted"></p>
+        <div class="botoes">
+          <button id="exportarCsv" class="btn" type="button">Exportar planilha (CSV)</button>
+          <button id="migrarLocal" class="btn" type="button" hidden>Enviar pedidos deste aparelho para a nuvem</button>
+        </div>
+      </section>
+      <section class="bloco">
+        <h3>Instalar no celular</h3>
+        <p class="muted"><strong>iPhone:</strong> abra no Safari, toque em Compartilhar e depois em "Adicionar à Tela de Início".</p>
+        <p class="muted"><strong>Android:</strong> abra no Chrome, toque no menu ⋮ e depois em "Instalar app".</p>
+      </section>
+      <section class="bloco" id="blocoConta" hidden>
+        <h3>Conta</h3>
+        <p id="infoUsuario" class="muted"></p>
+        <button id="sair" class="btn" type="button">Sair</button>
+      </section>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="config.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// Só quem está na lista abaixo pode ver e editar os pedidos.
+// Para dar acesso a alguém da equipe: crie o usuário em Authentication
+// e adicione o e-mail dele (em minúsculas) nesta lista. Depois clique em "Publicar".
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function daEquipe() {
+      return request.auth != null
+        && request.auth.token.email in [
+          'az.adrianozanin@gmail.com'
+          // , 'pessoa.da.equipe@gmail.com'
+        ];
+    }
+
+    match /pedidos/{id} {
+      allow read, write: if daEquipe();
+    }
+
+    match /config/{doc} {
+      allow read, write: if daEquipe();
+    }
+  }
+}
