@@ -200,6 +200,8 @@ button { cursor: pointer; }
 }
 .chip.atrasado { background: var(--vermelho-claro); color: var(--vermelho); border-color: transparent; }
 .chip.hoje { background: var(--caramelo-claro); color: var(--caramelo); border-color: transparent; }
+.chip.prevista { border-style: dashed; background: transparent; }
+.chip.vencida { color: var(--ambar); border-color: var(--ambar); }
 .chip.pago { background: var(--verde-claro); color: var(--verde); border-color: transparent; }
 .chip.aberto { background: transparent; color: var(--vermelho); border-color: var(--vermelho); }
 .chip.parcial { background: transparent; color: var(--ambar); border-color: var(--ambar); }

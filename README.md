@@ -4,15 +4,15 @@ App web (PWA) para controlar pedidos e produção: fila por prioridade, prazos, 
 
 ## O que o app faz
 
-- **Fila de produção** numerada, ordenada por prioridade (Urgente, Alta, Normal, Baixa) e, dentro de cada prioridade, pelo prazo mais próximo.
+- **Fila de produção** numerada, ordenada por prioridade (Urgente, Alta, Normal, Baixa) e, dentro de cada prioridade, pela data de entrega mais próxima.
+- **Data de entrega confirmada ou prevista.** Pedidos sem data fechada podem ter uma previsão, que aparece com borda tracejada e não conta como atraso. Pedidos sem nenhuma data aparecem como "Sem data".
 - **Etapas:** A produzir → Em produção → Pronto → Entregue (ou Cancelado). Um toque no cartão avança a etapa; ao marcar "Entregue", a data de entrega é preenchida com o dia.
 - **Pagamento:** Não pago, Sinal pago (com valor recebido) ou Pago.
 - **Resumo no topo:** quantos estão a produzir, prontos, atrasados e quanto falta receber.
-- **Filtros** por empresa, pagamento e busca por cliente/descrição.
+- **Filtros** por pagamento e busca por cliente/descrição.
 - **WhatsApp** do cliente com um toque.
 - **Histórico:** cada pedido mostra quem alterou por último e quando.
 - **Exportar planilha (CSV)** em Ajustes, para backup ou abrir no Excel/Google Planilhas.
-- **Empresas** configuráveis em Ajustes (vem com Drip Coffee Label e Blooming Club).
 
 Sem o Firebase configurado, o app roda em **modo de teste**: tudo fica salvo só no aparelho.
 

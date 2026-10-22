@@ -37,7 +37,6 @@
     <header class="topo">
       <div class="topo-linha">
         <h1 class="titulo">Produção</h1>
-        <select id="filtroEmpresa" aria-label="Filtrar por empresa"></select>
         <button id="abrirAjustes" class="icon-btn" aria-label="Ajustes">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 7h10.2a3 3 0 0 0 5.6 0H20a1 1 0 1 0 0-2h-.2a3 3 0 0 0-5.6 0H4a1 1 0 1 0 0 2Zm13-2a1 1 0 1 1 0 2 1 1 0 0 1 0-2ZM20 11h-8.2a3 3 0 0 0-5.6 0H4a1 1 0 1 0 0 2h2.2a3 3 0 0 0 5.6 0H20a1 1 0 1 0 0-2ZM9 13a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm11 4h-2.2a3 3 0 0 0-5.6 0H4a1 1 0 1 0 0 2h8.2a3 3 0 0 0 5.6 0H20a1 1 0 1 0 0-2Zm-5 2a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></svg>
         </button>
@@ -82,10 +81,9 @@
       <div class="sheet-corpo">
         <label>Cliente<input name="cliente" required autocomplete="off" placeholder="Nome do cliente ou empresa"></label>
         <div class="grid2">
-          <label>Empresa<select name="empresa"></select></label>
+          <label>WhatsApp / contato<input name="contato" inputmode="tel" autocomplete="off" placeholder="(11) 99999-9999"></label>
           <label>Nº do pedido<input name="ref" autocomplete="off" placeholder="Opcional"></label>
         </div>
-        <label>WhatsApp / contato<input name="contato" inputmode="tel" autocomplete="off" placeholder="(11) 99999-9999"></label>
         <label>Descrição<textarea name="descricao" rows="3" required placeholder="O que produzir: produto, arte, embalagem, personalização"></textarea></label>
         <div class="grid2">
           <label>Quantidade<input name="quantidade" inputmode="numeric" autocomplete="off"></label>
@@ -103,7 +101,7 @@
         </fieldset>
 
         <div class="grid2">
-          <label>Prazo de entrega<input type="date" name="prazo"></label>
+          <label>Data de entrega<input type="date" name="prazo"></label>
           <label>Etapa
             <select name="status">
               <option value="fila">A produzir</option>
@@ -114,6 +112,13 @@
             </select>
           </label>
         </div>
+        <fieldset id="campoPrazoTipo">
+          <legend>Essa data é</legend>
+          <div class="segmentado" data-campo="prazoTipo">
+            <label><input type="radio" name="prazoTipo" value="confirmada" checked><span>Confirmada</span></label>
+            <label><input type="radio" name="prazoTipo" value="prevista"><span>Prevista</span></label>
+          </div>
+        </fieldset>
         <label id="campoEntregue" hidden>Entregue em<input type="date" name="entregueEm"></label>
 
         <fieldset>
@@ -148,15 +153,6 @@
       </button>
     </div>
     <div class="sheet-corpo">
-      <section class="bloco">
-        <h3>Empresas</h3>
-        <p class="muted">Aparecem no formulário e no filtro do topo.</p>
-        <ul id="listaEmpresas" class="lista-empresas"></ul>
-        <form id="formEmpresa" class="linha-add">
-          <input name="nome" placeholder="Nova empresa" autocomplete="off" aria-label="Nome da nova empresa">
-          <button class="btn" type="submit">Adicionar</button>
-        </form>
-      </section>
       <section class="bloco">
         <h3>Dados</h3>
         <p id="infoConexao" class="muted"></p>

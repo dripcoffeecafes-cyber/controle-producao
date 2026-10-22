@@ -78,13 +78,12 @@ function aReceber(p) {
   return Math.max(0, (Number(p.valor) || 0) - (p.pagamento === 'parcial' ? Number(p.valorPago) || 0 : 0));
 }
 function atrasado(p) {
-  return ATIVOS.includes(p.status) && p.prazo && diasAte(p.prazo) < 0;
+  return ATIVOS.includes(p.status) && p.prazo && p.prazoTipo !== 'prevista' && diasAte(p.prazo) < 0;
 }
 
 function filtrados() {
   const q = estado.busca.trim().toLowerCase();
   return estado.pedidos.filter(p => {
-    if (estado.empresa && p.empresa !== estado.empresa) return false;
     if (estado.pagamento === 'aberto' && !emAberto(p)) return false;
     if (estado.pagamento === 'pago' && p.pagamento !== 'pago') return false;
     if (q) {
@@ -97,7 +96,7 @@ function filtrados() {
 
 // ---------------- Render ----------------
 function renderResumo() {
-  const base = estado.pedidos.filter(p => !estado.empresa || p.empresa === estado.empresa);
+  const base = estado.pedidos;
   const produzir = base.filter(p => p.status === 'fila' || p.status === 'producao').length;
   const prontos = base.filter(p => p.status === 'pronto').length;
   const atrasados = base.filter(atrasado).length;
@@ -111,13 +110,20 @@ function renderResumo() {
 
 function chipPrazo(p) {
   if (p.status === 'entregue') return p.entregueEm ? `<span class="chip">Entregue ${dataCurta(p.entregueEm)}</span>` : '';
-  if (!p.prazo) return '';
+  if (!p.prazo) return ATIVOS.includes(p.status) ? `<span class="chip prevista">Sem data</span>` : '';
   const d = diasAte(p.prazo);
-  if (!ATIVOS.includes(p.status)) return `<span class="chip">Prazo ${dataCurta(p.prazo)}</span>`;
+  if (p.prazoTipo === 'prevista') {
+    if (!ATIVOS.includes(p.status)) return `<span class="chip prevista">Previsto ${dataCurta(p.prazo)}</span>`;
+    if (d < 0) return `<span class="chip prevista vencida">Previsão passou (${dataCurta(p.prazo)})</span>`;
+    if (d === 0) return `<span class="chip prevista">Previsto para hoje</span>`;
+    if (d === 1) return `<span class="chip prevista">Previsto para amanhã</span>`;
+    return `<span class="chip prevista">Previsto ${dataCurta(p.prazo)}, em ${d} dias</span>`;
+  }
+  if (!ATIVOS.includes(p.status)) return `<span class="chip">Entrega ${dataCurta(p.prazo)}</span>`;
   if (d < 0) return `<span class="chip atrasado">Atrasado ${-d} ${-d === 1 ? 'dia' : 'dias'}</span>`;
   if (d === 0) return `<span class="chip hoje">Entregar hoje</span>`;
   if (d === 1) return `<span class="chip hoje">Entregar amanhã</span>`;
-  return `<span class="chip">Prazo ${dataCurta(p.prazo)}, em ${d} dias</span>`;
+  return `<span class="chip">Entrega ${dataCurta(p.prazo)}, em ${d} dias</span>`;
 }
 
 function chipPagamento(p) {
@@ -141,7 +147,6 @@ function cartao(p, posicao) {
       <div class="abrir" role="button" tabindex="0" data-acao="editar" aria-label="Abrir pedido de ${esc(p.cliente)}">
         <div class="cab">
           <span class="cliente">${esc(p.cliente)}</span>
-          ${estado.empresa ? '' : `<span class="empresa-tag">${esc(p.empresa || '')}</span>`}
         </div>
         <p class="descricao">${esc(p.descricao)}</p>
         <div class="chips">${etapaChip}${prioChip}${chipPrazo(p)}${qtd}${chipPagamento(p)}</div>
@@ -184,18 +189,6 @@ function renderLista() {
 function vazio(titulo, texto) {
   return `<div class="vazio"><h2>${titulo}</h2><p>${texto}</p>
     <button class="btn btn-primary" data-acao="novo">Cadastrar pedido</button></div>`;
-}
-
-function renderEmpresas() {
-  const empresas = estado.config.empresas || [];
-  const sel = $('#filtroEmpresa');
-  sel.innerHTML = `<option value="">Todas</option>` +
-    empresas.map(e => `<option ${e === estado.empresa ? 'selected' : ''}>${esc(e)}</option>`).join('');
-  if (estado.empresa && !empresas.includes(estado.empresa)) { estado.empresa = ''; sel.value = ''; }
-
-  $('#listaEmpresas').innerHTML = empresas.map((e, i) =>
-    `<li><span>${esc(e)}</span><button class="btn-link" data-remover="${i}">Remover</button></li>`).join('')
-    || `<li class="muted">Nenhuma empresa cadastrada</li>`;
 }
 
 function render() { renderResumo(); renderLista(); }
@@ -244,23 +237,15 @@ async function marcarPago(id) {
 const dlg = $('#dlgPedido');
 const form = $('#formPedido');
 
-function preencherEmpresasForm(valorAtual) {
-  const empresas = [...(estado.config.empresas || [])];
-  if (valorAtual && !empresas.includes(valorAtual)) empresas.push(valorAtual);
-  form.empresa.innerHTML = empresas.map(e => `<option>${esc(e)}</option>`).join('');
-}
-
 function abrirForm(p) {
   estado.editando = p ? p.id : null;
   form.reset();
   $('#formErro').textContent = '';
   $('#formTitulo').textContent = p ? 'Editar pedido' : 'Novo pedido';
   $('#excluirPedido').hidden = !p;
-  preencherEmpresasForm(p?.empresa);
 
-  const d = p || { status: 'fila', prioridade: 3, pagamento: 'nao', empresa: estado.empresa || (estado.config.empresas || [])[0] };
+  const d = p || { status: 'fila', prioridade: 3, pagamento: 'nao', prazoTipo: 'confirmada' };
   form.cliente.value = d.cliente || '';
-  form.empresa.value = d.empresa || '';
   form.ref.value = d.ref || '';
   form.contato.value = d.contato || '';
   form.descricao.value = d.descricao || '';
@@ -273,6 +258,7 @@ function abrirForm(p) {
   form.obs.value = d.obs || '';
   $(`input[name=prioridade][value="${d.prioridade || 3}"]`, form).checked = true;
   $(`input[name=pagamento][value="${d.pagamento || 'nao'}"]`, form).checked = true;
+  $(`input[name=prazoTipo][value="${d.prazoTipo === 'prevista' ? 'prevista' : 'confirmada'}"]`, form).checked = true;
   atualizarCamposCondicionais();
 
   $('#formMeta').textContent = p?.atualizadoEm
@@ -285,6 +271,7 @@ function abrirForm(p) {
 function atualizarCamposCondicionais() {
   $('#campoEntregue').hidden = form.status.value !== 'entregue';
   $('#campoValorPago').hidden = form.pagamento.value !== 'parcial';
+  $('#campoPrazoTipo').hidden = !form.prazo.value;
 }
 
 form.addEventListener('change', e => {
@@ -310,7 +297,6 @@ form.addEventListener('submit', async e => {
     ...(existente || {}),
     id: existente?.id || novoId(),
     cliente,
-    empresa: form.empresa.value,
     ref: form.ref.value.trim(),
     contato: form.contato.value.trim(),
     descricao,
@@ -318,6 +304,7 @@ form.addEventListener('submit', async e => {
     valor,
     prioridade: Number(form.prioridade.value) || 3,
     prazo: form.prazo.value,
+    prazoTipo: form.prazo.value ? form.prazoTipo.value : '',
     status: form.status.value,
     entregueEm: form.status.value === 'entregue' ? (form.entregueEm.value || hojeISO()) : '',
     pagamento,
@@ -369,11 +356,6 @@ $$('.abas button').forEach(b => b.addEventListener('click', () => {
 }));
 $('#busca').addEventListener('input', e => { estado.busca = e.target.value; renderLista(); });
 $('#filtroPagamento').addEventListener('change', e => { estado.pagamento = e.target.value; renderLista(); });
-$('#filtroEmpresa').addEventListener('change', e => {
-  estado.empresa = e.target.value;
-  try { localStorage.setItem('cp_filtro_empresa', estado.empresa); } catch {}
-  render();
-});
 
 // ---------------- Ajustes ----------------
 $('#abrirAjustes').addEventListener('click', () => {
@@ -387,29 +369,12 @@ $('#abrirAjustes').addEventListener('click', () => {
   $('#dlgAjustes').showModal();
 });
 
-$('#formEmpresa').addEventListener('submit', async e => {
-  e.preventDefault();
-  const nome = e.target.nome.value.trim();
-  if (!nome) return;
-  const empresas = [...(estado.config.empresas || [])];
-  if (!empresas.includes(nome)) empresas.push(nome);
-  e.target.reset();
-  await estado.store.salvarConfig({ ...estado.config, empresas });
-});
-$('#listaEmpresas').addEventListener('click', async e => {
-  const i = e.target.dataset.remover; if (i == null) return;
-  const empresas = [...estado.config.empresas];
-  const nome = empresas[i];
-  if (!confirm(`Remover "${nome}" da lista? Os pedidos dessa empresa continuam salvos.`)) return;
-  empresas.splice(Number(i), 1);
-  await estado.store.salvarConfig({ ...estado.config, empresas });
-});
 
 $('#exportarCsv').addEventListener('click', () => {
   const cols = [
-    ['Cliente', 'cliente'], ['Empresa', 'empresa'], ['Nº pedido', 'ref'], ['Contato', 'contato'],
+    ['Cliente', 'cliente'], ['Nº pedido', 'ref'], ['Contato', 'contato'],
     ['Descrição', 'descricao'], ['Quantidade', 'quantidade'], ['Valor', 'valor'], ['Pagamento', 'pagamento'],
-    ['Valor recebido', 'valorPago'], ['Etapa', 'status'], ['Prioridade', 'prioridade'], ['Prazo', 'prazo'],
+    ['Valor recebido', 'valorPago'], ['Etapa', 'status'], ['Prioridade', 'prioridade'], ['Data de entrega', 'prazo'], ['Tipo da data', 'prazoTipo'],
     ['Entregue em', 'entregueEm'], ['Observações', 'obs'], ['Criado em', 'criadoEm'], ['Criado por', 'criadoPor'],
     ['Atualizado em', 'atualizadoEm'], ['Atualizado por', 'atualizadoPor'],
   ];
@@ -418,6 +383,7 @@ $('#exportarCsv').addEventListener('click', () => {
     if (k === 'status') return ETAPAS[v] || v;
     if (k === 'prioridade') return PRIORIDADES[v] || v;
     if (k === 'pagamento') return pag[v] || v;
+    if (k === 'prazoTipo') return v === 'prevista' ? 'Prevista' : v ? 'Confirmada' : '';
     if (k === 'valor' || k === 'valorPago') return String(Number(v) || 0).replace('.', ',');
     return v ?? '';
   };
@@ -483,7 +449,7 @@ function conectarDados() {
   desinscrever = [
     estado.store.onPedidos(lista => { estado.pedidos = lista; render(); },
       err => toast(err?.code === 'permission-denied' ? 'Seu e-mail não tem acesso aos pedidos. Fale com a administração.' : 'Erro ao carregar pedidos')),
-    estado.store.onConfig(cfg => { estado.config = cfg; renderEmpresas(); render(); }),
+    estado.store.onConfig(cfg => { estado.config = cfg; render(); }),
   ];
 }
 
@@ -491,7 +457,6 @@ function mostrarApp() { $('#login').hidden = true; $('#app').hidden = false; }
 function mostrarLogin() { $('#app').hidden = true; $('#login').hidden = false; }
 
 async function iniciar() {
-  try { estado.empresa = localStorage.getItem('cp_filtro_empresa') || ''; } catch {}
   const cfg = window.FIREBASE_CONFIG;
 
   if (!cfg || !cfg.apiKey) {
