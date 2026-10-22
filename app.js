@@ -132,6 +132,13 @@ function chipPrazo(p) {
   return `<span class="chip">Entrega ${dataCurta(p.prazo)}, em ${d} dias</span>`;
 }
 
+function textoValor(p) {
+  const v = Number(p.valor) || 0;
+  if (!v) return '';
+  const falta = p.pagamento === 'parcial' ? ` <span class="falta">falta ${dinheiro(aReceber(p))}</span>` : '';
+  return `<span class="valor">${dinheiro(v)}${falta}</span>`;
+}
+
 function chipPagamento(p) {
   const v = Number(p.valor) || 0;
   if (p.pagamento === 'pago') return `<span class="chip pago">${v ? dinheiro(v) + ' pago' : 'Pago'}</span>`;
@@ -151,7 +158,8 @@ function cartao(p, posicao) {
   const whats = linkWhats(p.contato);
   const etapaChip = p.status === 'producao' || p.status === 'cancelado' ? `<span class="chip etapa-${p.status}">${ETAPAS[p.status]}</span>` : '';
   const prioChip = prio <= 2 ? `<span class="chip prio-${prio}">${PRIORIDADES[prio]}</span>` : '';
-  const qtd = p.quantidade ? `<span class="chip">${esc(p.quantidade)} un.</span>` : '';
+  // pedidos antigos tinham quantidade separada: mostra junto da descrição
+  const descricao = p.quantidade && !String(p.descricao || '').includes(p.quantidade) ? `${p.quantidade} un. — ${p.descricao}` : p.descricao;
   return `
   <article class="comanda p${prio} ${posicao ? '' : 'sem-pos'} ${p.status === 'cancelado' ? 'cancelado' : ''}" data-id="${esc(p.id)}">
     ${posicao ? `<div class="pos" aria-label="Posição ${posicao} na fila"><b>${posicao}</b><small>na fila</small></div>` : ''}
@@ -159,9 +167,10 @@ function cartao(p, posicao) {
       <div class="abrir" role="button" tabindex="0" data-acao="editar" aria-label="Abrir pedido de ${esc(p.cliente)}">
         <div class="cab">
           <span class="cliente">${esc(p.cliente)}</span>
+          ${textoValor(p)}
         </div>
-        <p class="descricao">${esc(p.descricao)}</p>
-        <div class="chips">${etapaChip}${prioChip}${chipPrazo(p)}${qtd}${chipPagamento(p)}</div>
+        <p class="descricao">${esc(descricao)}</p>
+        <div class="chips">${etapaChip}${prioChip}${chipPrazo(p)}</div>
       </div>
       ${p.status !== 'cancelado' ? `
       <div class="marcadores" role="group" aria-label="Situação do pedido">
@@ -279,7 +288,8 @@ function abrirForm(p) {
   form.ref.value = d.ref || '';
   form.contato.value = formatarTelefone(d.contato || '');
   form.descricao.value = d.descricao || '';
-  form.quantidade.value = d.quantidade || '';
+  // pedidos antigos: leva a quantidade para a descrição ao editar
+  if (d.quantidade && !String(d.descricao || '').includes(d.quantidade)) form.descricao.value = `${d.quantidade} un. — ${d.descricao || ''}`;
   form.valor.value = numeroParaCampo(d.valor);
   form.prazo.value = d.prazo || '';
   form.status.value = d.status || 'fila';
@@ -348,7 +358,7 @@ form.addEventListener('submit', async e => {
     ref: form.ref.value.trim(),
     contato: form.contato.value.trim(),
     descricao,
-    quantidade: form.quantidade.value.trim(),
+    quantidade: '',
     valor,
     prioridade: Number(form.prioridade.value) || 3,
     prazo: form.prazo.value,
@@ -422,7 +432,7 @@ $('#abrirAjustes').addEventListener('click', () => {
 $('#exportarCsv').addEventListener('click', () => {
   const cols = [
     ['Cliente', 'cliente'], ['Nº pedido', 'ref'], ['Contato', 'contato'],
-    ['Descrição', 'descricao'], ['Quantidade', 'quantidade'], ['Valor', 'valor'], ['Pagamento', 'pagamento'],
+    ['Descrição', 'descricao'], ['Valor', 'valor'], ['Pagamento', 'pagamento'],
     ['Valor recebido', 'valorPago'], ['Etapa', 'status'], ['Prioridade', 'prioridade'], ['Data de entrega', 'prazo'], ['Tipo da data', 'prazoTipo'],
     ['Entregue em', 'entregueEm'], ['Observações', 'obs'], ['Criado em', 'criadoEm'], ['Criado por', 'criadoPor'],
     ['Atualizado em', 'atualizadoEm'], ['Atualizado por', 'atualizadoPor'],

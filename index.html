@@ -84,11 +84,7 @@
           <label>WhatsApp / contato<input name="contato" inputmode="tel" autocomplete="off" placeholder="(11) 99999-9999"></label>
           <label>Nº do pedido<input name="ref" autocomplete="off" placeholder="Opcional"></label>
         </div>
-        <label>Descrição<textarea name="descricao" rows="3" required placeholder="O que produzir: produto, arte, embalagem, personalização"></textarea></label>
-        <div class="grid2">
-          <label>Quantidade<input name="quantidade" inputmode="numeric" autocomplete="off"></label>
-          <label>Valor total (R$)<input name="valor" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
-        </div>
+        <label>Descrição<textarea name="descricao" rows="5" required placeholder="Quantidade e detalhes: produto, café, arte, embalagem, tag, personalização"></textarea></label>
 
         <fieldset>
           <legend>Prioridade</legend>
@@ -129,7 +125,10 @@
             <label><input type="radio" name="pagamento" value="pago"><span>Pago</span></label>
           </div>
         </fieldset>
-        <label id="campoValorPago" hidden>Valor já recebido (R$)<input name="valorPago" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
+        <div class="grid2">
+          <label>Valor total (R$)<input name="valor" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
+          <label id="campoValorPago" hidden>Já recebido (R$)<input name="valorPago" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
+        </div>
 
         <label>Observações<textarea name="obs" rows="2" placeholder="Arte aprovada? Endereço? Combinados com o cliente"></textarea></label>
         <p id="formMeta" class="meta"></p>
