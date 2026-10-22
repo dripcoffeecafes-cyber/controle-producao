@@ -41,7 +41,7 @@ O plano gratuito (Spark) do Firebase cobre com folga o uso de uma equipe pequena
 2. Em *Source*, escolha **Deploy from a branch**, branch **main**, pasta **/ (root)** e salve.
 3. Em 1 ou 2 minutos o endereço aparece no topo da página (algo como `https://usuario.github.io/controle-producao/`).
 
-No plano gratuito do GitHub, o Pages só funciona com repositório **público**. O código fica visível, mas os pedidos não: eles ficam no Firebase, protegidos por login.
+No plano gratuito do GitHub, o Pages só funciona com repositório **público**. O código fica visível, mas os pedidos não: eles ficam no Firebase e só abrem com a chave do link da equipe.
 
 ## 3. Instalar no celular
 
