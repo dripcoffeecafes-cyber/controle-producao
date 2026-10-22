@@ -247,7 +247,7 @@ function abrirForm(p) {
   const d = p || { status: 'fila', prioridade: 3, pagamento: 'nao', prazoTipo: 'confirmada' };
   form.cliente.value = d.cliente || '';
   form.ref.value = d.ref || '';
-  form.contato.value = d.contato || '';
+  form.contato.value = formatarTelefone(d.contato || '');
   form.descricao.value = d.descricao || '';
   form.quantidade.value = d.quantidade || '';
   form.valor.value = numeroParaCampo(d.valor);
@@ -273,6 +273,24 @@ function atualizarCamposCondicionais() {
   $('#campoValorPago').hidden = form.pagamento.value !== 'parcial';
   $('#campoPrazoTipo').hidden = !form.prazo.value;
 }
+
+// Máscara de telefone: (11) 99999-9999 ou (11) 3333-4444. Números com "+" ficam livres (internacional).
+function formatarTelefone(v) {
+  if (/^\s*\+/.test(v)) return v;
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d ? `(${d}` : '';
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+form.contato.addEventListener('input', e => {
+  const el = e.target;
+  const apagando = e.inputType && e.inputType.startsWith('delete');
+  const novo = formatarTelefone(el.value);
+  // ao apagar, não recoloca o símbolo que a pessoa acabou de remover
+  if (apagando && novo.length > el.value.length) return;
+  el.value = novo;
+});
 
 form.addEventListener('change', e => {
   if (e.target.name === 'status') {
