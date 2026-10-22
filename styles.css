@@ -216,6 +216,26 @@ button { cursor: pointer; }
 .acoes .btn-primary { flex: 1 1 auto; }
 .acoes a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 
+.marcadores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 12px; }
+.marcador {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 42px; padding: 6px 4px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--ink-2);
+  font-size: 14px; font-weight: 600;
+}
+.marcador svg { flex: none; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.marcador .anel { stroke: currentColor; opacity: .55; }
+.marcador .tique { stroke: transparent; }
+.marcador[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.marcador[aria-pressed="true"] .anel { fill: var(--surface); stroke: var(--surface); opacity: 1; }
+.marcador[aria-pressed="true"] .tique { stroke: var(--ink); }
+.marcador.m-pago[aria-pressed="true"] { background: var(--verde); border-color: var(--verde); color: #fff; }
+.marcador.m-pago[aria-pressed="true"] .anel { fill: #fff; stroke: #fff; }
+.marcador.m-pago[aria-pressed="true"] .tique { stroke: var(--verde); }
+.marcador:active { transform: scale(.97); }
+.link-whats { display: inline-block; margin-top: 10px; font-size: 14px; font-weight: 600; color: var(--verde); text-decoration: none; padding: 4px 0; }
+
 .comanda.cancelado { opacity: .6; }
 
 .vazio {

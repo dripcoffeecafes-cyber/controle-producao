@@ -139,11 +139,17 @@ function chipPagamento(p) {
   return `<span class="chip aberto">${v ? dinheiro(v) + ' a receber' : 'Não pago'}</span>`;
 }
 
+const produzido = p => p.status === 'pronto' || p.status === 'entregue';
+const ICONE_CHECK = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle class="anel" cx="12" cy="12" r="9"/><path class="tique" d="m7.5 12.3 3 3 6-6.3"/></svg>';
+function marcador(tipo, texto, ativo) {
+  return `<button class="marcador m-${tipo}" data-acao="marcar" data-tipo="${tipo}" aria-pressed="${ativo}">${ICONE_CHECK}<span>${texto}</span></button>`;
+}
+
 function cartao(p, posicao) {
   const prio = p.prioridade || 3;
   const proxima = PROXIMA[p.status];
   const whats = linkWhats(p.contato);
-  const etapaChip = p.status !== 'fila' && p.status !== 'entregue' ? `<span class="chip etapa-${p.status}">${ETAPAS[p.status]}</span>` : '';
+  const etapaChip = p.status === 'producao' || p.status === 'cancelado' ? `<span class="chip etapa-${p.status}">${ETAPAS[p.status]}</span>` : '';
   const prioChip = prio <= 2 ? `<span class="chip prio-${prio}">${PRIORIDADES[prio]}</span>` : '';
   const qtd = p.quantidade ? `<span class="chip">${esc(p.quantidade)} un.</span>` : '';
   return `
@@ -157,12 +163,13 @@ function cartao(p, posicao) {
         <p class="descricao">${esc(p.descricao)}</p>
         <div class="chips">${etapaChip}${prioChip}${chipPrazo(p)}${qtd}${chipPagamento(p)}</div>
       </div>
-      ${(proxima || p.pagamento !== 'pago' || whats) && p.status !== 'cancelado' ? `
-      <div class="acoes">
-        ${proxima ? `<button class="btn btn-primary" data-acao="avancar">${proxima[1]}</button>` : ''}
-        ${p.pagamento !== 'pago' ? `<button class="btn" data-acao="pago">Marcar pago</button>` : ''}
-        ${whats ? `<a class="btn" href="${whats}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
-      </div>` : ''}
+      ${p.status !== 'cancelado' ? `
+      <div class="marcadores" role="group" aria-label="Situação do pedido">
+        ${marcador('produzido', 'Produzido', produzido(p))}
+        ${marcador('entregue', 'Entregue', p.status === 'entregue')}
+        ${marcador('pago', 'Pago', p.pagamento === 'pago')}
+      </div>
+      ${whats ? `<a class="link-whats" href="${whats}" target="_blank" rel="noopener">Chamar no WhatsApp</a>` : ''}` : ''}
     </div>
   </article>`;
 }
@@ -233,6 +240,27 @@ async function marcarPago(id) {
   const antes = { ...p };
   const novo = { ...p, pagamento: 'pago', valorPago: Number(p.valor) || 0, pagoEm: hojeISO() };
   await salvar(novo, finalizado(novo) ? 'Pedido finalizado' : 'Marcado como pago', antes);
+}
+
+// Liga/desliga Produzido, Entregue e Pago direto no cartão
+async function alternar(id, tipo) {
+  const p = acharPedido(id); if (!p) return;
+  const antes = { ...p };
+  const novo = { ...p };
+  let msg;
+  if (tipo === 'produzido') {
+    if (produzido(p)) { novo.status = 'producao'; novo.entregueEm = ''; msg = 'Voltou para produção'; }
+    else { novo.status = 'pronto'; msg = 'Marcado como produzido'; }
+  } else if (tipo === 'entregue') {
+    if (p.status === 'entregue') { novo.status = 'pronto'; novo.entregueEm = ''; msg = 'Entrega desmarcada'; }
+    else { novo.status = 'entregue'; novo.entregueEm = hojeISO(); msg = 'Marcado como entregue'; }
+  } else if (tipo === 'pago') {
+    if (p.pagamento === 'pago') { novo.pagamento = 'nao'; novo.valorPago = 0; novo.pagoEm = ''; msg = 'Pagamento desmarcado'; }
+    else { novo.pagamento = 'pago'; novo.valorPago = Number(p.valor) || 0; novo.pagoEm = hojeISO(); msg = 'Marcado como pago'; }
+  } else return;
+  if (finalizado(novo) && !finalizado(p)) msg = 'Pedido finalizado';
+  if (!finalizado(novo) && finalizado(p)) msg += ', voltou para a fila';
+  await salvar(novo, msg, antes);
 }
 
 // ---------------- Formulário ----------------
@@ -360,6 +388,7 @@ document.addEventListener('click', e => {
   if (acao === 'editar') abrirForm(acharPedido(id));
   if (acao === 'avancar') avancar(id);
   if (acao === 'pago') marcarPago(id);
+  if (acao === 'marcar') alternar(id, alvo.dataset.tipo);
 });
 
 $('#novoPedido').addEventListener('click', () => abrirForm());
