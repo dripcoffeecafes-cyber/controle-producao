@@ -62,13 +62,19 @@ const estado = {
 };
 
 // ---------------- Ordenação e filtros ----------------
+// Fila única: primeiro a data de entrega (confirmada ou prevista; sem data vai para o fim),
+// depois a prioridade (Urgente > Alta > Normal > Baixa), depois a ordem de cadastro.
 function ordenarFila(a, b) {
-  const pa = a.prioridade || 3, pb = b.prioridade || 3;
-  if (pa !== pb) return pa - pb;
   const da = a.prazo || '9999-99-99', dbb = b.prazo || '9999-99-99';
   if (da !== dbb) return da < dbb ? -1 : 1;
+  const pa = a.prioridade || 3, pb = b.prioridade || 3;
+  if (pa !== pb) return pa - pb;
   return (a.criadoEm || '') < (b.criadoEm || '') ? -1 : 1;
 }
+
+// Finalizado = produzido, entregue e pago. Até lá o pedido continua na fila.
+const finalizado = p => p.status === 'entregue' && p.pagamento === 'pago';
+const naFila = p => p.status !== 'cancelado' && !finalizado(p);
 
 function emAberto(p) {
   return p.status !== 'cancelado' && p.pagamento !== 'pago' && (Number(p.valor) || 0) > (Number(p.valorPago) || 0);
@@ -137,7 +143,7 @@ function cartao(p, posicao) {
   const prio = p.prioridade || 3;
   const proxima = PROXIMA[p.status];
   const whats = linkWhats(p.contato);
-  const etapaChip = p.status !== 'fila' ? `<span class="chip etapa-${p.status}">${ETAPAS[p.status]}</span>` : '';
+  const etapaChip = p.status !== 'fila' && p.status !== 'entregue' ? `<span class="chip etapa-${p.status}">${ETAPAS[p.status]}</span>` : '';
   const prioChip = prio <= 2 ? `<span class="chip prio-${prio}">${PRIORIDADES[prio]}</span>` : '';
   const qtd = p.quantidade ? `<span class="chip">${esc(p.quantidade)} un.</span>` : '';
   return `
@@ -167,18 +173,13 @@ function renderLista() {
   let html = '';
 
   if (estado.view === 'fila') {
-    const ativos = itens.filter(p => ATIVOS.includes(p.status));
-    const prontos = ativos.filter(p => p.status === 'pronto').sort(ordenarFila);
-    const produzir = ativos.filter(p => p.status !== 'pronto').sort(ordenarFila);
-    html += produzir.map((p, i) => cartao(p, i + 1)).join('');
-    if (prontos.length) {
-      html += `<h2 class="secao-titulo">Prontos para entregar</h2>` + prontos.map(p => cartao(p)).join('');
-    }
-    if (!ativos.length) html = vazio('Nada na fila', estado.pedidos.length ? 'Todos os pedidos deste filtro já foram entregues.' : 'Cadastre o primeiro pedido para começar a fila de produção.');
-  } else if (estado.view === 'entregues') {
-    const ent = itens.filter(p => p.status === 'entregue')
+    const fila = itens.filter(naFila).sort(ordenarFila);
+    html = fila.map((p, i) => cartao(p, i + 1)).join('');
+    if (!fila.length) html = vazio('Nada na fila', estado.pedidos.length ? 'Todos os pedidos deste filtro já foram finalizados.' : 'Cadastre o primeiro pedido para começar a fila de produção.');
+  } else if (estado.view === 'finalizados') {
+    const fin = itens.filter(finalizado)
       .sort((a, b) => (b.entregueEm || '').localeCompare(a.entregueEm || ''));
-    html = ent.length ? ent.map(p => cartao(p)).join('') : vazio('Nenhum pedido entregue', 'Quando marcar um pedido como entregue, ele aparece aqui com a data.');
+    html = fin.length ? fin.map(p => cartao(p)).join('') : vazio('Nenhum pedido finalizado', 'Um pedido vem para cá quando estiver entregue e pago.');
   } else {
     const todos = [...itens].sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
     html = todos.length ? todos.map(p => cartao(p)).join('') : vazio('Nenhum pedido encontrado', 'Ajuste a busca ou os filtros.');
@@ -224,13 +225,14 @@ async function avancar(id) {
   const antes = { ...p };
   const novo = { ...p, status: PROXIMA[p.status][0] };
   if (novo.status === 'entregue' && !novo.entregueEm) novo.entregueEm = hojeISO();
-  await salvar(novo, `Movido para ${ETAPAS[novo.status].toLowerCase()}`, antes);
+  await salvar(novo, finalizado(novo) ? 'Pedido finalizado' : `Movido para ${ETAPAS[novo.status].toLowerCase()}`, antes);
 }
 
 async function marcarPago(id) {
   const p = acharPedido(id); if (!p) return;
   const antes = { ...p };
-  await salvar({ ...p, pagamento: 'pago', valorPago: Number(p.valor) || 0, pagoEm: hojeISO() }, 'Marcado como pago', antes);
+  const novo = { ...p, pagamento: 'pago', valorPago: Number(p.valor) || 0, pagoEm: hojeISO() };
+  await salvar(novo, finalizado(novo) ? 'Pedido finalizado' : 'Marcado como pago', antes);
 }
 
 // ---------------- Formulário ----------------

@@ -4,7 +4,8 @@ App web (PWA) para controlar pedidos e produção: fila por prioridade, prazos, 
 
 ## O que o app faz
 
-- **Fila de produção** numerada, ordenada por prioridade (Urgente, Alta, Normal, Baixa) e, dentro de cada prioridade, pela data de entrega mais próxima.
+- **Fila única** numerada, ordenada pela data de entrega (confirmada ou prevista; sem data vai para o fim) e, no mesmo dia, pela prioridade (Urgente, Alta, Normal, Baixa).
+- **Finalizados:** o pedido sai da fila só quando estiver entregue **e** pago. Entregue sem pagamento continua na fila com o botão "Marcar pago".
 - **Data de entrega confirmada ou prevista.** Pedidos sem data fechada podem ter uma previsão, que aparece com borda tracejada e não conta como atraso. Pedidos sem nenhuma data aparecem como "Sem data".
 - **Etapas:** A produzir → Em produção → Pronto → Entregue (ou Cancelado). Um toque no cartão avança a etapa; ao marcar "Entregue", a data de entrega é preenchida com o dia.
 - **Pagamento:** Não pago, Sinal pago (com valor recebido) ou Pago.
