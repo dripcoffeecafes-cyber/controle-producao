@@ -1,25 +1,12 @@
 rules_version = '2';
 
-// Só quem está na lista abaixo pode ver e editar os pedidos.
-// Para dar acesso a alguém da equipe: crie o usuário em Authentication
-// e adicione o e-mail dele (em minúsculas) nesta lista. Depois clique em "Publicar".
+// Acesso sem login: só quem tem o link da equipe (com a chave) lê e grava os pedidos.
+// Troque CHAVE_DA_EQUIPE pela chave do link (o texto depois de "#k=").
+// A chave verdadeira NÃO deve ser salva neste repositório, porque ele é público.
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function daEquipe() {
-      return request.auth != null
-        && request.auth.token.email in [
-          'az.adrianozanin@gmail.com'
-          // , 'pessoa.da.equipe@gmail.com'
-        ];
-    }
-
-    match /pedidos/{id} {
-      allow read, write: if daEquipe();
-    }
-
-    match /config/{doc} {
-      allow read, write: if daEquipe();
+    match /equipes/{chave}/{colecao}/{doc} {
+      allow read, write: if chave == 'CHAVE_DA_EQUIPE';
     }
   }
 }

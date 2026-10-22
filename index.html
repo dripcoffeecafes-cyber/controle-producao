@@ -19,18 +19,13 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Tela de login (só aparece quando o Firebase está configurado) -->
-  <section id="login" class="login" hidden>
-    <form id="loginForm" class="login-card" novalidate>
+  <!-- Aparece só se o app for aberto sem o link da equipe -->
+  <section id="semChave" class="login" hidden>
+    <div class="login-card">
       <img src="icons/icon-192.png" alt="" width="64" height="64" class="login-logo">
       <h1>Produção</h1>
-      <p class="muted">Entre com o e-mail cadastrado pela administração.</p>
-      <label>E-mail<input type="email" name="email" autocomplete="username" required></label>
-      <label>Senha<input type="password" name="senha" autocomplete="current-password" required></label>
-      <p id="loginErro" class="erro" role="alert"></p>
-      <button type="submit" class="btn btn-primary btn-block">Entrar</button>
-      <button type="button" id="esqueci" class="btn-link">Esqueci minha senha</button>
-    </form>
+      <p class="muted">Abra o app pelo link da equipe. Peça o link para a administração.</p>
+    </div>
   </section>
 
   <div id="app" hidden>
@@ -165,10 +160,18 @@
         <p class="muted"><strong>iPhone:</strong> abra no Safari, toque em Compartilhar e depois em "Adicionar à Tela de Início".</p>
         <p class="muted"><strong>Android:</strong> abra no Chrome, toque no menu ⋮ e depois em "Instalar app".</p>
       </section>
-      <section class="bloco" id="blocoConta" hidden>
-        <h3>Conta</h3>
-        <p id="infoUsuario" class="muted"></p>
-        <button id="sair" class="btn" type="button">Sair</button>
+      <section class="bloco">
+        <h3>Seu nome</h3>
+        <p class="muted">Aparece no histórico de quem alterou cada pedido.</p>
+        <form id="formNome" class="linha-add">
+          <input name="nome" placeholder="Ex.: Adriano" autocomplete="name" aria-label="Seu nome">
+          <button class="btn" type="submit">Salvar</button>
+        </form>
+      </section>
+      <section class="bloco" id="blocoLink" hidden>
+        <h3>Link da equipe</h3>
+        <p class="muted">Mande este link para quem vai usar o app. Quem tiver o link vê e edita os pedidos, então não publique em redes sociais.</p>
+        <button id="copiarLink" class="btn" type="button">Copiar link da equipe</button>
       </section>
     </div>
   </dialog>

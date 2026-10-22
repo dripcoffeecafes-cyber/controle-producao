@@ -52,16 +52,15 @@ export function criarStoreLocal() {
 }
 
 // ---------------- Modo Firebase ----------------
-export async function criarStoreFirebase(firebaseConfig) {
-  const [{ initializeApp }, auth, fs] = await Promise.all([
+// Sem login: os dados da equipe ficam em equipes/{chave}/..., e só quem tem a chave
+// (que vem no link da equipe) consegue ler ou gravar. A chave nunca fica no código.
+export async function criarStoreFirebase(firebaseConfig, chave) {
+  const [{ initializeApp }, fs] = await Promise.all([
     import(`${SDK}/firebase-app.js`),
-    import(`${SDK}/firebase-auth.js`),
     import(`${SDK}/firebase-firestore.js`),
   ]);
 
   const app = initializeApp(firebaseConfig);
-  const a = auth.getAuth(app);
-  await auth.setPersistence(a, auth.browserLocalPersistence);
 
   // Cache offline: o app abre e mostra os pedidos mesmo sem internet,
   // e envia as alterações quando a conexão volta.
@@ -74,18 +73,11 @@ export async function criarStoreFirebase(firebaseConfig) {
     db = fs.getFirestore(app);
   }
 
-  const colPedidos = fs.collection(db, 'pedidos');
-  const docConfig = fs.doc(db, 'config', 'geral');
+  const colPedidos = fs.collection(db, 'equipes', chave, 'pedidos');
+  const docConfig = fs.doc(db, 'equipes', chave, 'config', 'geral');
 
   const store = {
     modo: 'firebase',
-    usuario: null,
-    onUsuario(cb) {
-      return auth.onAuthStateChanged(a, u => { store.usuario = u; cb(u); });
-    },
-    entrar: (email, senha) => auth.signInWithEmailAndPassword(a, email, senha),
-    sair: () => auth.signOut(a),
-    recuperarSenha: email => auth.sendPasswordResetEmail(a, email),
 
     onPedidos(cb, onErro) {
       return fs.onSnapshot(colPedidos,

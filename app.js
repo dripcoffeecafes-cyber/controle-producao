@@ -223,8 +223,7 @@ function toast(msg, acao) {
 
 // ---------------- Ações ----------------
 function quem() {
-  const u = estado.store?.usuario;
-  return u?.displayName || u?.email || 'este aparelho';
+  try { return localStorage.getItem('cp_nome') || 'Equipe'; } catch { return 'Equipe'; }
 }
 
 async function salvar(p, msg, desfazer) {
@@ -422,8 +421,8 @@ $('#abrirAjustes').addEventListener('click', () => {
   $('#infoConexao').textContent = fb
     ? 'Sincronizado com a nuvem (Firebase). Alterações aparecem na hora para toda a equipe, e o app funciona sem internet.'
     : 'Modo de teste: os pedidos ficam só neste aparelho. Exporte a planilha de vez em quando como cópia de segurança.';
-  $('#blocoConta').hidden = !fb;
-  $('#infoUsuario').textContent = fb ? `Conectado como ${quem()}` : '';
+  $('#blocoLink').hidden = !fb;
+  try { $('#formNome').nome.value = localStorage.getItem('cp_nome') || ''; } catch {}
   $('#migrarLocal').hidden = !(fb && pedidosLocais().length);
   $('#dlgAjustes').showModal();
 });
@@ -467,9 +466,22 @@ $('#migrarLocal').addEventListener('click', async () => {
   toast(`${locais.length} pedido(s) enviados para a nuvem`);
 });
 
-$('#sair').addEventListener('click', async () => {
-  $('#dlgAjustes').close();
-  await estado.store.sair();
+$('#formNome').addEventListener('submit', e => {
+  e.preventDefault();
+  try { localStorage.setItem('cp_nome', e.target.nome.value.trim()); } catch {}
+  toast('Nome salvo');
+});
+
+function linkEquipe() { return `${location.origin}${location.pathname}#k=${estado.chave}`; }
+$('#copiarLink').addEventListener('click', async () => {
+  const link = linkEquipe();
+  try {
+    if (navigator.share) { await navigator.share({ title: 'Produção', url: link }); return; }
+    await navigator.clipboard.writeText(link);
+    toast('Link copiado');
+  } catch (err) {
+    if (err?.name !== 'AbortError') prompt('Copie o link da equipe:', link);
+  }
 });
 
 // ---------------- Instalação (PWA) ----------------
@@ -507,13 +519,12 @@ function conectarDados() {
   desinscrever.forEach(f => f && f());
   desinscrever = [
     estado.store.onPedidos(lista => { estado.pedidos = lista; render(); },
-      err => toast(err?.code === 'permission-denied' ? 'Seu e-mail não tem acesso aos pedidos. Fale com a administração.' : 'Erro ao carregar pedidos')),
+      err => toast(err?.code === 'permission-denied' ? 'Link da equipe inválido. Abra o app pelo link correto.' : 'Erro ao carregar pedidos')),
     estado.store.onConfig(cfg => { estado.config = cfg; render(); }),
   ];
 }
 
-function mostrarApp() { $('#login').hidden = true; $('#app').hidden = false; }
-function mostrarLogin() { $('#app').hidden = true; $('#login').hidden = false; }
+function mostrarApp() { $('#semChave').hidden = true; $('#app').hidden = false; }
 
 async function iniciar() {
   const cfg = window.FIREBASE_CONFIG;
@@ -526,8 +537,20 @@ async function iniciar() {
     return;
   }
 
+  // A chave vem no link (#k=...). Fica guardada no aparelho e continua no endereço,
+  // para o app instalado na tela inicial do iPhone também abrir com ela.
+  const daUrl = new URLSearchParams(location.hash.slice(1)).get('k');
+  let chave = daUrl;
   try {
-    estado.store = await criarStoreFirebase(cfg);
+    if (daUrl) localStorage.setItem('cp_chave', daUrl);
+    else chave = localStorage.getItem('cp_chave');
+  } catch {}
+  if (!chave) { $('#app').hidden = true; $('#semChave').hidden = false; return; }
+  estado.chave = chave;
+  if (!daUrl) history.replaceState(null, '', `#k=${chave}`);
+
+  try {
+    estado.store = await criarStoreFirebase(cfg, chave);
   } catch (err) {
     console.error(err);
     estado.store = criarStoreLocal();
@@ -536,38 +559,9 @@ async function iniciar() {
     mostrarApp(); conectarDados();
     return;
   }
-  estado.store._onErro = err => toast(err?.code === 'permission-denied' ? 'Sem permissão para salvar. Fale com a administração.' : 'Erro ao salvar na nuvem');
-
-  estado.store.onUsuario(u => {
-    if (u) { mostrarApp(); conectarDados(); }
-    else { desinscrever.forEach(f => f && f()); desinscrever = []; estado.pedidos = []; mostrarLogin(); }
-  });
-
-  $('#loginForm').addEventListener('submit', async e => {
-    e.preventDefault();
-    const f = e.target;
-    const erro = $('#loginErro');
-    erro.textContent = '';
-    const btn = f.querySelector('[type=submit]');
-    btn.disabled = true; btn.textContent = 'Entrando…';
-    try {
-      await estado.store.entrar(f.email.value.trim(), f.senha.value);
-      f.reset();
-    } catch (err) {
-      erro.textContent = ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'].includes(err.code)
-        ? 'E-mail ou senha incorretos.'
-        : err.code === 'auth/too-many-requests' ? 'Muitas tentativas. Aguarde alguns minutos e tente de novo.'
-        : 'Não foi possível entrar. Verifique a internet.';
-    } finally {
-      btn.disabled = false; btn.textContent = 'Entrar';
-    }
-  });
-  $('#esqueci').addEventListener('click', async () => {
-    const email = $('#loginForm').email.value.trim();
-    if (!email) { $('#loginErro').textContent = 'Digite seu e-mail acima e toque em "Esqueci minha senha" de novo.'; return; }
-    try { await estado.store.recuperarSenha(email); $('#loginErro').textContent = 'Enviamos um link para redefinir a senha no seu e-mail.'; }
-    catch { $('#loginErro').textContent = 'Não foi possível enviar o e-mail. Confira o endereço.'; }
-  });
+  estado.store._onErro = err => toast(err?.code === 'permission-denied' ? 'Link da equipe inválido. Abra o app pelo link correto.' : 'Erro ao salvar na nuvem');
+  mostrarApp();
+  conectarDados();
 }
 
 // atualiza "em X dias" quando o dia vira com o app aberto

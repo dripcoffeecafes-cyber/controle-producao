@@ -19,32 +19,19 @@ Sem o Firebase configurado, o app roda em **modo de teste**: tudo fica salvo só
 
 ---
 
-## 1. Configurar o Firebase (uma vez, ~10 minutos)
+## 1. Configurar o Firebase (uma vez, ~5 minutos)
 
-1. Acesse **console.firebase.google.com** com sua conta Google e clique em **Criar projeto**. Nome sugerido: `producao-blooming`. O Google Analytics pode ficar desativado.
-2. **Banco de dados:** no menu, *Criação → Firestore Database → Criar banco de dados*.
-   - Local: **southamerica-east1 (São Paulo)**.
-   - Modo: **produção**.
-3. **Regras de segurança:** ainda no Firestore, aba **Regras**. Apague o conteúdo, cole o arquivo `firestore.rules` deste repositório e clique em **Publicar**.
-   - Já vem com o e-mail `az.adrianozanin@gmail.com`. Para cada pessoa da equipe, adicione o e-mail na lista (em minúsculas) e publique de novo.
-4. **Login:** *Criação → Authentication → Vamos começar → E-mail/senha → Ativar → Salvar*.
-   - Na aba **Usuários**, clique em **Adicionar usuário** para você e para cada pessoa da equipe (e-mail + senha provisória). A pessoa pode trocar a senha depois pelo "Esqueci minha senha" no app.
-5. **Liberar o domínio do GitHub:** *Authentication → Configurações → Domínios autorizados → Adicionar domínio* → `dripcoffeecafes-cyber.github.io` (ou o domínio onde o app ficar publicado).
-6. **Pegar a configuração:** clique na engrenagem ⚙ → *Configurações do projeto* → em "Seus apps", clique no ícone **</>** (Web), dê um apelido (ex.: `producao`) e registre. **Não** marque Firebase Hosting.
-   - Copie o objeto `firebaseConfig` que aparece e cole no arquivo `config.js`, no lugar de `null`:
+O app não tem login: a equipe entra direto por um **link com uma chave secreta** (`.../controle-producao/#k=CHAVE`). Só quem tem esse link consegue ver e editar os pedidos.
 
-```js
-window.FIREBASE_CONFIG = {
-  apiKey: "AIza...",
-  authDomain: "producao-blooming.firebaseapp.com",
-  projectId: "producao-blooming",
-  storageBucket: "producao-blooming.appspot.com",
-  messagingSenderId: "...",
-  appId: "..."
-};
-```
+1. Acesse **console.firebase.google.com**, clique em **Criar projeto** (ex.: `producao-blooming`). O Google Analytics pode ficar desativado.
+2. **Banco de dados:** *Firestore Database → Criar banco de dados*. Edição **Standard**, local **southamerica-east1 (São Paulo)**, modo **produção**.
+3. **Regras:** no Firestore, aba **Regras**. Cole o conteúdo de `firestore.rules`, troque `CHAVE_DA_EQUIPE` pela chave do link da equipe e clique em **Publicar**.
+   - A chave verdadeira **não** deve ser salva neste repositório, porque ele é público.
+4. **Pegar a configuração:** engrenagem ⚙ → *Configurações do projeto* → em "Seus apps", ícone **</>** (Web), apelido `producao`, **Registrar app** (sem Firebase Hosting). Copie o objeto `firebaseConfig` para o arquivo `config.js`, no lugar de `null`.
 
-> Esses dados não são senha: eles só identificam o projeto. Quem protege os pedidos são o login e as regras do passo 3, que só deixam entrar os e-mails da lista.
+> Os dados do `firebaseConfig` não são senha; eles só identificam o projeto. Quem protege os pedidos é a chave do link, conferida pelas regras do passo 3.
+
+**Para trocar a chave** (por exemplo, se alguém que saiu da equipe tinha o link): crie uma chave nova, coloque nas regras e publique, e mande o link novo para a equipe. Os pedidos ficam guardados por chave, então avise antes para exportar a planilha ou peça ajuda para migrar os dados.
 
 O plano gratuito (Spark) do Firebase cobre com folga o uso de uma equipe pequena.
 
@@ -58,6 +45,9 @@ No plano gratuito do GitHub, o Pages só funciona com repositório **público**.
 
 ## 3. Instalar no celular
 
+Abra sempre pelo **link da equipe** (com `#k=`). Em *Ajustes → Link da equipe* dá para copiar ou compartilhar o link. Em *Ajustes → Seu nome*, cada pessoa coloca o nome para aparecer no histórico.
+
+
 - **iPhone:** abra o endereço no **Safari** → botão Compartilhar → **Adicionar à Tela de Início**.
 - **Android:** abra no **Chrome** → aparece "Instalar app" (ou menu ⋮ → **Instalar app**).
 
@@ -67,7 +57,7 @@ Depois de alterar qualquer arquivo, aumente a versão na primeira linha de `sw.j
 
 ## Passar pedidos do modo de teste para a nuvem
 
-Se cadastrou pedidos antes de configurar o Firebase, abra o app no mesmo aparelho já com login feito → **Ajustes → Enviar pedidos deste aparelho para a nuvem**.
+Se cadastrou pedidos antes de configurar o Firebase, abra o app no mesmo aparelho pelo link da equipe → **Ajustes → Enviar pedidos deste aparelho para a nuvem**.
 
 ## Arquivos
 
@@ -80,4 +70,4 @@ Se cadastrou pedidos antes de configurar o Firebase, abra o app no mesmo aparelh
 | `config.js` | Configuração do Firebase |
 | `sw.js` | Funcionamento offline e instalação |
 | `manifest.webmanifest`, `icons/` | Nome e ícone do app instalado |
-| `firestore.rules` | Quem pode acessar os pedidos |
+| `firestore.rules` | Modelo das regras de acesso (a chave real fica só no Firebase) |
