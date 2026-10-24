@@ -72,7 +72,7 @@ Se cadastrou pedidos antes de configurar o Firebase, abra o app no mesmo aparelh
 | `manifest.webmanifest`, `icons/` | Nome e ícone do app instalado |
 | `firestore.rules` | Modelo das regras de acesso (a chave real fica só no Firebase) |
 
-## Kits de presente (aba Kits)
+## Kits de presente (áreas Orçar kit e Produtos)
 
 - **Caixas:** cada caixa é Premium ou Padrão, tem nome, preço (custo opcional) e a foto do kit montado com ela. A foto da caixa é a imagem principal do kit.
 - **Produtos e preços:** cada produto tem foto, categoria, preço de venda e custo opcional. O preço pode ser trocado direto na lista, para a atualização do mês.

@@ -539,3 +539,9 @@ legend { font-size: 13.5px; font-weight: 600; color: var(--ink-2); margin-bottom
 #areaProdutos { padding-top: 16px; }
 @media (min-width: 700px) { .orcar-barra { border-radius: 16px 16px 0 0; } }
 body[data-area="orcar"] .toast { bottom: calc(150px + var(--safe-bottom)); }
+
+/* Categoria do produto: lista clicável */
+.campo-categoria { border: 0; padding: 0; margin: 0 0 12px; min-width: 0; }
+.campo-categoria legend { padding: 0; margin-bottom: 6px; font-size: 13px; color: var(--muted, #6b6258); }
+.segmentado-quebra { flex-wrap: wrap; }
+.segmentado-quebra label { flex: 1 1 calc(50% - 6px); }

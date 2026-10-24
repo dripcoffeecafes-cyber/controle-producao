@@ -19,8 +19,11 @@ function lerNumero(txt) {
 const paraCampo = n => (n ? String(n).replace('.', ',') : '');
 const precoCampo = n => (n ? Number(n).toFixed(2).replace('.', ',') : '');
 
-const ORDEM_CATEGORIAS = ['Cafés', 'Drip', 'Acessórios', 'Xícaras', 'Embalagem'];
-const ordemCategoria = c => { const i = ORDEM_CATEGORIAS.indexOf(c); return i < 0 ? 100 : i; };
+// Categorias fixas. A embalagem não é item: ela entra como caixa.
+const CATEGORIAS = ['Cafés', 'Acessórios', 'Xícaras', 'Outros'];
+// Produtos antigos com outra categoria (Drip, Embalagem, texto livre) caem na mais próxima
+const categoriaDe = c => CATEGORIAS.includes(c) ? c : (c === 'Drip' ? 'Cafés' : 'Outros');
+const ordemCategoria = c => CATEGORIAS.indexOf(categoriaDe(c));
 
 const LINHAS = [['premium', 'Premium'], ['padrao', 'Padrão']];
 const nomeLinha = id => (LINHAS.find(l => l[0] === id) || LINHAS[1])[1];
@@ -29,7 +32,7 @@ const TITULO_KIT = 'Kit Blooming Club Cafés';
 // Lista de partida: só nomes e categorias. Preços zerados para a equipe preencher.
 const EXEMPLO_ITENS = [
   ['Café especial 250g', 'Cafés'],
-  ['Drip coffee (unidade)', 'Drip'],
+  ['Drip coffee (unidade)', 'Cafés'],
   ['Moedor manual', 'Acessórios'],
   ['Coador V60', 'Acessórios'],
   ['Xícara de cerâmica', 'Xícaras'],
@@ -72,8 +75,7 @@ export function criarKits(ctx) {
 
   function itensOrdenados() {
     return [...k.itens].sort((a, b) =>
-      ordemCategoria(a.categoria || 'Outros') - ordemCategoria(b.categoria || 'Outros') ||
-      (a.categoria || 'Outros').localeCompare(b.categoria || 'Outros', 'pt-BR') ||
+      ordemCategoria(a.categoria) - ordemCategoria(b.categoria) ||
       (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
   }
 
@@ -156,7 +158,7 @@ export function criarKits(ctx) {
     } else {
       let catAtual = null;
       produtos = `<div class="item-lista">${itensOrdenados().map(i => {
-        const cat = i.categoria || 'Outros';
+        const cat = categoriaDe(i.categoria);
         const cab = cat !== catAtual ? `<h3 class="item-cat">${esc(cat)}</h3>` : '';
         catAtual = cat;
         return `${cab}
@@ -229,7 +231,7 @@ export function criarKits(ctx) {
 
   function renderCaixas() {
     if (!k.caixas.length) {
-      $('#kitCaixas').innerHTML = '<p class="muted">Cadastre as caixas na aba Kits.</p>';
+      $('#kitCaixas').innerHTML = '<p class="muted">Cadastre as caixas na área Produtos.</p>';
       return;
     }
     $('#kitCaixas').innerHTML = LINHAS.map(([id, nome]) => {
@@ -273,12 +275,12 @@ export function criarKits(ctx) {
 
   function renderItensDialogo() {
     if (!k.itens.length) {
-      $('#kitItens').innerHTML = '<p class="muted">Cadastre os produtos na aba Kits para montar.</p>';
+      $('#kitItens').innerHTML = '<p class="muted">Cadastre os produtos na área Produtos para montar.</p>';
       return;
     }
     let catAtual = null;
     $('#kitItens').innerHTML = itensOrdenados().map(i => {
-      const cat = i.categoria || 'Outros';
+      const cat = categoriaDe(i.categoria);
       const cab = cat !== catAtual ? `<h3 class="item-cat">${esc(cat)}</h3>` : '';
       catAtual = cat;
       return cab + linhaItem(i);
@@ -690,11 +692,11 @@ export function criarKits(ctx) {
     $('#itemTitulo').textContent = item ? 'Editar produto' : 'Novo produto';
     $('#excluirItem').hidden = !item;
     formItem.nome.value = item?.nome || '';
-    formItem.categoria.value = item?.categoria || '';
+    const cat = categoriaDe(item?.categoria);
+    $('#itemCategorias').innerHTML = CATEGORIAS.map(c =>
+      `<label><input type="radio" name="categoria" value="${esc(c)}" ${c === cat ? 'checked' : ''}><span>${esc(c)}</span></label>`).join('');
     formItem.preco.value = paraCampo(item?.preco);
     formItem.custo.value = paraCampo(item?.custo);
-    const cats = [...new Set([...ORDEM_CATEGORIAS, ...k.itens.map(i => i.categoria).filter(Boolean)])];
-    $('#listaCategorias').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
     renderFotoItem();
     dlgItem.showModal();
     if (!item) formItem.nome.focus();
@@ -721,7 +723,7 @@ export function criarKits(ctx) {
       ...(existente || {}),
       id: existente?.id || novoId(),
       nome,
-      categoria: formItem.categoria.value.trim() || 'Outros',
+      categoria: categoriaDe(formItem.elements.categoria.value),
       preco: lerNumero(formItem.preco.value),
       custo: custoTxt ? lerNumero(custoTxt) : '',
       foto: k.fotoItem,

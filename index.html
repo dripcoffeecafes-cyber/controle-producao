@@ -289,8 +289,10 @@
           </div>
         </div>
         <label>Nome<input name="nome" required autocomplete="off" placeholder="Ex.: Café especial 250g"></label>
-        <label>Categoria<input name="categoria" list="listaCategorias" autocomplete="off" placeholder="Ex.: Cafés, Acessórios, Xícaras"></label>
-        <datalist id="listaCategorias"></datalist>
+        <fieldset class="campo-categoria">
+          <legend>Categoria</legend>
+          <div id="itemCategorias" class="segmentado segmentado-quebra"></div>
+        </fieldset>
         <div class="grid2">
           <label>Preço de venda (R$)<input name="preco" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
           <label>Custo (R$)<input name="custo" inputmode="decimal" autocomplete="off" placeholder="Opcional"></label>
