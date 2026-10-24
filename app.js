@@ -1,4 +1,5 @@
 import { criarStoreLocal, criarStoreFirebase, pedidosLocais, limparPedidosLocais } from './store.js';
+import { criarKits } from './kits.js';
 
 // ---------------- Utilidades ----------------
 const $ = (s, el = document) => el.querySelector(s);
@@ -185,6 +186,7 @@ function cartao(p, posicao) {
 
 function renderLista() {
   const lista = $('#lista');
+  if (estado.view === 'kits') { lista.innerHTML = kits.html(); return; }
   const itens = filtrados();
   let html = '';
 
@@ -209,6 +211,15 @@ function vazio(titulo, texto) {
 }
 
 function render() { renderResumo(); renderLista(); }
+
+// ---------------- Kits de presente ----------------
+const kits = criarKits({
+  store: () => estado.store,
+  toast: (...a) => toast(...a),
+  quem: () => quem(),
+  abrirPedido: (preencher, extra) => abrirForm(null, preencher, extra),
+  aoMudar: () => { if (estado.view === 'kits') renderLista(); },
+});
 
 // ---------------- Toast ----------------
 let toastTimer;
@@ -275,8 +286,9 @@ async function alternar(id, tipo) {
 const dlg = $('#dlgPedido');
 const form = $('#formPedido');
 
-function abrirForm(p) {
+function abrirForm(p, preencher, extra) {
   estado.editando = p ? p.id : null;
+  estado.extraNovo = p ? null : extra || null;
   form.reset();
   $('#formErro').textContent = '';
   $('#formTitulo').textContent = p ? 'Editar pedido' : 'Novo pedido';
@@ -298,6 +310,12 @@ function abrirForm(p) {
   $(`input[name=prioridade][value="${d.prioridade || 3}"]`, form).checked = true;
   $(`input[name=pagamento][value="${d.pagamento || 'nao'}"]`, form).checked = true;
   $(`input[name=prazoTipo][value="${d.prazoTipo === 'prevista' ? 'prevista' : 'confirmada'}"]`, form).checked = true;
+  // vindo do montador de kits: descrição, valor e observação já preenchidos
+  if (!p && preencher) {
+    if (preencher.descricao) form.descricao.value = preencher.descricao;
+    if (preencher.valor) form.valor.value = numeroParaCampo(preencher.valor);
+    if (preencher.obs) form.obs.value = preencher.obs;
+  }
   atualizarCamposCondicionais();
 
   $('#formMeta').textContent = p?.atualizadoEm
@@ -351,7 +369,7 @@ form.addEventListener('submit', async e => {
   const valor = lerNumero(form.valor.value);
   const pagamento = form.pagamento.value;
   const p = {
-    ...(existente || {}),
+    ...(existente || estado.extraNovo || {}),
     id: existente?.id || novoId(),
     cliente,
     ref: form.ref.value.trim(),
@@ -400,7 +418,7 @@ document.addEventListener('click', e => {
   if (acao === 'marcar') alternar(id, alvo.dataset.tipo);
 });
 
-$('#novoPedido').addEventListener('click', () => abrirForm());
+$('#novoPedido').addEventListener('click', () => (estado.view === 'kits' ? kits.abrirMontador() : abrirForm()));
 document.addEventListener('keydown', e => {
   const alvo = e.target.closest?.('.abrir');
   if (alvo && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); alvo.click(); }
@@ -409,6 +427,11 @@ document.addEventListener('keydown', e => {
 $$('.abas button').forEach(b => b.addEventListener('click', () => {
   estado.view = b.dataset.view;
   $$('.abas button').forEach(x => x.setAttribute('aria-selected', x === b));
+  const emKits = estado.view === 'kits';
+  $('.filtros').hidden = emKits;
+  $('#resumo').hidden = emKits;
+  $('#fabTexto').textContent = emKits ? 'Montar kit' : 'Novo pedido';
+  $('#novoPedido').setAttribute('aria-label', emKits ? 'Montar kit' : 'Novo pedido');
   renderLista();
   window.scrollTo({ top: 0 });
 }));
@@ -521,6 +544,7 @@ function conectarDados() {
     estado.store.onPedidos(lista => { estado.pedidos = lista; render(); },
       err => toast(err?.code === 'permission-denied' ? 'Link da equipe inválido. Abra o app pelo link correto.' : 'Erro ao carregar pedidos')),
     estado.store.onConfig(cfg => { estado.config = cfg; render(); }),
+    ...kits.conectar(),
   ];
 }
 

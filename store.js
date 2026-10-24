@@ -48,7 +48,35 @@ export function criarStoreLocal() {
     },
     onConfig(cb) { ouvintesCfg.add(cb); cb(config); return () => ouvintesCfg.delete(cb); },
     async salvarConfig(c) { config = c; gravarLocal(LS_CONFIG, c); ouvintesCfg.forEach(cb => cb(c)); },
+
+    // Coleções extras (itens e kits): mesma ideia dos pedidos
+    onColecao(nome, cb) { const c = colecaoLocal(nome); c.ouvintes.add(cb); cb([...c.docs]); return () => c.ouvintes.delete(cb); },
+    async salvarDoc(nome, d) {
+      const c = colecaoLocal(nome);
+      const i = c.docs.findIndex(x => x.id === d.id);
+      if (i >= 0) c.docs[i] = d; else c.docs.push(d);
+      if (!gravarLocalOk(c.chave, c.docs)) throw new Error('sem-espaco');
+      c.emitir();
+    },
+    async excluirDoc(nome, id) {
+      const c = colecaoLocal(nome);
+      c.docs = c.docs.filter(x => x.id !== id);
+      gravarLocal(c.chave, c.docs); c.emitir();
+    },
   };
+}
+
+const colecoesLocais = {};
+function colecaoLocal(nome) {
+  if (colecoesLocais[nome]) return colecoesLocais[nome];
+  const chave = `cp_${nome}_v1`;
+  const c = { chave, docs: lerLocal(chave, []), ouvintes: new Set() };
+  c.emitir = () => c.ouvintes.forEach(cb => cb([...c.docs]));
+  window.addEventListener('storage', e => { if (e.key === chave) { c.docs = lerLocal(chave, []); c.emitir(); } });
+  return (colecoesLocais[nome] = c);
+}
+function gravarLocalOk(chave, valor) {
+  try { localStorage.setItem(chave, JSON.stringify(valor)); return true; } catch { return false; }
 }
 
 // ---------------- Modo Firebase ----------------
@@ -98,6 +126,20 @@ export async function criarStoreFirebase(firebaseConfig, chave) {
         () => cb(CONFIG_PADRAO));
     },
     async salvarConfig(c) { await fs.setDoc(docConfig, c, { merge: true }); },
+
+    // Coleções extras (itens e kits) ficam ao lado dos pedidos: equipes/{chave}/{nome}
+    onColecao(nome, cb, onErro) {
+      return fs.onSnapshot(fs.collection(db, 'equipes', chave, nome),
+        snap => cb(snap.docs.map(d => ({ ...d.data(), id: d.id }))),
+        err => onErro && onErro(err));
+    },
+    async salvarDoc(nome, d) {
+      const { id, ...dados } = d;
+      fs.setDoc(fs.doc(db, 'equipes', chave, nome, id), dados).catch(e => store._onErro && store._onErro(e));
+    },
+    async excluirDoc(nome, id) {
+      fs.deleteDoc(fs.doc(db, 'equipes', chave, nome, id)).catch(e => store._onErro && store._onErro(e));
+    },
   };
   return store;
 }

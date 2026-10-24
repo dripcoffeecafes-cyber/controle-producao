@@ -71,3 +71,13 @@ Se cadastrou pedidos antes de configurar o Firebase, abra o app no mesmo aparelh
 | `sw.js` | Funcionamento offline e instalação |
 | `manifest.webmanifest`, `icons/` | Nome e ícone do app instalado |
 | `firestore.rules` | Modelo das regras de acesso (a chave real fica só no Firebase) |
+
+## Kits de presente (aba Kits)
+
+- **Itens e preços:** cadastre cada item que pode entrar num kit (cafés, drip, moedor, V60, xícaras, caixas) com preço de venda e, se quiser, o custo. O custo só aparece para a equipe, como margem.
+- **Kits base:** combinações prontas com foto de exemplo. O valor é sempre calculado pelos preços atuais dos itens.
+- **Montar kit:** escolha um kit base (ou comece do zero), ajuste as quantidades, a quantidade de kits e o desconto. Daí:
+  - **Copiar p/ WhatsApp** copia a mensagem com itens e valores para colar na conversa do cliente;
+  - **Enviar foto** compartilha a foto do kit base;
+  - **Criar pedido** abre o pedido já com descrição e valor para entrar na fila.
+- Os dados ficam em `equipes/{chave}/itens` e `equipes/{chave}/kits`, cobertos pelas mesmas regras do Firestore.
