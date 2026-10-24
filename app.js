@@ -186,7 +186,6 @@ function cartao(p, posicao) {
 
 function renderLista() {
   const lista = $('#lista');
-  if (estado.view === 'kits') { lista.innerHTML = kits.html(); return; }
   const itens = filtrados();
   let html = '';
 
@@ -217,9 +216,35 @@ const kits = criarKits({
   store: () => estado.store,
   toast: (...a) => toast(...a),
   quem: () => quem(),
-  abrirPedido: (preencher, extra) => abrirForm(null, preencher, extra),
-  aoMudar: () => { if (estado.view === 'kits') renderLista(); },
+  irPara: area => irPara(area),
+  // pedido criado a partir do orçamento: volta para a Produção e abre o formulário preenchido
+  abrirPedido: (preencher, extra) => { irPara('producao'); abrirForm(null, preencher, extra); },
+  aoMudar: () => { if (estado.area === 'produtos') renderProdutos(); },
 });
+
+// ---------------- Áreas do app (cabeçalho): Produção, Orçar kit, Produtos ----------------
+const AREAS = ['producao', 'orcar', 'produtos'];
+function renderProdutos() { $('#areaProdutos').innerHTML = kits.html(); }
+function irPara(area) {
+  if (!AREAS.includes(area)) area = 'producao';
+  const mudou = estado.area !== area;
+  estado.area = area;
+  document.body.dataset.area = area;
+  try { localStorage.setItem('cp_area', area); } catch {}
+  $$('.areas button').forEach(b => {
+    if (b.dataset.area === area) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  const producao = area === 'producao';
+  $('#topoProducao').hidden = !producao;
+  $('#lista').hidden = !producao;
+  $('#novoPedido').hidden = !producao;
+  $('#areaOrcar').hidden = area !== 'orcar';
+  $('#areaProdutos').hidden = area !== 'produtos';
+  if (area === 'orcar') kits.renderOrcar();
+  if (area === 'produtos') renderProdutos();
+  if (mudou) window.scrollTo({ top: 0 });
+}
+$$('.areas button').forEach(b => b.addEventListener('click', () => irPara(b.dataset.area)));
 
 // ---------------- Toast ----------------
 let toastTimer;
@@ -419,7 +444,7 @@ document.addEventListener('click', e => {
   if (acao === 'marcar') alternar(id, alvo.dataset.tipo);
 });
 
-$('#novoPedido').addEventListener('click', () => (estado.view === 'kits' ? kits.abrirMontador() : abrirForm()));
+$('#novoPedido').addEventListener('click', () => abrirForm());
 document.addEventListener('keydown', e => {
   const alvo = e.target.closest?.('.abrir');
   if (alvo && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); alvo.click(); }
@@ -428,11 +453,6 @@ document.addEventListener('keydown', e => {
 $$('.abas button').forEach(b => b.addEventListener('click', () => {
   estado.view = b.dataset.view;
   $$('.abas button').forEach(x => x.setAttribute('aria-selected', x === b));
-  const emKits = estado.view === 'kits';
-  $('.filtros').hidden = emKits;
-  $('#resumo').hidden = emKits;
-  $('#fabTexto').textContent = emKits ? 'Montar kit' : 'Novo pedido';
-  $('#novoPedido').setAttribute('aria-label', emKits ? 'Montar kit' : 'Novo pedido');
   renderLista();
   window.scrollTo({ top: 0 });
 }));
@@ -549,7 +569,12 @@ function conectarDados() {
   ];
 }
 
-function mostrarApp() { $('#semChave').hidden = true; $('#app').hidden = false; }
+function mostrarApp() {
+  $('#semChave').hidden = true; $('#app').hidden = false;
+  let area = 'producao';
+  try { area = localStorage.getItem('cp_area') || 'producao'; } catch {}
+  irPara(area);
+}
 
 async function iniciar() {
   const cfg = window.FIREBASE_CONFIG;

@@ -53,7 +53,8 @@ export function criarKits(ctx) {
     imagem: null,         // { blob, url, nome }
   };
 
-  const dlgKit = $('#dlgKit');
+  const areaOrcar = $('#areaOrcar');
+  const orcando = () => !areaOrcar.hidden;
   const dlgItem = $('#dlgItem');
   const dlgCaixa = $('#dlgCaixa');
   const formCaixa = $('#formCaixa');
@@ -109,12 +110,11 @@ export function criarKits(ctx) {
   function cartaoCaixa(c) {
     return `
       <article class="caixa-card" data-cid="${esc(c.id)}">
-        <button class="caixa-abrir" data-kacao="montar" aria-label="Montar kit com ${esc(c.nome)}">
+        <button class="caixa-abrir" data-kacao="editar-caixa" aria-label="Editar ${esc(c.nome)}">
           <div class="caixa-foto">${c.foto ? `<img src="${esc(c.foto)}" alt="" loading="lazy">` : `<span class="caixa-foto-vazia">${ICONE_FOTO}</span>`}</div>
           <strong>${esc(c.nome)}</strong>
           <span class="caixa-preco ${Number(c.preco) ? '' : 'sem'}">${Number(c.preco) ? dinheiro(c.preco) : 'Definir preço'}</span>
         </button>
-        <button class="caixa-editar" data-kacao="editar-caixa">Editar</button>
       </article>`;
   }
 
@@ -133,7 +133,7 @@ export function criarKits(ctx) {
           <h2>Caixas</h2>
           ${k.caixas.length ? '<button class="btn btn-sm" data-kacao="nova-caixa">+ Caixa</button>' : ''}
         </div>
-        ${k.caixas.length ? `<p class="muted">A caixa define se o kit é Premium ou Padrão, e a foto dela é a imagem principal do kit. Toque para montar.</p>${grupos}` : `
+        ${k.caixas.length ? `<p class="muted">A caixa define se o kit é Premium ou Padrão, e a foto dela é a imagem principal do kit. Toque na caixa para mudar nome, foto ou preço.</p>${grupos}` : `
         <div class="vazio kits-vazio">
           <p>Cadastre as caixas Premium e Padrão, com a foto do kit montado em cada uma.</p>
           <div class="botoes-centro">
@@ -199,12 +199,25 @@ export function criarKits(ctx) {
   });
 
   // ---------------- Montador ----------------
-  function abrirMontador(caixaId) {
-    if (caixaId) k.caixaId = caixaId;
+  // Página "Orçar kit": desenha tudo (chamada ao entrar na área)
+  function renderOrcar() {
+    const falta = [];
+    if (!k.caixas.length) falta.push('as caixas');
+    if (!k.itens.length) falta.push('os produtos');
+    $('#orcarVazio').hidden = !falta.length;
+    $('#orcarConteudo').hidden = !!falta.length;
+    $('#orcarBarra').hidden = !!falta.length;
+    if (falta.length) {
+      $('#orcarVazio').innerHTML = `
+        <div class="vazio kits-vazio">
+          <h2>Falta pouco para orçar</h2>
+          <p>Cadastre ${falta.join(' e ')} na área Produtos, com fotos e preços.</p>
+          <div class="botoes-centro"><button class="btn btn-primary" data-kacao="ir-produtos">Ir para Produtos</button></div>
+        </div>`;
+      return;
+    }
     if (!acharCaixa(k.caixaId)) k.caixaId = caixasOrdenadas()[0]?.id || null;
     renderCaixas(); renderAmostra(); renderItensDialogo(); renderTotal();
-    dlgKit.showModal();
-    $('.sheet-corpo', dlgKit).scrollTop = 0;
   }
 
   function limparMontador() {
@@ -273,7 +286,7 @@ export function criarKits(ctx) {
   }
 
   function atualizarLinha(id) {
-    const el = $(`.kit-linha[data-iid="${CSS.escape(id)}"]`, dlgKit);
+    const el = $(`.kit-linha[data-iid="${CSS.escape(id)}"]`, areaOrcar);
     const item = acharItem(id);
     if (!el || !item) return renderItensDialogo();
     const tmp = document.createElement('div');
@@ -553,8 +566,8 @@ export function criarKits(ctx) {
       itens: t.ls.map(l => ({ id: l.id, nome: l.nome, qtd: l.qtd, preco: l.preco })),
     };
     const cliente = $('#kitCliente').value.trim();
-    dlgKit.close();
     limparMontador();
+    renderOrcar();
     ctx.abrirPedido({ cliente, descricao, valor: t.total, obs }, { kit });
   });
 
@@ -665,7 +678,7 @@ export function criarKits(ctx) {
     for (const [nome, linha] of EXEMPLO_CAIXAS) {
       await ctx.store().salvarDoc('caixas', { id: novoId(), nome, linha, foto: '', preco: 0, custo: '', criadoEm: new Date(base + n++).toISOString(), atualizadoPor: ctx.quem() });
     }
-    ctx.toast('Caixas criadas. Toque em "Editar" para nome, foto e preço.');
+    ctx.toast('Caixas criadas. Toque em cada uma para nome, foto e preço.');
   }
 
   // ---------------- Produto ----------------
@@ -740,7 +753,7 @@ export function criarKits(ctx) {
     else if (acao === 'escolher-caixa') { k.caixaId = cid; renderCaixas(); renderAmostra(); renderTotal(); }
     else if (acao === 'novo-item') abrirItem();
     else if (acao === 'editar-item') abrirItem(acharItem(alvo.closest('[data-iid]')?.dataset.iid));
-    else if (acao === 'montar') abrirMontador(cid);
+    else if (acao === 'ir-produtos') ctx.irPara('produtos');
     else if (acao === 'passo') {
       const id = alvo.closest('.kit-linha')?.dataset.iid;
       if (id) mudarQtd(id, (k.qtd[id] || 0) + Number(alvo.dataset.passo));
@@ -754,16 +767,18 @@ export function criarKits(ctx) {
     return [
       st.onColecao('itens', lista => {
         k.itens = lista;
-        if (dlgKit.open) { renderItensDialogo(); renderTotal(); }
+        if (orcando()) renderOrcar();
         ctx.aoMudar();
       }),
       st.onColecao('caixas', lista => {
         k.caixas = lista;
-        if (dlgKit.open) { renderCaixas(); renderAmostra(); renderTotal(); }
+        if (orcando()) renderOrcar();
         ctx.aoMudar();
       }),
     ];
   }
 
-  return { html, conectar, abrirMontador: () => abrirMontador() };
+  $('#kitLimpar').addEventListener('click', () => { limparMontador(); renderOrcar(); window.scrollTo({ top: 0 }); });
+
+  return { html, conectar, renderOrcar };
 }

@@ -31,21 +31,26 @@
   <div id="app" hidden>
     <header class="topo">
       <div class="topo-linha">
-        <h1 class="titulo">Produção</h1>
+        <h1 class="visualmente-oculto">Produção</h1>
+        <nav class="areas" aria-label="Áreas do app">
+          <button data-area="producao" aria-current="page">Produção</button>
+          <button data-area="orcar">Orçar kit</button>
+          <button data-area="produtos">Produtos</button>
+        </nav>
         <button id="abrirAjustes" class="icon-btn" aria-label="Ajustes">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 7h10.2a3 3 0 0 0 5.6 0H20a1 1 0 1 0 0-2h-.2a3 3 0 0 0-5.6 0H4a1 1 0 1 0 0 2Zm13-2a1 1 0 1 1 0 2 1 1 0 0 1 0-2ZM20 11h-8.2a3 3 0 0 0-5.6 0H4a1 1 0 1 0 0 2h2.2a3 3 0 0 0 5.6 0H20a1 1 0 1 0 0-2ZM9 13a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm11 4h-2.2a3 3 0 0 0-5.6 0H4a1 1 0 1 0 0 2h8.2a3 3 0 0 0 5.6 0H20a1 1 0 1 0 0-2Zm-5 2a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></svg>
         </button>
       </div>
-      <div id="resumo" class="resumo"></div>
       <div id="avisoLocal" class="aviso" hidden>
         Modo de teste: os pedidos ficam só neste aparelho. Configure o Firebase para a equipe compartilhar.
       </div>
       <div id="avisoInstalar" class="aviso aviso-instalar" hidden></div>
+      <div id="topoProducao">
+      <div id="resumo" class="resumo"></div>
       <nav class="abas" role="tablist">
         <button role="tab" data-view="fila" aria-selected="true">Fila</button>
         <button role="tab" data-view="finalizados" aria-selected="false">Finalizados</button>
         <button role="tab" data-view="todos" aria-selected="false">Todos</button>
-        <button role="tab" data-view="kits" aria-selected="false">Kits</button>
       </nav>
       <div class="filtros">
         <input id="busca" type="search" placeholder="Buscar" aria-label="Buscar">
@@ -55,9 +60,43 @@
           <option value="pago">Pago</option>
         </select>
       </div>
+      </div>
     </header>
 
     <main id="lista" class="lista" aria-live="polite"></main>
+
+    <!-- Orçar kit -->
+    <main id="areaOrcar" class="pagina sheet" hidden>
+      <div class="pagina-corpo">
+        <div id="orcarVazio" hidden></div>
+        <div id="orcarConteudo">
+          <div class="orcar-topo">
+            <p class="kit-rotulo">1. Escolha a caixa</p>
+            <button type="button" id="kitLimpar" class="btn-link">Limpar</button>
+          </div>
+          <div id="kitCaixas" class="kit-caixas" role="radiogroup" aria-label="Caixa do kit"></div>
+          <div id="kitAmostra" class="kit-amostra"></div>
+          <p class="kit-rotulo">2. Escolha os itens</p>
+          <div id="kitItens" class="kit-itens"></div>
+          <p class="kit-rotulo kit-rotulo-sep">3. Cliente e quantidade</p>
+          <label>Cliente<input id="kitCliente" autocomplete="off" placeholder="Opcional, aparece na imagem"></label>
+          <div class="grid2">
+            <label>Quantidade de kits<input id="kitQtd" inputmode="numeric" autocomplete="off" value="1"></label>
+            <label>Desconto (%)<input id="kitDesconto" inputmode="decimal" autocomplete="off" placeholder="0"></label>
+          </div>
+        </div>
+      </div>
+      <div class="orcar-barra" id="orcarBarra">
+        <div id="kitTotal" class="kit-total" aria-live="polite"></div>
+        <div class="orcar-acoes">
+          <button type="button" id="kitCriarPedido" class="btn">Criar pedido</button>
+          <button type="button" id="kitGerarImagem" class="btn btn-primary">Gerar imagem</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Produtos: caixas e itens com preço -->
+    <main id="areaProdutos" class="lista" hidden></main>
 
     <button id="novoPedido" class="fab" aria-label="Novo pedido">
       <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M11 5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5Z"/></svg>
@@ -174,32 +213,6 @@
         <p class="muted">Mande este link para quem vai usar o app. Quem tiver o link vê e edita os pedidos, então não publique em redes sociais.</p>
         <button id="copiarLink" class="btn" type="button">Copiar link da equipe</button>
       </section>
-    </div>
-  </dialog>
-
-  <!-- Montar kit -->
-  <dialog id="dlgKit" class="sheet sheet-kit">
-    <div class="sheet-topo">
-      <h2>Montar kit</h2>
-      <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
-    </div>
-    <div class="sheet-corpo">
-      <p class="kit-rotulo">1. Escolha a caixa</p>
-      <div id="kitCaixas" class="kit-caixas" role="radiogroup" aria-label="Caixa do kit"></div>
-      <div id="kitAmostra" class="kit-amostra"></div>
-      <label>Cliente<input id="kitCliente" autocomplete="off" placeholder="Opcional, aparece na imagem"></label>
-      <p class="kit-rotulo">2. Escolha os itens</p>
-      <div id="kitItens" class="kit-itens"></div>
-      <div class="grid2 kit-ajustes">
-        <label>Quantidade de kits<input id="kitQtd" inputmode="numeric" autocomplete="off" value="1"></label>
-        <label>Desconto (%)<input id="kitDesconto" inputmode="decimal" autocomplete="off" placeholder="0"></label>
-      </div>
-    </div>
-    <div id="kitTotal" class="kit-total" aria-live="polite"></div>
-    <div class="sheet-rodape">
-      <button type="button" id="kitCriarPedido" class="btn">Criar pedido</button>
-      <span class="espaco"></span>
-      <button type="button" id="kitGerarImagem" class="btn btn-primary">Gerar imagem</button>
     </div>
   </dialog>
 
