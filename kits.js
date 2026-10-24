@@ -27,6 +27,8 @@ const ordemCategoria = c => CATEGORIAS.indexOf(categoriaDe(c));
 
 const LINHAS = [['premium', 'Premium'], ['padrao', 'Padrão']];
 const nomeLinha = id => (LINHAS.find(l => l[0] === id) || LINHAS[1])[1];
+// Kit com um único café custa 10% a mais sobre o valor calculado
+const ACRESCIMO_UM_CAFE = 10;
 const TITULO_KIT = 'Kit Blooming Club Cafés';
 
 // Lista de partida: só nomes e categorias. Preços zerados para a equipe preencher.
@@ -82,7 +84,7 @@ export function criarKits(ctx) {
   function linhas() {
     return itensOrdenados()
       .filter(i => (k.qtd[i.id] || 0) > 0)
-      .map(i => ({ id: i.id, nome: i.nome, foto: i.foto || '', qtd: k.qtd[i.id], preco: Number(i.preco) || 0, custo: Number(i.custo) || 0, temCusto: Number(i.custo) > 0 }));
+      .map(i => ({ id: i.id, nome: i.nome, categoria: categoriaDe(i.categoria), foto: i.foto || '', qtd: k.qtd[i.id], preco: Number(i.preco) || 0, custo: Number(i.custo) || 0, temCusto: Number(i.custo) > 0 }));
   }
 
   const qtdKits = () => Math.max(1, Math.round(lerNumero($('#kitQtd').value)) || 1);
@@ -92,12 +94,16 @@ export function criarKits(ctx) {
     const ls = linhas();
     const cx = caixaAtual();
     const cxPreco = Number(cx?.preco) || 0, cxCusto = Number(cx?.custo) || 0;
-    const preco = arred(ls.reduce((s, l) => s + l.preco * l.qtd, 0) + cxPreco);
+    const base = arred(ls.reduce((s, l) => s + l.preco * l.qtd, 0) + cxPreco);
+    // Regra dos cafés: com exatamente 1 café no kit, o valor sobe 10%; com 2 ou mais, vale o preço base
+    const cafes = ls.filter(l => l.categoria === 'Cafés').reduce((s, l) => s + l.qtd, 0);
+    const acrescimo = cafes === 1 ? ACRESCIMO_UM_CAFE : 0;
+    const preco = arred(base * (1 + acrescimo / 100));
     const custo = arred(ls.reduce((s, l) => s + l.custo * l.qtd, 0) + cxCusto);
     const n = qtdKits(), d = desconto();
     const porKit = arred(preco * (1 - d / 100));
     return {
-      ls, preco, custo, n, d, porKit, total: arred(porKit * n),
+      ls, base, cafes, acrescimo, preco, custo, n, d, porKit, total: arred(porKit * n),
       cx, semPreco: ls.filter(l => !l.preco).length + (cx && !cxPreco ? 1 : 0),
       custoCompleto: ls.length > 0 && ls.every(l => l.temCusto) && (!cx || !cxPreco || cxCusto > 0),
     };
@@ -304,6 +310,7 @@ export function criarKits(ctx) {
     }
     const detalhe = [];
     if (t.n > 1) detalhe.push(`${t.n} kits × ${dinheiro(t.porKit)}`);
+    if (t.acrescimo) detalhe.push(`+${t.acrescimo}% por ter só 1 café`);
     if (t.d) detalhe.push(`desconto de ${String(t.d).replace('.', ',')}%`);
     let custo = '';
     if (t.custoCompleto && t.porKit > 0) {

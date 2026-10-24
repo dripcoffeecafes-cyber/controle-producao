@@ -1,6 +1,6 @@
 // Service worker: guarda o app no aparelho para abrir rápido e funcionar sem internet.
 // Ao publicar uma nova versão, aumente o número abaixo.
-const VERSAO = 'producao-v13';
+const VERSAO = 'producao-v14';
 const ARQUIVOS = [
   './',
   'index.html',
