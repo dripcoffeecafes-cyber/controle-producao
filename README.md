@@ -74,10 +74,9 @@ Se cadastrou pedidos antes de configurar o Firebase, abra o app no mesmo aparelh
 
 ## Kits de presente (aba Kits)
 
-- **Itens e preços:** cadastre cada item que pode entrar num kit (cafés, drip, moedor, V60, xícaras, caixas) com preço de venda e, se quiser, o custo. O custo só aparece para a equipe, como margem.
-- **Kits base:** combinações prontas com foto de exemplo. O valor é sempre calculado pelos preços atuais dos itens.
-- **Montar kit:** escolha um kit base (ou comece do zero), ajuste as quantidades, a quantidade de kits e o desconto. Daí:
-  - **Copiar p/ WhatsApp** copia a mensagem com itens e valores para colar na conversa do cliente;
-  - **Enviar foto** compartilha a foto do kit base;
-  - **Criar pedido** abre o pedido já com descrição e valor para entrar na fila.
-- Os dados ficam em `equipes/{chave}/itens` e `equipes/{chave}/kits`, cobertos pelas mesmas regras do Firestore.
+- **Caixas:** cada caixa é Premium ou Padrão, tem nome, preço (custo opcional) e a foto do kit montado com ela. A foto da caixa é a imagem principal do kit.
+- **Produtos e preços:** cada produto tem foto, categoria, preço de venda e custo opcional. O preço pode ser trocado direto na lista, para a atualização do mês.
+- **Montar kit:** escolha a caixa, depois os itens (+ / −), a quantidade de kits e o desconto. O valor soma a caixa e os itens; a margem aparece só para a equipe.
+  - **Gerar imagem:** cria a imagem para o cliente ("Kit Blooming Club Cafés", linha e caixa, foto ilustrativa, itens em cartões com foto e quantidade, valores). Dá para enviar direto pelo compartilhar do celular, baixar ou copiar o texto.
+  - **Criar pedido:** abre o pedido já com cliente, descrição e valor.
+- Os dados ficam em `equipes/{chave}/caixas` e `equipes/{chave}/itens`, cobertos pelas mesmas regras do Firestore.

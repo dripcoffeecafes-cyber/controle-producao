@@ -312,6 +312,7 @@ function abrirForm(p, preencher, extra) {
   $(`input[name=prazoTipo][value="${d.prazoTipo === 'prevista' ? 'prevista' : 'confirmada'}"]`, form).checked = true;
   // vindo do montador de kits: descrição, valor e observação já preenchidos
   if (!p && preencher) {
+    if (preencher.cliente) form.cliente.value = preencher.cliente;
     if (preencher.descricao) form.descricao.value = preencher.descricao;
     if (preencher.valor) form.valor.value = numeroParaCampo(preencher.valor);
     if (preencher.obs) form.obs.value = preencher.obs;

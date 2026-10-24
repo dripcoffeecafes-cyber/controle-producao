@@ -177,68 +177,119 @@
     </div>
   </dialog>
 
-  <!-- Kit: montar orçamento ou editar kit base -->
+  <!-- Montar kit -->
   <dialog id="dlgKit" class="sheet sheet-kit">
     <div class="sheet-topo">
-      <h2 id="kitTitulo">Montar kit</h2>
+      <h2>Montar kit</h2>
       <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
     </div>
     <div class="sheet-corpo">
-      <div id="kitBases" class="kit-bases" role="group" aria-label="Começar a partir de um kit base"></div>
-      <div id="kitCamposBase">
-        <label>Nome do kit<input id="kitNome" autocomplete="off" placeholder="Ex.: Kit Barista"></label>
-        <div class="kit-foto-campo">
-          <div id="kitFotoPrevia" class="kit-foto-previa"></div>
-          <div class="kit-foto-botoes">
-            <label class="btn btn-sm kit-foto-escolher">Escolher foto<input id="kitFotoArquivo" type="file" accept="image/*"></label>
-            <button id="kitFotoRemover" type="button" class="btn-link" hidden>Remover foto</button>
-          </div>
-        </div>
-      </div>
+      <p class="kit-rotulo">1. Escolha a caixa</p>
+      <div id="kitCaixas" class="kit-caixas" role="radiogroup" aria-label="Caixa do kit"></div>
+      <div id="kitAmostra" class="kit-amostra"></div>
+      <label>Cliente<input id="kitCliente" autocomplete="off" placeholder="Opcional, aparece na imagem"></label>
+      <p class="kit-rotulo">2. Escolha os itens</p>
       <div id="kitItens" class="kit-itens"></div>
-      <div id="kitCamposMontar" class="grid2 kit-ajustes">
+      <div class="grid2 kit-ajustes">
         <label>Quantidade de kits<input id="kitQtd" inputmode="numeric" autocomplete="off" value="1"></label>
         <label>Desconto (%)<input id="kitDesconto" inputmode="decimal" autocomplete="off" placeholder="0"></label>
       </div>
-      <button id="kitSalvarComoBase" type="button" class="btn-link">Salvar esta combinação como kit base</button>
     </div>
     <div id="kitTotal" class="kit-total" aria-live="polite"></div>
-    <div class="sheet-rodape" id="kitRodapeMontar">
-      <button type="button" id="kitCopiar" class="btn">Copiar p/ WhatsApp</button>
+    <div class="sheet-rodape">
+      <button type="button" id="kitCriarPedido" class="btn">Criar pedido</button>
       <span class="espaco"></span>
-      <button type="button" id="kitCriarPedido" class="btn btn-primary">Criar pedido</button>
-    </div>
-    <div class="sheet-rodape" id="kitRodapeBase" hidden>
-      <button type="button" id="kitExcluir" class="btn btn-perigo">Excluir</button>
-      <span class="espaco"></span>
-      <button type="button" class="btn" data-fechar>Cancelar</button>
-      <button type="button" id="kitSalvar" class="btn btn-primary">Salvar kit</button>
+      <button type="button" id="kitGerarImagem" class="btn btn-primary">Gerar imagem</button>
     </div>
   </dialog>
 
-  <!-- Item que compõe os kits -->
-  <dialog id="dlgItem" class="sheet">
-    <form id="formItem" method="dialog" novalidate>
+  <!-- Imagem pronta para o cliente -->
+  <dialog id="dlgImagem" class="sheet">
+    <div class="sheet-topo">
+      <h2>Imagem para o cliente</h2>
+      <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
+    </div>
+    <div class="sheet-corpo img-corpo">
+      <img id="imgPrevia" class="img-previa" alt="Imagem do kit para enviar ao cliente">
+    </div>
+    <div class="sheet-rodape">
+      <button type="button" id="imgCopiarTexto" class="btn-link">Copiar texto</button>
+      <span class="espaco"></span>
+      <button type="button" id="imgBaixar" class="btn">Baixar</button>
+      <button type="button" id="imgEnviar" class="btn btn-primary">Enviar</button>
+    </div>
+  </dialog>
+
+  <!-- Caixa: define a linha (Premium/Padrão) e a foto principal do kit -->
+  <dialog id="dlgCaixa" class="sheet">
+    <form id="formCaixa" method="dialog" novalidate>
       <div class="sheet-topo">
-        <h2 id="itemTitulo">Novo item</h2>
+        <h2 id="caixaTitulo">Nova caixa</h2>
         <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
       </div>
       <div class="sheet-corpo">
+        <fieldset>
+          <legend>Linha</legend>
+          <div class="segmentado">
+            <label><input type="radio" name="linha" value="premium" checked><span>Premium</span></label>
+            <label><input type="radio" name="linha" value="padrao"><span>Padrão</span></label>
+          </div>
+        </fieldset>
+        <label>Nome da caixa<input name="nome" required autocomplete="off" placeholder="Ex.: Caixa preta"></label>
+        <p class="kit-rotulo">Foto do kit com esta caixa</p>
+        <div class="foto-campo foto-campo-grande">
+          <div id="caixaFotoPrevia" class="foto-previa"></div>
+          <div class="foto-botoes">
+            <label class="btn btn-sm foto-escolher">Escolher foto<input id="caixaFotoArquivo" type="file" accept="image/*"></label>
+            <button id="caixaFotoRemover" type="button" class="btn-link" hidden>Remover foto</button>
+          </div>
+        </div>
+        <div class="grid2">
+          <label>Preço da caixa (R$)<input name="preco" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
+          <label>Custo (R$)<input name="custo" inputmode="decimal" autocomplete="off" placeholder="Opcional"></label>
+        </div>
+        <p class="muted">A foto vira a imagem principal do kit enviada ao cliente, com o aviso de que é apenas um modelo.</p>
+        <p id="caixaErro" class="erro" role="alert"></p>
+      </div>
+      <div class="sheet-rodape">
+        <button type="button" id="excluirCaixa" class="btn btn-perigo" hidden>Excluir</button>
+        <span class="espaco"></span>
+        <button type="button" class="btn" data-fechar>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar caixa</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Produto que pode entrar nos kits -->
+  <dialog id="dlgItem" class="sheet">
+    <form id="formItem" method="dialog" novalidate>
+      <div class="sheet-topo">
+        <h2 id="itemTitulo">Novo produto</h2>
+        <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
+      </div>
+      <div class="sheet-corpo">
+        <div class="foto-campo">
+          <div id="itemFotoPrevia" class="foto-previa foto-previa-quadrada"></div>
+          <div class="foto-botoes">
+            <label class="btn btn-sm foto-escolher">Escolher foto<input id="itemFotoArquivo" type="file" accept="image/*"></label>
+            <button id="itemFotoRemover" type="button" class="btn-link" hidden>Remover foto</button>
+          </div>
+        </div>
         <label>Nome<input name="nome" required autocomplete="off" placeholder="Ex.: Café especial 250g"></label>
-        <label>Categoria<input name="categoria" list="listaCategorias" autocomplete="off" placeholder="Ex.: Cafés, Acessórios, Xícaras, Embalagem"></label>
+        <label>Categoria<input name="categoria" list="listaCategorias" autocomplete="off" placeholder="Ex.: Cafés, Acessórios, Xícaras"></label>
         <datalist id="listaCategorias"></datalist>
         <div class="grid2">
           <label>Preço de venda (R$)<input name="preco" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
           <label>Custo (R$)<input name="custo" inputmode="decimal" autocomplete="off" placeholder="Opcional"></label>
         </div>
-        <p class="muted">O custo é só para a equipe ver a margem do kit. Ele nunca vai na mensagem para o cliente.</p>
+        <p class="muted">O custo é só para a equipe ver a margem. Ele nunca aparece para o cliente.</p>
         <p id="itemErro" class="erro" role="alert"></p>
       </div>
       <div class="sheet-rodape">
         <button type="button" id="excluirItem" class="btn btn-perigo" hidden>Excluir</button>
         <span class="espaco"></span>
         <button type="button" class="btn" data-fechar>Cancelar</button>
-        <button type="submit" class="btn btn-primary">Salvar item</button>
+        <button type="submit" class="btn btn-primary">Salvar produto</button>
       </div>
     </form>
   </dialog>
