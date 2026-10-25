@@ -341,9 +341,9 @@ export function criarKits(ctx) {
     return out;
   }
 
-  // Imagem 3:4 (1080×1440) para o cliente. O layout se ajusta aos itens escolhidos:
-  // poucos itens → cartões grandes e foto principal maior; muitos itens → mais colunas e cartões menores.
-  // A caixa entra como o primeiro item do kit, com a foto do item.
+  // Imagem para o cliente, largura 1080. A foto principal (4:3, igual à foto do celular) tem tamanho fixo.
+  // Os itens ficam em linhas de até 5 cartões: com mais itens, entra mais uma linha e a imagem cresce em altura.
+  // Com poucos itens, a imagem tem 1080×1440 (3:4).
   async function gerarImagem() {
     const t = totais();
     const cx = t.cx;
@@ -356,35 +356,25 @@ export function criarKits(ctx) {
     ]);
 
     const C = { fundo: '#F6F1EA', cartao: '#FFFFFF', tinta: '#1A1714', tinta2: '#6B645B', linha: '#E3DCD2', caramelo: '#A8661F' };
-    const W = 1080, H = 1440, P = 56, CW = W - P * 2, TOPO = 52, BASE = 46, GAPB = 22, MIN_FOTO = 360, MAX_FOTO = 600;
+    const W = 1080, H = 1440, P = 44, CW = W - P * 2, TOPO = 34, BASE = 34, GAPB = 16, MAX_COLS = 5;
     const medida = document.createElement('canvas').getContext('2d');
     const n = cards.length;
 
-    // cabeçalho e título
-    const hLogo = 62, hCab = hLogo + 18;
-    medida.font = `800 54px ${F}`;
-    const tit = quebrar(medida, TITULO_KIT, CW);
-    const hTitulo = tit.length * 60 + (cx ? 40 : 0) + (cliente ? 34 : 0);
-
-    // valores: faixa compacta com valor por kit à esquerda e total à direita
-    const PB = 26;
-    const hValores = PB * 2 + 26 + 8 + 50 + (t.d ? 32 : 0);
-
-    // observação curta no rodapé
-    medida.font = `400 21px ${F}`;
-    const nota = foto
-      ? 'A foto principal é apenas um modelo da caixa escolhida. O kit contém os itens acima, nas quantidades indicadas.'
-      : 'O kit contém os itens acima, nas quantidades indicadas.';
-    const linhasNota = quebrar(medida, nota, CW);
-    const hNota = linhasNota.length * 29;
-    const hTituloItens = 46;
+    // cabeçalho enxuto: logo e data na mesma linha, título e caixa embaixo
+    const hLogo = 46;
+    const hCab = hLogo + 12;
+    const hTitulo = 52 + 36;
+    const hFoto = foto ? Math.round(CW * 3 / 4) : 0;       // 4:3, sem corte para foto de celular
+    const hTituloItens = 44;
+    const PB = 18;
+    const hValores = PB * 2 + 22 + 6 + 44 + (t.d ? 30 : 0);
 
     // grade de itens para um número de colunas
     function grade(cols) {
-      const GAP = cols >= 5 ? 12 : 16;
+      const GAP = 14;
       const CARD = (CW - GAP * (cols - 1)) / cols;
-      const PAD = cols >= 4 ? 9 : 12, FOTO = CARD - PAD * 2;
-      const fs = cols <= 3 ? 25 : cols === 4 ? 22 : cols === 5 ? 19 : 17, lh = fs + 7, maxL = 3;
+      const PAD = 9, FOTO = CARD - PAD * 2;
+      const fs = cols <= 3 ? 26 : cols === 4 ? 23 : 20, lh = fs + 7, maxL = 3;
       medida.font = `600 ${fs}px ${F}`;
       const textos = cards.map(c => {
         const ls = quebrar(medida, c.nome, FOTO);
@@ -399,26 +389,24 @@ export function criarKits(ctx) {
       const linhas = [];
       for (let i = 0; i < n; i += cols) {
         const nl = Math.max(...textos.slice(i, i + cols).map(x => x.length));
-        linhas.push({ ini: i, fim: Math.min(n, i + cols), h: PAD + FOTO + 10 + nl * lh + PAD });
+        linhas.push({ ini: i, fim: Math.min(n, i + cols), h: PAD + FOTO + 9 + nl * lh + PAD });
       }
       const hTotal = linhas.reduce((s, l) => s + l.h, 0) + GAP * Math.max(0, linhas.length - 1);
       return { cols, GAP, CARD, PAD, FOTO, fs, lh, textos, linhas, hTotal };
     }
 
-    const fixoSemFoto = TOPO + hCab + hTitulo + GAPB + hTituloItens + GAPB + hValores + 16 + hNota + BASE;
-    let G = null, hFoto = 0, ok = false;
-    for (const cols of [3, 4, 5, 6]) {
-      G = grade(cols);
-      const livre = H - fixoSemFoto - G.hTotal - (foto ? GAPB : 0);
-      hFoto = foto ? Math.min(livre, MAX_FOTO) : 0;
-      if (!foto || livre >= MIN_FOTO) { ok = true; break; }
+    const fixo = TOPO + hCab + hTitulo + GAPB + (foto ? hFoto + GAPB : 0) + hTituloItens + GAPB + hValores + BASE;
+    // poucos itens: cartões maiores enquanto tudo couber em 3:4; senão, 5 colunas e mais linhas (a imagem cresce)
+    let G = grade(MAX_COLS);
+    if (n <= MAX_COLS) {
+      for (let cols = Math.max(3, n); cols <= MAX_COLS; cols++) {
+        const g2 = grade(cols);
+        if (fixo + g2.hTotal <= H) { G = g2; break; }
+      }
     }
-    // kit enorme: foto mínima e, se ainda passar da altura, a imagem toda é reduzida para caber em 3:4
-    if (!ok) hFoto = foto ? MIN_FOTO : 0;
-    const usado = fixoSemFoto + G.hTotal + (foto ? hFoto + GAPB : 0);
+    const usado = fixo + G.hTotal;
     const altura = Math.max(H, usado);
-    const sobra = Math.max(0, H - usado);
-    const folga = Math.min(50, sobra / (foto ? 3 : 2));   // espaço extra distribuído entre os blocos
+    const folga = Math.min(34, (altura - usado) / (foto ? 4 : 3));   // sobra distribuída entre os blocos
 
     const tela = document.createElement('canvas');
     tela.width = W; tela.height = altura;
@@ -426,36 +414,45 @@ export function criarKits(ctx) {
     g.fillStyle = C.fundo; g.fillRect(0, 0, W, altura);
     let y = TOPO;
 
-    // cabeçalho: logo e data
+    // linha 1: logo e data
     if (logo) g.drawImage(logo, P, y, hLogo * (logo.naturalWidth / logo.naturalHeight || 1.5), hLogo);
-    g.font = `600 23px ${F}`; g.fillStyle = C.tinta2; g.textAlign = 'right';
-    g.fillText('Orçamento de kit presente', W - P, y + 26);
-    g.font = `400 23px ${F}`;
-    g.fillText(new Date().toLocaleDateString('pt-BR'), W - P, y + 56);
+    g.font = `600 21px ${F}`; g.fillStyle = C.tinta2; g.textAlign = 'right';
+    g.fillText('Orçamento de kit presente', W - P, y + 20);
+    g.font = `400 21px ${F}`;
+    g.fillText(new Date().toLocaleDateString('pt-BR'), W - P, y + 44);
     g.textAlign = 'left';
     y += hCab;
 
-    // título, caixa, cliente
-    g.font = `800 54px ${F}`; g.fillStyle = C.tinta;
-    for (const l of tit) { g.fillText(l, P, y + 48); y += 60; }
-    if (cx) { g.font = `700 29px ${F}`; g.fillStyle = C.caramelo; g.fillText(nomeCaixa(cx), P, y + 30); y += 40; }
-    if (cliente) { g.font = `400 25px ${F}`; g.fillStyle = C.tinta2; g.fillText(`Preparado para ${cliente}`, P, y + 25); y += 34; }
-    y += GAPB + folga;
+    // título; caixa e cliente na mesma linha
+    g.font = `800 46px ${F}`; g.fillStyle = C.tinta;
+    g.fillText(TITULO_KIT, P, y + 42); y += 52;
+    let sx = P;
+    if (cx) {
+      g.font = `700 27px ${F}`; g.fillStyle = C.caramelo; g.fillText(nomeCaixa(cx), sx, y + 28);
+      sx += g.measureText(nomeCaixa(cx)).width;
+    }
+    if (cliente) {
+      g.font = `400 25px ${F}`; g.fillStyle = C.tinta2;
+      let txt = `${cx ? '  ·  ' : ''}Preparado para ${cliente}`;
+      while (txt.length > 8 && sx + g.measureText(txt).width > W - P) txt = txt.slice(0, -2).trimEnd() + '…';
+      g.fillText(txt, sx, y + 28);
+    }
+    y += 36 + GAPB + folga;
 
-    // foto principal, com aviso de que é só um modelo
+    // foto principal (tamanho fixo), com a legenda de demonstração
     if (foto) {
       g.save(); retangulo(g, P, y, CW, hFoto, 26); g.clip(); cobrir(g, foto, P, y, CW, hFoto); g.restore();
-      const selo = 'Imagem ilustrativa · apenas modelo';
+      const selo = 'Foto de demonstração do kit · os itens inclusos estão listados abaixo';
       g.font = `600 22px ${F}`;
-      const sw = g.measureText(selo).width + 36;
+      const sw = Math.min(CW - 36, g.measureText(selo).width + 36);
       g.fillStyle = 'rgba(26,23,20,.82)'; retangulo(g, P + 18, y + hFoto - 18 - 46, sw, 46, 23); g.fill();
       g.fillStyle = '#fff'; g.fillText(selo, P + 36, y + hFoto - 18 - 15);
       y += hFoto + GAPB + folga;
     }
 
-    // itens em grade: foto quadrada, quantidade e descrição embaixo (cada linha centralizada)
-    g.font = `800 33px ${F}`; g.fillStyle = C.tinta;
-    g.fillText('O seu kit contém', P, y + 32); y += hTituloItens;
+    // itens em linhas de até 5 cartões (cada linha centralizada)
+    g.font = `800 31px ${F}`; g.fillStyle = C.tinta;
+    g.fillText('O seu kit contém', P, y + 30); y += hTituloItens + folga;
     for (const ln of G.linhas) {
       const q2 = ln.fim - ln.ini;
       const x0 = P + (CW - (q2 * G.CARD + (q2 - 1) * G.GAP)) / 2;
@@ -479,7 +476,7 @@ export function criarKits(ctx) {
         g.fillStyle = C.caramelo; retangulo(g, fx + G.FOTO - qw - 7, fy + 7, qw, qh, qh / 2); g.fill();
         g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(q, fx + G.FOTO - 7 - qw / 2, fy + 7 + qh / 2 + qf * 0.35); g.textAlign = 'left';
         g.font = `600 ${G.fs}px ${F}`; g.fillStyle = C.tinta;
-        G.textos[i].forEach((tx, k2) => g.fillText(tx, fx, fy + G.FOTO + 10 + G.fs + k2 * G.lh));
+        G.textos[i].forEach((tx, k2) => g.fillText(tx, fx, fy + G.FOTO + 9 + G.fs + k2 * G.lh));
       }
       y += ln.h + G.GAP;
     }
@@ -487,45 +484,29 @@ export function criarKits(ctx) {
 
     // valores
     g.fillStyle = C.cartao; retangulo(g, P, y, CW, hValores, 24); g.fill();
-    const xe = P + PB, xd = W - P - PB;
+    const xe = P + 26, xd = W - P - 26;
     let vy = y + PB;
-    g.font = `400 24px ${F}`; g.fillStyle = C.tinta2;
-    g.fillText('Valor por kit', xe, vy + 22);
-    if (t.n > 1) { g.textAlign = 'right'; g.fillText(`Total · ${t.n} kits`, xd, vy + 22); g.textAlign = 'left'; }
-    vy += 26 + 8;
-    g.font = `800 44px ${F}`; g.fillStyle = C.tinta;
-    g.fillText(dinheiro(t.porKit), xe, vy + 42);
+    g.font = `400 22px ${F}`; g.fillStyle = C.tinta2;
+    g.fillText('Valor por kit', xe, vy + 20);
+    if (t.n > 1) { g.textAlign = 'right'; g.fillText(`Total · ${t.n} kits`, xd, vy + 20); g.textAlign = 'left'; }
+    vy += 22 + 6;
+    g.font = `800 42px ${F}`; g.fillStyle = C.tinta;
+    g.fillText(dinheiro(t.porKit), xe, vy + 40);
     if (t.n > 1) {
-      g.font = `800 48px ${F}`; g.fillStyle = C.caramelo; g.textAlign = 'right';
-      g.fillText(dinheiro(t.total), xd, vy + 43); g.textAlign = 'left';
+      g.font = `800 46px ${F}`; g.fillStyle = C.caramelo; g.textAlign = 'right';
+      g.fillText(dinheiro(t.total), xd, vy + 41); g.textAlign = 'left';
     }
-    vy += 50;
+    vy += 44;
     if (t.d) {
-      g.font = `400 22px ${F}`; g.fillStyle = C.tinta2;
+      g.font = `400 21px ${F}`; g.fillStyle = C.tinta2;
       const antes = dinheiro(t.preco);
-      g.fillText(antes, xe, vy + 26);
+      g.fillText(antes, xe, vy + 22);
       const aw = g.measureText(antes).width;
-      g.fillRect(xe, vy + 18, aw, 2);
-      g.fillText(` · desconto de ${String(t.d).replace('.', ',')}%`, xe + aw, vy + 26);
+      g.fillRect(xe, vy + 15, aw, 2);
+      g.fillText(` · desconto de ${String(t.d).replace('.', ',')}%`, xe + aw, vy + 22);
     }
-    y += hValores + 16;
 
-    // observação, rente ao fim da imagem
-    g.font = `400 21px ${F}`; g.fillStyle = C.tinta2;
-    let ny = Math.max(altura - BASE - hNota, y);
-    for (const l of linhasNota) { g.fillText(l, P, ny + 21); ny += 29; }
-
-    // se o kit era grande demais, reduz tudo para caber em 3:4
-    let final = tela;
-    if (altura > H) {
-      final = document.createElement('canvas');
-      final.width = W; final.height = H;
-      const f = final.getContext('2d');
-      f.fillStyle = C.fundo; f.fillRect(0, 0, W, H);
-      const esc2 = H / altura;
-      f.drawImage(tela, (W - W * esc2) / 2, 0, W * esc2, H);
-    }
-    const blob = await new Promise(ok2 => final.toBlob(ok2, 'image/jpeg', 0.9));
+    const blob = await new Promise(ok2 => tela.toBlob(ok2, 'image/jpeg', 0.9));
     const base = `kit-blooming${cx ? ' ' + cx.nome : ''}${cliente ? ' ' + cliente : ''}`
       .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '-').toLowerCase();
     return { blob, nome: `${base}.jpg` };

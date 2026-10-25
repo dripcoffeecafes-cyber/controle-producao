@@ -444,7 +444,7 @@ legend { font-size: 13.5px; font-weight: 600; color: var(--ink-2); margin-bottom
 .sheet-kit .sheet-corpo { flex: 1; min-height: 0; }
 .kit-tipos { margin-bottom: 10px; }
 .kit-amostra { position: relative; border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 14px; background: var(--surface-2); }
-.kit-amostra img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+.kit-amostra img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
 .kit-amostra .selo {
   position: absolute; left: 10px; bottom: 10px; background: rgba(26, 23, 20, .82); color: #fff;
   font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
