@@ -360,10 +360,10 @@ export function criarKits(ctx) {
     const medida = document.createElement('canvas').getContext('2d');
     const n = cards.length;
 
-    // cabeçalho enxuto: logo e data na mesma linha, título e caixa embaixo
-    const hLogo = 46;
-    const hCab = hLogo + 12;
-    const hTitulo = 52 + 36;
+    // cabeçalho enxuto: logo ao lado do título (legenda e data em cima, caixa e cliente embaixo)
+    const hCab = 0;
+    const hTitulo = 24 + 52 + 36;
+    const hLogo = hTitulo - 6;
     const hFoto = foto ? Math.round(CW * 3 / 4) : 0;       // 4:3, sem corte para foto de celular
     const hTituloItens = 44;
     const PB = 18;
@@ -406,7 +406,7 @@ export function criarKits(ctx) {
     }
     const usado = fixo + G.hTotal;
     const altura = Math.max(H, usado);
-    const folga = Math.min(34, (altura - usado) / (foto ? 4 : 3));   // sobra distribuída entre os blocos
+    const folga = Math.min(44, (altura - usado) / (foto ? 4 : 3));   // sobra distribuída entre os blocos
 
     const tela = document.createElement('canvas');
     tela.width = W; tela.height = altura;
@@ -414,30 +414,30 @@ export function criarKits(ctx) {
     g.fillStyle = C.fundo; g.fillRect(0, 0, W, altura);
     let y = TOPO;
 
-    // linha 1: logo e data
-    if (logo) g.drawImage(logo, P, y, hLogo * (logo.naturalWidth / logo.naturalHeight || 1.5), hLogo);
-    g.font = `600 21px ${F}`; g.fillStyle = C.tinta2; g.textAlign = 'right';
-    g.fillText('Orçamento de kit presente', W - P, y + 20);
-    g.font = `400 21px ${F}`;
-    g.fillText(new Date().toLocaleDateString('pt-BR'), W - P, y + 44);
-    g.textAlign = 'left';
-    y += hCab;
-
-    // título; caixa e cliente na mesma linha
+    // logo à esquerda e, ao lado, o bloco de texto: legenda e data, título, caixa e cliente
+    let tx = P;
+    if (logo) {
+      const lw = hLogo * (logo.naturalWidth / logo.naturalHeight || 1.5);
+      g.drawImage(logo, P, y + 3, lw, hLogo);
+      tx = P + lw + 22;
+    }
+    g.font = `600 20px ${F}`; g.fillStyle = C.tinta2;
+    g.fillText(`Orçamento de kit presente  ·  ${new Date().toLocaleDateString('pt-BR')}`, tx, y + 19);
     g.font = `800 46px ${F}`; g.fillStyle = C.tinta;
-    g.fillText(TITULO_KIT, P, y + 42); y += 52;
-    let sx = P;
+    g.fillText(TITULO_KIT, tx, y + 24 + 42);
+    let sx = tx;
+    const sy = y + 24 + 52;
     if (cx) {
-      g.font = `700 27px ${F}`; g.fillStyle = C.caramelo; g.fillText(nomeCaixa(cx), sx, y + 28);
+      g.font = `700 27px ${F}`; g.fillStyle = C.caramelo; g.fillText(nomeCaixa(cx), sx, sy + 28);
       sx += g.measureText(nomeCaixa(cx)).width;
     }
     if (cliente) {
       g.font = `400 25px ${F}`; g.fillStyle = C.tinta2;
       let txt = `${cx ? '  ·  ' : ''}Preparado para ${cliente}`;
       while (txt.length > 8 && sx + g.measureText(txt).width > W - P) txt = txt.slice(0, -2).trimEnd() + '…';
-      g.fillText(txt, sx, y + 28);
+      g.fillText(txt, sx, sy + 28);
     }
-    y += 36 + GAPB + folga;
+    y += hTitulo + GAPB + folga;
 
     // foto principal (tamanho fixo), com a legenda de demonstração
     if (foto) {
