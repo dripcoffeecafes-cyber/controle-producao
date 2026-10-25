@@ -84,6 +84,11 @@ export function criarKits(ctx) {
       .map(i => ({ id: i.id, nome: i.nome, categoria: categoriaDe(i.categoria), foto: i.foto || '', qtd: k.qtd[i.id], preco: Number(i.preco) || 0, custo: Number(i.custo) || 0, temCusto: Number(i.custo) > 0 }));
   }
 
+  // percentuais do dia (só para a equipe): ficam guardados no aparelho para não digitar toda vez
+  const pct = sel => Math.min(100, Math.max(0, lerNumero($(sel).value)));
+  const imposto = () => pct('#kitImposto');
+  const cartao = () => pct('#kitCartao');
+
   const qtdKits = () => Math.max(1, Math.round(lerNumero($('#kitQtd').value)) || 1);
   const desconto = () => Math.min(100, Math.max(0, lerNumero($('#kitDesconto').value)));
 
@@ -99,8 +104,14 @@ export function criarKits(ctx) {
     const custo = arred(ls.reduce((s, l) => s + l.custo * l.qtd, 0) + cxCusto);
     const n = qtdKits(), d = desconto();
     const porKit = arred(preco * (1 - d / 100));
+    // margem (só para a equipe): venda por kit − custo − imposto − taxa do cartão, sobre a venda por kit
+    const imp = imposto(), car = cartao();
+    const impValor = arred(porKit * imp / 100), carValor = arred(porKit * car / 100);
+    const lucro = arred(porKit - custo - impValor - carValor);
+    const semCusto = ls.filter(l => !l.temCusto).length + (cx && cxPreco && !(cxCusto > 0) ? 1 : 0);
     return {
       ls, base, cafes, acrescimo, preco, custo, n, d, porKit, total: arred(porKit * n),
+      imp, car, impValor, carValor, lucro, semCusto, margem: porKit > 0 ? lucro / porKit : 0,
       cx, semPreco: ls.filter(l => !l.preco).length + (cx && !cxPreco ? 1 : 0),
       custoCompleto: ls.length > 0 && ls.every(l => l.temCusto) && (!cx || !cxPreco || cxCusto > 0),
     };
@@ -272,13 +283,24 @@ export function criarKits(ctx) {
     }
     const detalhe = [];
     if (t.n > 1) detalhe.push(`${t.n} kits × ${dinheiro(t.porKit)}`);
-    if (t.acrescimo) detalhe.push(`+${t.acrescimo}% (cafés abaixo de ${dinheiro(LIMITE_CAFES)})`);
-    if (t.d) detalhe.push(`desconto de ${String(t.d).replace('.', ',')}%`);
+    if (t.acrescimo) detalhe.push(`+${t.acrescimo}% (cafés < ${dinheiro(LIMITE_CAFES).replace(',00', '')})`);
+    if (t.d) detalhe.push(`desc. ${String(t.d).replace('.', ',')}%`);
+    // só para a equipe: custo, imposto, cartão, lucro e margem (nunca vai para a imagem do cliente)
+    const chips = [];
+    const temCusto = t.custo > 0;
+    if (temCusto) chips.push(`<span class="kt-chip">Custo${t.semCusto ? ' parcial' : ''} <b>${dinheiro(t.custo)}</b></span>`);
+    if (t.imp) chips.push(`<span class="kt-chip">Imposto ${String(t.imp).replace('.', ',')}% <b>${dinheiro(t.impValor)}</b></span>`);
+    if (t.car) chips.push(`<span class="kt-chip">Cartão ${String(t.car).replace('.', ',')}% <b>${dinheiro(t.carValor)}</b></span>`);
     let custo = '';
-    if (t.custoCompleto && t.porKit > 0) {
-      const m = Math.round(((t.porKit - t.custo) / t.porKit) * 100);
-      custo = `<p class="kt-custo">Custo ${dinheiro(t.custo)} por kit · margem <b class="${m < 30 ? 'baixa' : ''}">${m}%</b></p>`;
+    if (temCusto && !t.semCusto && t.porKit > 0) {
+      const m = Math.round(t.margem * 100);
+      chips.push(`<span class="kt-chip">Lucro <b class="${t.lucro < 0 ? 'baixa' : ''}">${dinheiro(t.lucro)}</b></span>`);
+      chips.push(`<span class="kt-chip">Margem <b class="${m < 30 ? 'baixa' : 'ok'}">${m}%</b></span>`);
+      if (t.n > 1) chips.push(`<span class="kt-chip">Lucro nos ${t.n} kits <b class="${t.lucro < 0 ? 'baixa' : ''}">${dinheiro(arred(t.lucro * t.n))}</b></span>`);
+    } else if (temCusto && t.semCusto) {
+      chips.push(`<span class="kt-chip kt-chip-aviso">Margem indisponível: falta o custo de ${t.semCusto} ${t.semCusto === 1 ? 'item' : 'itens'}</span>`);
     }
+    if (chips.length) custo = `<div class="kt-equipe" aria-label="Só para a equipe, valores por kit">${chips.join('')}</div>`;
     const aviso = t.semPreco ? `<p class="kt-aviso">${t.semPreco} ${t.semPreco === 1 ? 'item está' : 'itens estão'} sem preço</p>` : '';
     $('#kitTotal').innerHTML = `
       <div class="kt-linha">
@@ -301,6 +323,14 @@ export function criarKits(ctx) {
   });
   $('#kitItens').addEventListener('focusin', e => { if (e.target.classList.contains('stepper-qtd')) e.target.select(); });
   $('#kitQtd').addEventListener('input', renderTotal);
+  for (const [sel, chave] of [['#kitImposto', 'cp_imposto'], ['#kitCartao', 'cp_cartao']]) {
+    try { $(sel).value = localStorage.getItem(chave) || ''; } catch {}
+    $(sel).addEventListener('input', () => {
+      try { localStorage.setItem(chave, $(sel).value.trim()); } catch {}
+      renderTotal();
+    });
+    $(sel).addEventListener('focusin', e => e.target.select());
+  }
   $('#kitDesconto').addEventListener('input', renderTotal);
 
   // ---------------- Texto (para colar no WhatsApp) ----------------

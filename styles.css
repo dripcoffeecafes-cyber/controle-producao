@@ -538,7 +538,7 @@ legend { font-size: 13.5px; font-weight: 600; color: var(--ink-2); margin-bottom
 .orcar-acoes .btn-primary { flex: 1.3; }
 #areaProdutos { padding-top: 16px; }
 @media (min-width: 700px) { .orcar-barra { border-radius: 16px 16px 0 0; } }
-body[data-area="orcar"] .toast { bottom: calc(150px + var(--safe-bottom)); }
+body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 
 /* Categoria do produto: lista clicável */
 .campo-categoria { border: 0; padding: 0; margin: 0 0 12px; min-width: 0; }
@@ -555,3 +555,10 @@ body[data-area="orcar"] .toast { bottom: calc(150px + var(--safe-bottom)); }
 .antiga.on { border-color: var(--ink); }
 .antiga img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 6px; display: block; }
 .antiga span { font-size: 12px; line-height: 1.2; }
+
+/* Custo, imposto, cartão, lucro e margem (só equipe) na barra do total */
+.kt-equipe { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 2px 0 0; font-size: 12.5px; color: var(--ink-2); }
+.kt-chip b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.kt-chip b.ok { color: var(--verde); }
+.kt-chip b.baixa { color: var(--vermelho); }
+.kt-chip-aviso { color: var(--ambar); font-weight: 600; }
