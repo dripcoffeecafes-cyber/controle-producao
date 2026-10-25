@@ -30,7 +30,7 @@ const categoriaDe = c => CATEGORIAS.includes(c) ? c : (c === 'Drip' ? 'Cafés' :
 const ehCaixa = i => categoriaDe(i?.categoria) === CAIXAS;
 const ordemCategoria = c => CATEGORIAS.indexOf(categoriaDe(c));
 // Regra dos cafés: se os cafés do kit somam menos de R$ 120, o valor do kit sobe 10%.
-// Com R$ 120 ou mais em cafés, vale o preço cadastrado de cada item. Sem café no kit, não há acréscimo.
+// Com R$ 120 ou mais em cafés, vale o preço cadastrado de cada item. Kit sem café também leva o acréscimo.
 const LIMITE_CAFES = 120;
 const ACRESCIMO_CAFES = 10;
 const TITULO_KIT = 'Kit Blooming Club Cafés';
@@ -94,7 +94,7 @@ export function criarKits(ctx) {
     const base = arred(ls.reduce((s, l) => s + l.preco * l.qtd, 0) + cxPreco);
     // Regra dos cafés: soma dos cafés (preço × quantidade) abaixo do limite → +10% sobre o valor calculado
     const cafes = arred(ls.filter(l => l.categoria === 'Cafés').reduce((s, l) => s + l.preco * l.qtd, 0));
-    const acrescimo = cafes > 0 && cafes < LIMITE_CAFES ? ACRESCIMO_CAFES : 0;
+    const acrescimo = cafes < LIMITE_CAFES ? ACRESCIMO_CAFES : 0;
     const preco = arred(base * (1 + acrescimo / 100));
     const custo = arred(ls.reduce((s, l) => s + l.custo * l.qtd, 0) + cxCusto);
     const n = qtdKits(), d = desconto();

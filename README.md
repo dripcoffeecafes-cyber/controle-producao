@@ -76,7 +76,7 @@ Se cadastrou pedidos antes de configurar o Firebase, abra o app no mesmo aparelh
 
 - **Produtos e preços:** cada produto tem foto, categoria (Cafés, Acessórios, Xícaras ou Caixas), preço de venda e custo opcional. O preço pode ser trocado direto na lista, para a atualização do mês.
 - **Caixas:** são os produtos da categoria Caixas (antiga "Outros"; os documentos salvos não mudam). Cada caixa tem duas fotos: a foto do item (aparece entre os itens do kit) e a foto principal do orçamento (campo `fotoPrincipal`, o kit montado com a caixa). Dá para usar como principal uma foto da coleção antiga `caixas`, que fica só para leitura.
-- **Regra dos cafés:** se os produtos da categoria Cafés no kit somam menos de R$ 120, o valor do kit sobe 10%. Com R$ 120 ou mais em cafés, vale o preço cadastrado de cada item. Sem café no kit, não há acréscimo.
+- **Regra dos cafés:** se os produtos da categoria Cafés no kit somam menos de R$ 120, o valor do kit sobe 10%. Com R$ 120 ou mais em cafés, vale o preço cadastrado de cada item. Kit sem café também leva os 10%.
 - **Montar kit:** escolha a caixa, depois os itens (+ / −), a quantidade de kits e o desconto. O valor soma a caixa e os itens; a margem aparece só para a equipe.
   - **Gerar imagem:** cria a imagem para o cliente ("Kit Blooming Club Cafés", caixa, foto principal 4:3 com a legenda de demonstração, itens em cartões com foto e quantidade, valores). Com até 5 itens a imagem tem 1080×1440 (3:4); com mais itens entra mais uma linha de cartões e a imagem cresce em altura, sem mexer na foto principal. Dá para enviar direto pelo compartilhar do celular, baixar ou copiar o texto.
   - **Criar pedido:** abre o pedido já com cliente, descrição e valor.
