@@ -29,8 +29,10 @@ const CATEGORIAS = ['Cafés', 'Acessórios', 'Xícaras', CAIXAS];
 const categoriaDe = c => CATEGORIAS.includes(c) ? c : (c === 'Drip' ? 'Cafés' : CAIXAS);
 const ehCaixa = i => categoriaDe(i?.categoria) === CAIXAS;
 const ordemCategoria = c => CATEGORIAS.indexOf(categoriaDe(c));
-// Kit com um único café custa 10% a mais sobre o valor calculado
-const ACRESCIMO_UM_CAFE = 10;
+// Regra dos cafés: se os cafés do kit somam menos de R$ 120, o valor do kit sobe 10%.
+// Com R$ 120 ou mais em cafés, vale o preço cadastrado de cada item. Sem café no kit, não há acréscimo.
+const LIMITE_CAFES = 120;
+const ACRESCIMO_CAFES = 10;
 const TITULO_KIT = 'Kit Blooming Club Cafés';
 
 // Lista de partida: só nomes e categorias. Preços zerados para a equipe preencher.
@@ -90,9 +92,9 @@ export function criarKits(ctx) {
     const cx = caixaAtual();
     const cxPreco = Number(cx?.preco) || 0, cxCusto = Number(cx?.custo) || 0;
     const base = arred(ls.reduce((s, l) => s + l.preco * l.qtd, 0) + cxPreco);
-    // Regra dos cafés: com exatamente 1 café no kit, o valor sobe 10%; com 2 ou mais, vale o preço base
-    const cafes = ls.filter(l => l.categoria === 'Cafés').reduce((s, l) => s + l.qtd, 0);
-    const acrescimo = cafes === 1 ? ACRESCIMO_UM_CAFE : 0;
+    // Regra dos cafés: soma dos cafés (preço × quantidade) abaixo do limite → +10% sobre o valor calculado
+    const cafes = arred(ls.filter(l => l.categoria === 'Cafés').reduce((s, l) => s + l.preco * l.qtd, 0));
+    const acrescimo = cafes > 0 && cafes < LIMITE_CAFES ? ACRESCIMO_CAFES : 0;
     const preco = arred(base * (1 + acrescimo / 100));
     const custo = arred(ls.reduce((s, l) => s + l.custo * l.qtd, 0) + cxCusto);
     const n = qtdKits(), d = desconto();
@@ -270,7 +272,7 @@ export function criarKits(ctx) {
     }
     const detalhe = [];
     if (t.n > 1) detalhe.push(`${t.n} kits × ${dinheiro(t.porKit)}`);
-    if (t.acrescimo) detalhe.push(`+${t.acrescimo}% por ter só 1 café`);
+    if (t.acrescimo) detalhe.push(`+${t.acrescimo}% (cafés abaixo de ${dinheiro(LIMITE_CAFES)})`);
     if (t.d) detalhe.push(`desconto de ${String(t.d).replace('.', ',')}%`);
     let custo = '';
     if (t.custoCompleto && t.porKit > 0) {
