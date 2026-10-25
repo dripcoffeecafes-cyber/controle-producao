@@ -74,9 +74,10 @@ Se cadastrou pedidos antes de configurar o Firebase, abra o app no mesmo aparelh
 
 ## Kits de presente (áreas Orçar kit e Produtos)
 
-- **Caixas:** cada caixa é Premium ou Padrão, tem nome, preço (custo opcional) e a foto do kit montado com ela. A foto da caixa é a imagem principal do kit.
-- **Produtos e preços:** cada produto tem foto, categoria, preço de venda e custo opcional. O preço pode ser trocado direto na lista, para a atualização do mês.
+- **Produtos e preços:** cada produto tem foto, categoria (Cafés, Acessórios, Xícaras ou Caixas), preço de venda e custo opcional. O preço pode ser trocado direto na lista, para a atualização do mês.
+- **Caixas:** são os produtos da categoria Caixas. Cada caixa tem duas fotos: a foto do item (aparece entre os itens do kit) e a foto principal do orçamento (o kit montado com a caixa).
+- **Regra dos cafés:** com só 1 café no kit, o valor sobe 10%; com 2 ou mais, vale o preço base.
 - **Montar kit:** escolha a caixa, depois os itens (+ / −), a quantidade de kits e o desconto. O valor soma a caixa e os itens; a margem aparece só para a equipe.
-  - **Gerar imagem:** cria a imagem para o cliente ("Kit Blooming Club Cafés", linha e caixa, foto ilustrativa, itens em cartões com foto e quantidade, valores). Dá para enviar direto pelo compartilhar do celular, baixar ou copiar o texto.
+  - **Gerar imagem:** cria a imagem 3:4 (1080×1440) para o cliente ("Kit Blooming Club Cafés", caixa, foto principal ilustrativa, itens em cartões com foto e quantidade, valores). Dá para enviar direto pelo compartilhar do celular, baixar ou copiar o texto.
   - **Criar pedido:** abre o pedido já com cliente, descrição e valor.
 - Os dados ficam em `equipes/{chave}/caixas` e `equipes/{chave}/itens`, cobertos pelas mesmas regras do Firestore.

@@ -233,47 +233,7 @@
     </div>
   </dialog>
 
-  <!-- Caixa: define a linha (Premium/Padrão) e a foto principal do kit -->
-  <dialog id="dlgCaixa" class="sheet">
-    <form id="formCaixa" method="dialog" novalidate>
-      <div class="sheet-topo">
-        <h2 id="caixaTitulo">Nova caixa</h2>
-        <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
-      </div>
-      <div class="sheet-corpo">
-        <fieldset>
-          <legend>Linha</legend>
-          <div class="segmentado">
-            <label><input type="radio" name="linha" value="premium" checked><span>Premium</span></label>
-            <label><input type="radio" name="linha" value="padrao"><span>Padrão</span></label>
-          </div>
-        </fieldset>
-        <label>Nome da caixa<input name="nome" required autocomplete="off" placeholder="Ex.: Caixa preta"></label>
-        <p class="kit-rotulo">Foto do kit com esta caixa</p>
-        <div class="foto-campo foto-campo-grande">
-          <div id="caixaFotoPrevia" class="foto-previa"></div>
-          <div class="foto-botoes">
-            <label class="btn btn-sm foto-escolher">Escolher foto<input id="caixaFotoArquivo" type="file" accept="image/*"></label>
-            <button id="caixaFotoRemover" type="button" class="btn-link" hidden>Remover foto</button>
-          </div>
-        </div>
-        <div class="grid2">
-          <label>Preço da caixa (R$)<input name="preco" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
-          <label>Custo (R$)<input name="custo" inputmode="decimal" autocomplete="off" placeholder="Opcional"></label>
-        </div>
-        <p class="muted">A foto vira a imagem principal do kit enviada ao cliente, com o aviso de que é apenas um modelo.</p>
-        <p id="caixaErro" class="erro" role="alert"></p>
-      </div>
-      <div class="sheet-rodape">
-        <button type="button" id="excluirCaixa" class="btn btn-perigo" hidden>Excluir</button>
-        <span class="espaco"></span>
-        <button type="button" class="btn" data-fechar>Cancelar</button>
-        <button type="submit" class="btn btn-primary">Salvar caixa</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- Produto que pode entrar nos kits -->
+  <!-- Produto que pode entrar nos kits. Na categoria Caixas, tem também a foto principal do orçamento -->
   <dialog id="dlgItem" class="sheet">
     <form id="formItem" method="dialog" novalidate>
       <div class="sheet-topo">
@@ -281,6 +241,7 @@
         <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
       </div>
       <div class="sheet-corpo">
+        <p class="kit-rotulo" id="itemFotoRotulo">Foto do item</p>
         <div class="foto-campo">
           <div id="itemFotoPrevia" class="foto-previa foto-previa-quadrada"></div>
           <div class="foto-botoes">
@@ -293,6 +254,17 @@
           <legend>Categoria</legend>
           <div id="itemCategorias" class="segmentado segmentado-quebra"></div>
         </fieldset>
+        <div id="campoFotoPrincipal" hidden>
+          <p class="kit-rotulo">Foto principal do orçamento</p>
+          <div class="foto-campo foto-campo-grande">
+            <div id="principalFotoPrevia" class="foto-previa"></div>
+            <div class="foto-botoes">
+              <label class="btn btn-sm foto-escolher">Escolher foto<input id="principalFotoArquivo" type="file" accept="image/*"></label>
+              <button id="principalFotoRemover" type="button" class="btn-link" hidden>Remover foto</button>
+            </div>
+          </div>
+          <p class="muted">A foto do kit montado com esta caixa. Ela é a imagem principal enviada ao cliente, com o aviso de que é apenas um modelo. A foto do item aparece entre os itens do kit.</p>
+        </div>
         <div class="grid2">
           <label>Preço de venda (R$)<input name="preco" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
           <label>Custo (R$)<input name="custo" inputmode="decimal" autocomplete="off" placeholder="Opcional"></label>
@@ -304,7 +276,7 @@
         <button type="button" id="excluirItem" class="btn btn-perigo" hidden>Excluir</button>
         <span class="espaco"></span>
         <button type="button" class="btn" data-fechar>Cancelar</button>
-        <button type="submit" class="btn btn-primary">Salvar produto</button>
+        <button type="submit" id="itemSalvar" class="btn btn-primary">Salvar produto</button>
       </div>
     </form>
   </dialog>
