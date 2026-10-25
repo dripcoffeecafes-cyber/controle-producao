@@ -549,3 +549,9 @@ body[data-area="orcar"] .toast { bottom: calc(150px + var(--safe-bottom)); }
 /* Caixas na lista de produtos */
 .prod-aviso { display: block; font-size: 12px; font-weight: 600; color: var(--ambar, #a8661f); margin-top: 2px; }
 .prod-vazio { margin: 4px 0 8px; }
+.antigas { margin: 4px 0 8px; }
+.antigas-lista { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.antiga { flex: 0 0 96px; display: grid; gap: 4px; padding: 4px; border: 2px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.antiga.on { border-color: var(--ink); }
+.antiga img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 6px; display: block; }
+.antiga span { font-size: 12px; line-height: 1.2; }

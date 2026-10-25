@@ -1,7 +1,8 @@
-// Kits de presente: a caixa (categoria Caixas) traz a foto principal do orçamento e a foto do item.
+// Kits de presente: a caixa (produto da categoria Caixas) traz a foto do item e a foto principal do orçamento.
 // Depois escolhemos os produtos que vão dentro, e o app gera a imagem 3:4 para o cliente.
 // Os preços ficam na caixa e nos produtos; o valor do kit é calculado na hora.
-// As caixas ficam guardadas na coleção "caixas" e os demais produtos na coleção "itens".
+// Tudo fica na coleção "itens". A caixa só ganha o campo fotoPrincipal; os documentos existentes não são alterados.
+// A coleção antiga "caixas" só é lida, para reaproveitar as fotos já cadastradas nela.
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -23,10 +24,11 @@ const precoCampo = n => (n ? Number(n).toFixed(2).replace('.', ',') : '');
 // Categorias fixas. Um produto na categoria Caixas é a caixa do kit (escolhida no passo 1).
 const CAIXAS = 'Caixas';
 const CATEGORIAS = ['Cafés', 'Acessórios', 'Xícaras', CAIXAS];
-const SEM_CATEGORIA = 'Sem categoria';
-// Produtos antigos com outra categoria: Drip vira Cafés; o resto aparece em "Sem categoria" para reclassificar
-const categoriaDe = c => (CATEGORIAS.includes(c) && c !== CAIXAS) ? c : (c === 'Drip' ? 'Cafés' : SEM_CATEGORIA);
-const ordemCategoria = c => { const i = CATEGORIAS.indexOf(categoriaDe(c)); return i < 0 ? 99 : i; };
+// "Outros" passou a se chamar Caixas. Só muda o nome mostrado: o documento salvo continua igual até alguém editá-lo.
+// Drip vira Cafés; qualquer outra categoria antiga (Outros, Embalagem…) aparece em Caixas.
+const categoriaDe = c => CATEGORIAS.includes(c) ? c : (c === 'Drip' ? 'Cafés' : CAIXAS);
+const ehCaixa = i => categoriaDe(i?.categoria) === CAIXAS;
+const ordemCategoria = c => CATEGORIAS.indexOf(categoriaDe(c));
 // Kit com um único café custa 10% a mais sobre o valor calculado
 const ACRESCIMO_UM_CAFE = 10;
 const TITULO_KIT = 'Kit Blooming Club Cafés';
@@ -47,10 +49,10 @@ export function criarKits(ctx) {
   // ctx: { store: () => store, toast, quem, abrirPedido(preencher, extra), aoMudar() }
   const k = {
     itens: [],
-    caixas: [],           // { id, nome, foto (principal do orçamento), fotoItem, preco, custo }
+    caixasAntigas: [],    // coleção antiga "caixas" (só leitura, para reaproveitar fotos)
     caixaId: null,        // caixa escolhida no montador
     qtd: {},              // itemId -> quantidade
-    editando: null, editandoCol: null,   // produto aberto no formulário e a coleção dele
+    editando: null,       // produto aberto no formulário
     fotoItem: '', fotoPrincipal: '',
     imagem: null,         // { blob, url, nome }
   };
@@ -63,12 +65,10 @@ export function criarKits(ctx) {
 
   // ---------------- Cálculos ----------------
   const acharItem = id => k.itens.find(i => i.id === id);
-  const acharCaixa = id => k.caixas.find(c => c.id === id);
+  const acharCaixa = id => k.itens.find(i => i.id === id && ehCaixa(i));
   const caixaAtual = () => acharCaixa(k.caixaId);
-  const caixasOrdenadas = () => [...k.caixas].sort((a, b) =>
-    (a.criadoEm || '').localeCompare(b.criadoEm || '') || (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+  const caixasOrdenadas = () => k.itens.filter(ehCaixa).sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
   const nomeCaixa = c => (c ? c.nome : '');
-  const fotoItemCaixa = c => c?.fotoItem || c?.foto || '';
 
   function itensOrdenados() {
     return [...k.itens].sort((a, b) =>
@@ -78,7 +78,7 @@ export function criarKits(ctx) {
 
   function linhas() {
     return itensOrdenados()
-      .filter(i => (k.qtd[i.id] || 0) > 0)
+      .filter(i => !ehCaixa(i) && (k.qtd[i.id] || 0) > 0)
       .map(i => ({ id: i.id, nome: i.nome, categoria: categoriaDe(i.categoria), foto: i.foto || '', qtd: k.qtd[i.id], preco: Number(i.preco) || 0, custo: Number(i.custo) || 0, temCusto: Number(i.custo) > 0 }));
   }
 
@@ -110,13 +110,12 @@ export function criarKits(ctx) {
     ? `<img class="${cls}" src="${esc(foto)}" alt="" loading="lazy">`
     : `<span class="${cls} ${cls}-vazia" aria-hidden="true">${esc((nome || '?').trim().charAt(0).toUpperCase())}</span>`;
 
-  function linhaProduto(d, col) {
-    const foto = col === 'caixas' ? fotoItemCaixa(d) : d.foto;
-    const sinal = col === 'caixas' && !d.foto ? '<span class="prod-aviso">sem foto principal</span>' : '';
+  function linhaProduto(d) {
+    const sinal = ehCaixa(d) && !d.fotoPrincipal ? '<span class="prod-aviso">sem foto principal</span>' : '';
     return `
-        <div class="prod-linha" data-iid="${esc(d.id)}" data-col="${col}">
+        <div class="prod-linha" data-iid="${esc(d.id)}">
           <button class="prod-abrir" data-kacao="editar-item" aria-label="Editar ${esc(d.nome)}">
-            ${miniatura(foto, d.nome)}
+            ${miniatura(d.foto, d.nome)}
             <span class="item-nome">${esc(d.nome)}${sinal}</span>
           </button>
           <label class="preco-rapido ${Number(d.preco) ? '' : 'sem'}">
@@ -126,7 +125,7 @@ export function criarKits(ctx) {
   }
 
   function html() {
-    if (!k.itens.length && !k.caixas.length) {
+    if (!k.itens.length) {
       return `
       <section class="k-sec">
         <div class="k-sec-topo"><h2>Produtos e preços</h2></div>
@@ -139,16 +138,11 @@ export function criarKits(ctx) {
         </div>
       </section>`;
     }
-    const grupos = [];
     const porCat = {};
     for (const i of itensOrdenados()) (porCat[categoriaDe(i.categoria)] ||= []).push(i);
-    for (const cat of [...CATEGORIAS.filter(c => c !== CAIXAS), SEM_CATEGORIA]) {
-      if (!porCat[cat]?.length) continue;
-      grupos.push(`<h3 class="item-cat">${esc(cat)}</h3>${porCat[cat].map(i => linhaProduto(i, 'itens')).join('')}`);
-    }
-    grupos.push(`<h3 class="item-cat">${CAIXAS}</h3>${k.caixas.length
-      ? caixasOrdenadas().map(c => linhaProduto(c, 'caixas')).join('')
-      : '<p class="muted prod-vazio">Nenhuma caixa ainda. Cadastre um produto na categoria Caixas.</p>'}`);
+    const grupos = CATEGORIAS.map(cat => `<h3 class="item-cat">${esc(cat)}</h3>${porCat[cat]?.length
+      ? porCat[cat].map(linhaProduto).join('')
+      : `<p class="muted prod-vazio">Nenhum produto em ${esc(cat)}.</p>`}`);
     return `
       <section class="k-sec">
         <div class="k-sec-topo">
@@ -164,13 +158,11 @@ export function criarKits(ctx) {
   document.addEventListener('change', async e => {
     const input = e.target.closest?.('.preco-rapido input');
     if (!input) return;
-    const linha = input.closest('[data-iid]');
-    const col = linha?.dataset.col === 'caixas' ? 'caixas' : 'itens';
-    const item = (col === 'caixas' ? acharCaixa : acharItem)(linha?.dataset.iid);
+    const item = acharItem(input.closest('[data-iid]')?.dataset.iid);
     if (!item) return;
     const preco = lerNumero(input.value);
     if (preco === (Number(item.preco) || 0)) { input.value = precoCampo(preco); return; }
-    await salvarDoc(col, { ...item, preco }, `${item.nome}: ${dinheiro(preco)}`);
+    await salvarDoc('itens', { ...item, preco }, `${item.nome}: ${dinheiro(preco)}`);
   });
   document.addEventListener('focusin', e => { if (e.target.closest?.('.preco-rapido input')) e.target.select(); });
   document.addEventListener('keydown', e => {
@@ -181,8 +173,8 @@ export function criarKits(ctx) {
   // Página "Orçar kit": desenha tudo (chamada ao entrar na área)
   function renderOrcar() {
     const falta = [];
-    if (!k.caixas.length) falta.push('as caixas');
-    if (!k.itens.length) falta.push('os produtos');
+    if (!caixasOrdenadas().length) falta.push('as caixas');
+    if (!k.itens.some(i => !ehCaixa(i))) falta.push('os produtos');
     $('#orcarVazio').hidden = !falta.length;
     $('#orcarConteudo').hidden = !!falta.length;
     $('#orcarBarra').hidden = !!falta.length;
@@ -207,13 +199,13 @@ export function criarKits(ctx) {
   }
 
   function renderCaixas() {
-    if (!k.caixas.length) {
+    if (!caixasOrdenadas().length) {
       $('#kitCaixas').innerHTML = '<p class="muted">Cadastre as caixas na área Produtos.</p>';
       return;
     }
     $('#kitCaixas').innerHTML = `<div class="kc-grupo"><div class="kc-lista">${caixasOrdenadas().map(c => `
         <button type="button" class="kc" role="radio" data-kacao="escolher-caixa" data-cid="${esc(c.id)}" aria-checked="${c.id === k.caixaId}">
-          ${miniatura(c.foto || c.fotoItem, c.nome, 'kc-foto')}
+          ${miniatura(c.fotoPrincipal || c.foto, c.nome, 'kc-foto')}
           <span class="kc-nome">${esc(c.nome)}</span>
           <span class="kc-preco">${Number(c.preco) ? dinheiro(c.preco) : 'sem preço'}</span>
         </button>`).join('')}</div></div>`;
@@ -222,8 +214,8 @@ export function criarKits(ctx) {
   function renderAmostra() {
     const c = caixaAtual();
     if (!c) { $('#kitAmostra').innerHTML = ''; return; }
-    $('#kitAmostra').innerHTML = c.foto
-      ? `<img src="${esc(c.foto)}" alt="Foto do kit com ${esc(c.nome)}"><span class="selo">Imagem ilustrativa · ${esc(c.nome)}</span>`
+    $('#kitAmostra').innerHTML = c.fotoPrincipal
+      ? `<img src="${esc(c.fotoPrincipal)}" alt="Foto do kit com ${esc(c.nome)}"><span class="selo">Imagem ilustrativa · ${esc(c.nome)}</span>`
       : `<button type="button" class="kit-amostra-vazia" data-kacao="editar-caixa-atual">${ICONE_FOTO}<span>Adicionar a foto principal da ${esc(c.nome)}</span></button>`;
   }
 
@@ -247,12 +239,13 @@ export function criarKits(ctx) {
   }
 
   function renderItensDialogo() {
-    if (!k.itens.length) {
+    const lista = itensOrdenados().filter(i => !ehCaixa(i));
+    if (!lista.length) {
       $('#kitItens').innerHTML = '<p class="muted">Cadastre os produtos na área Produtos para montar.</p>';
       return;
     }
     let catAtual = null;
-    $('#kitItens').innerHTML = itensOrdenados().map(i => {
+    $('#kitItens').innerHTML = lista.map(i => {
       const cat = categoriaDe(i.categoria);
       const cab = cat !== catAtual ? `<h3 class="item-cat">${esc(cat)}</h3>` : '';
       catAtual = cat;
@@ -357,9 +350,9 @@ export function criarKits(ctx) {
     const cliente = $('#kitCliente').value.trim();
     const F = 'Archivo, system-ui, sans-serif';
     await Promise.all(['400', '600', '800'].map(w => document.fonts?.load(`${w} 32px Archivo`).catch(() => {})));
-    const cards = [...(cx ? [{ nome: cx.nome, qtd: 1, foto: fotoItemCaixa(cx) }] : []), ...t.ls];
+    const cards = [...(cx ? [{ nome: cx.nome, qtd: 1, foto: cx.foto || '' }] : []), ...t.ls];
     const [logo, foto, ...fotosCards] = await Promise.all([
-      carregar('marca/logo-blooming-club.svg'), carregar(cx?.foto), ...cards.map(c => carregar(c.foto)),
+      carregar('marca/logo-blooming-club.svg'), carregar(cx?.fotoPrincipal), ...cards.map(c => carregar(c.foto)),
     ]);
 
     const C = { fundo: '#F6F1EA', cartao: '#FFFFFF', tinta: '#1A1714', tinta2: '#6B645B', linha: '#E3DCD2', caramelo: '#A8661F' };
@@ -637,43 +630,40 @@ export function criarKits(ctx) {
   async function semearExemplo() {
     const agora = Date.now();
     let n = 0;
-    if (!k.itens.length) for (const [nome, categoria] of EXEMPLO_ITENS) {
+    const lista = [...EXEMPLO_ITENS, ...EXEMPLO_CAIXAS.map(nome => [nome, CAIXAS])];
+    for (const [nome, categoria] of lista) {
       await ctx.store().salvarDoc('itens', { id: novoId(), nome, categoria, preco: 0, custo: '', foto: '', criadoEm: new Date(agora + n++).toISOString(), atualizadoPor: ctx.quem() });
-    }
-    if (!k.caixas.length) for (const nome of EXEMPLO_CAIXAS) {
-      await ctx.store().salvarDoc('caixas', { id: novoId(), nome, foto: '', fotoItem: '', preco: 0, custo: '', criadoEm: new Date(agora + n++).toISOString(), atualizadoPor: ctx.quem() });
     }
     ctx.toast('Lista criada. Agora coloque os preços e as fotos.');
   }
 
-  // ---------------- Produto (e caixa, quando a categoria é Caixas) ----------------
+  // ---------------- Produto (na categoria Caixas, também a foto principal) ----------------
   const categoriaMarcada = () => formItem.querySelector('input[name=categoria]:checked')?.value || '';
 
-  function abrirItem(doc, col = 'itens') {
-    const ehCaixa = col === 'caixas';
+  function abrirItem(doc) {
     k.editando = doc ? doc.id : null;
-    k.editandoCol = doc ? col : null;
-    k.fotoItem = (ehCaixa ? doc?.fotoItem : doc?.foto) || '';
-    k.fotoPrincipal = (ehCaixa ? doc?.foto : '') || '';
+    k.fotoItem = doc?.foto || '';
+    k.fotoPrincipal = doc?.fotoPrincipal || '';
     formItem.reset();
     $('#itemErro').textContent = '';
-    $('#itemTitulo').textContent = !doc ? 'Novo produto' : ehCaixa ? 'Editar caixa' : 'Editar produto';
+    $('#itemTitulo').textContent = !doc ? 'Novo produto' : ehCaixa(doc) ? 'Editar caixa' : 'Editar produto';
     $('#excluirItem').hidden = !doc;
     formItem.nome.value = doc?.nome || '';
-    const cat = ehCaixa ? CAIXAS : doc ? categoriaDe(doc.categoria) : '';
+    const cat = doc ? categoriaDe(doc.categoria) : '';
     $('#itemCategorias').innerHTML = CATEGORIAS.map(c =>
       `<label><input type="radio" name="categoria" value="${esc(c)}" ${c === cat ? 'checked' : ''}><span>${esc(c)}</span></label>`).join('');
     formItem.preco.value = paraCampo(doc?.preco);
     formItem.custo.value = paraCampo(doc?.custo);
     renderFotoItem(); renderFotoPrincipal(); mostrarCampoCaixa();
     dlgItem.showModal();
+    $('.sheet-corpo', dlgItem).scrollTop = 0;
     if (!doc) formItem.nome.focus();
   }
   function mostrarCampoCaixa() {
-    const ehCaixa = categoriaMarcada() === CAIXAS;
-    $('#campoFotoPrincipal').hidden = !ehCaixa;
-    $('#itemFotoRotulo').textContent = ehCaixa ? 'Foto do item (aparece entre os itens do kit)' : 'Foto do item';
-    $('#itemSalvar').textContent = ehCaixa ? 'Salvar caixa' : 'Salvar produto';
+    const caixa = categoriaMarcada() === CAIXAS;
+    $('#campoFotoPrincipal').hidden = !caixa;
+    $('#itemFotoRotulo').textContent = caixa ? 'Foto do item (aparece entre os itens do kit)' : 'Foto do item';
+    $('#itemSalvar').textContent = caixa ? 'Salvar caixa' : 'Salvar produto';
   }
   $('#itemCategorias').addEventListener('change', mostrarCampoCaixa);
 
@@ -684,7 +674,19 @@ export function criarKits(ctx) {
   function renderFotoPrincipal() {
     $('#principalFotoPrevia').innerHTML = k.fotoPrincipal ? `<img src="${esc(k.fotoPrincipal)}" alt="Foto principal do orçamento">` : '<span>Sem foto</span>';
     $('#principalFotoRemover').hidden = !k.fotoPrincipal;
+    // fotos já cadastradas na tela antiga de caixas: um toque usa a foto como principal
+    const antigas = k.caixasAntigas.filter(c => c.foto);
+    $('#principalAntigas').hidden = !antigas.length;
+    $('#principalAntigasLista').innerHTML = antigas.map(c => `
+      <button type="button" class="antiga ${c.foto === k.fotoPrincipal ? 'on' : ''}" data-antiga="${esc(c.id)}" title="${esc(c.nome)}">
+        <img src="${esc(c.foto)}" alt=""><span>${esc(c.nome)}</span>
+      </button>`).join('');
   }
+  $('#principalAntigasLista').addEventListener('click', e => {
+    const b = e.target.closest('[data-antiga]'); if (!b) return;
+    const c = k.caixasAntigas.find(x => x.id === b.dataset.antiga);
+    if (c?.foto) { k.fotoPrincipal = c.foto; renderFotoPrincipal(); }
+  });
   $('#itemFotoArquivo').addEventListener('change', async e => {
     const file = e.target.files?.[0]; e.target.value = '';
     if (!file) return;
@@ -706,44 +708,34 @@ export function criarKits(ctx) {
     if (!nome) { $('#itemErro').textContent = 'Preencha o nome do produto.'; formItem.nome.focus(); return; }
     const cat = categoriaMarcada();
     if (!cat) { $('#itemErro').textContent = 'Escolha a categoria.'; return; }
-    const colAntiga = k.editandoCol;
-    const existente = colAntiga === 'caixas' ? acharCaixa(k.editando) : colAntiga === 'itens' ? acharItem(k.editando) : null;
-    const destino = cat === CAIXAS ? 'caixas' : 'itens';
+    const existente = acharItem(k.editando);
     const custoTxt = formItem.custo.value.trim();
+    // mantém todos os campos que já existem no documento e só troca o que foi editado
     const d = {
       ...(existente || {}),
       id: existente?.id || novoId(),
       nome,
+      categoria: cat,
       preco: lerNumero(formItem.preco.value),
       custo: custoTxt ? lerNumero(custoTxt) : '',
+      foto: k.fotoItem,
       criadoEm: existente?.criadoEm || new Date().toISOString(),
     };
-    if (destino === 'caixas') {
-      Object.assign(d, { foto: k.fotoPrincipal, fotoItem: k.fotoItem });
-      delete d.categoria; delete d.linha;
-    } else {
-      Object.assign(d, { categoria: cat, foto: k.fotoItem });
-      delete d.fotoItem; delete d.linha;
-    }
-    const msg = existente ? (destino === 'caixas' ? 'Caixa salva' : 'Produto salvo') : (destino === 'caixas' ? 'Caixa cadastrada' : 'Produto cadastrado');
-    if (!(await salvarDoc(destino, d, msg))) return;
-    // mudou de categoria entre caixa e produto: sai da coleção antiga
-    if (existente && colAntiga !== destino) {
-      await ctx.store().excluirDoc(colAntiga, existente.id);
-      if (colAntiga === 'itens') delete k.qtd[existente.id];
-    }
-    dlgItem.close();
+    if (cat === CAIXAS) d.fotoPrincipal = k.fotoPrincipal;
+    const caixa = cat === CAIXAS;
+    const msg = existente ? (caixa ? 'Caixa salva' : 'Produto salvo') : (caixa ? 'Caixa cadastrada' : 'Produto cadastrado');
+    if (caixa) delete k.qtd[d.id];
+    if (await salvarDoc('itens', d, msg)) dlgItem.close();
   });
 
   $('#excluirItem').addEventListener('click', async () => {
-    const col = k.editandoCol;
-    const d = col === 'caixas' ? acharCaixa(k.editando) : acharItem(k.editando);
+    const d = acharItem(k.editando);
     if (!d) return;
     if (!confirm(`Excluir "${d.nome}"?`)) return;
     dlgItem.close();
     delete k.qtd[d.id];
-    await ctx.store().excluirDoc(col, d.id);
-    ctx.toast(col === 'caixas' ? 'Caixa excluída' : 'Produto excluído', { texto: 'Desfazer', fn: () => ctx.store().salvarDoc(col, d) });
+    await ctx.store().excluirDoc('itens', d.id);
+    ctx.toast(ehCaixa(d) ? 'Caixa excluída' : 'Produto excluído', { texto: 'Desfazer', fn: () => ctx.store().salvarDoc('itens', d) });
   });
 
   // ---------------- Cliques ----------------
@@ -753,14 +745,10 @@ export function criarKits(ctx) {
     const acao = alvo.dataset.kacao;
     const cid = alvo.closest('[data-cid]')?.dataset.cid;
     if (acao === 'exemplo') semearExemplo();
-    else if (acao === 'editar-caixa-atual') abrirItem(caixaAtual(), 'caixas');
+    else if (acao === 'editar-caixa-atual') abrirItem(caixaAtual());
     else if (acao === 'escolher-caixa') { k.caixaId = cid; renderCaixas(); renderAmostra(); renderTotal(); }
     else if (acao === 'novo-item') abrirItem();
-    else if (acao === 'editar-item') {
-      const linha = alvo.closest('[data-iid]');
-      if (linha?.dataset.col === 'caixas') abrirItem(acharCaixa(linha.dataset.iid), 'caixas');
-      else abrirItem(acharItem(linha?.dataset.iid));
-    }
+    else if (acao === 'editar-item') abrirItem(acharItem(alvo.closest('[data-iid]')?.dataset.iid));
     else if (acao === 'ir-produtos') ctx.irPara('produtos');
     else if (acao === 'passo') {
       const id = alvo.closest('.kit-linha')?.dataset.iid;
@@ -779,7 +767,7 @@ export function criarKits(ctx) {
         ctx.aoMudar();
       }),
       st.onColecao('caixas', lista => {
-        k.caixas = lista;
+        k.caixasAntigas = lista;
         if (orcando()) renderOrcar();
         ctx.aoMudar();
       }),
