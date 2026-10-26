@@ -678,7 +678,20 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
   .leads-lista { padding-bottom: calc(var(--barra) + 84px); }
   .fab { bottom: calc(var(--barra) + 14px); }
   .toast { bottom: calc(var(--barra) + 80px); }
-  .orcar-barra { bottom: var(--barra); padding-bottom: 0; border-bottom: 1px solid var(--line-suave); }
+  /* barra do total: painel destacado da página, com os itens sumindo por baixo dela */
+  .orcar-barra {
+    bottom: var(--barra); padding-bottom: 0;
+    background: var(--surface);
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    border-top: 1px solid var(--line-suave); border-bottom: 1px solid var(--line-suave);
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, .08);
+  }
+  .orcar-barra::before {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 36px;
+    background: linear-gradient(to bottom, transparent, var(--bg));
+    pointer-events: none;
+  }
   #areaOrcar { padding-bottom: var(--barra); }
   body[data-area="orcar"] .toast { bottom: calc(var(--barra) + 200px); }
 }
@@ -801,4 +814,15 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
   .toast { left: calc(50% + var(--lateral) / 2); bottom: 28px; }
   dialog.sheet { max-width: 600px; }
   #dlgImagem { max-width: 720px; }
+}
+@media (max-width: 1023px) and (prefers-color-scheme: dark) {
+  .orcar-barra { background: #2C2C2E; border-top-color: rgba(255, 255, 255, .1); box-shadow: 0 -12px 32px rgba(0, 0, 0, .7); }
+  .orcar-barra .btn:not(.btn-primary) { background: transparent; }
+}
+@media (max-width: 1023px) {
+  /* menu de baixo mais sólido, para o conteúdo atrás não confundir */
+  .areas { background: rgba(250, 250, 252, .94); }
+}
+@media (max-width: 1023px) and (prefers-color-scheme: dark) {
+  .areas { background: rgba(14, 14, 16, .94); }
 }
