@@ -234,6 +234,13 @@ const leads = criarLeads({
 
 // ---------------- Áreas do app (cabeçalho): Produção, Orçar kit, Produtos, Leads ----------------
 const AREAS = ['producao', 'orcar', 'produtos', 'leads'];
+// Título e frase de cada área (aparecem no computador, acima do conteúdo)
+const TITULOS = {
+  producao: ['Produção', 'Os pedidos da equipe, do pedido à entrega.'],
+  orcar: ['Orçar kit', 'Monte o kit e gere a imagem para o cliente no WhatsApp.'],
+  produtos: ['Produtos', 'Preços e fotos que entram no orçamento dos kits.'],
+  leads: ['Leads', 'Quem pediu contato e em que ponto está a conversa.'],
+};
 function renderProdutos() { $('#areaProdutos').innerHTML = kits.html(); }
 function irPara(area) {
   if (!AREAS.includes(area)) area = 'producao';
@@ -245,6 +252,8 @@ function irPara(area) {
     if (b.dataset.area === area) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
   const producao = area === 'producao';
+  $('#tituloArea').textContent = TITULOS[area][0];
+  $('#subtituloArea').textContent = TITULOS[area][1];
   $('#topoProducao').hidden = !producao;
   $('#lista').hidden = !producao;
   $('#novoPedido').hidden = !producao;
@@ -543,12 +552,32 @@ $('#copiarLink').addEventListener('click', async () => {
 });
 
 // ---------------- Instalação (PWA) ----------------
+// Funciona no celular e no computador (Chrome e Edge mostram o pedido de instalação).
 let promptInstalar = null;
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const computador = matchMedia('(min-width: 1024px) and (hover: hover)').matches;
+const botoesInstalar = () => [$('#instalarApp'), $('#ajustesInstalar')];
+async function instalar() {
+  if (!promptInstalar) return;
+  promptInstalar.prompt();
+  await promptInstalar.userChoice;
+  promptInstalar = null;
+  botoesInstalar().forEach(b => { b.hidden = true; });
+}
+botoesInstalar().forEach(b => b.addEventListener('click', instalar));
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   promptInstalar = e;
-  mostrarAvisoInstalar('Instale o app na tela inicial para abrir mais rápido.', 'Instalar');
+  if (!standalone) botoesInstalar().forEach(b => { b.hidden = false; });
+  mostrarAvisoInstalar(computador
+    ? 'Instale o app no computador para abrir em janela própria, com ícone na área de trabalho.'
+    : 'Instale o app na tela inicial para abrir mais rápido.', 'Instalar');
+});
+window.addEventListener('appinstalled', () => {
+  promptInstalar = null;
+  botoesInstalar().forEach(b => { b.hidden = true; });
+  $('#avisoInstalar').hidden = true;
+  toast('App instalado');
 });
 function mostrarAvisoInstalar(texto, botao) {
   if (standalone) return;
@@ -557,7 +586,7 @@ function mostrarAvisoInstalar(texto, botao) {
   el.innerHTML = `<span>${texto}</span>${botao ? `<button class="btn">${botao}</button>` : `<button class="btn-link">Ok</button>`}`;
   el.hidden = false;
   el.querySelector('button').onclick = async () => {
-    if (promptInstalar) { promptInstalar.prompt(); await promptInstalar.userChoice; promptInstalar = null; }
+    await instalar();
     try { localStorage.setItem('cp_instalar_dispensado', '1'); } catch {}
     el.hidden = true;
   };
