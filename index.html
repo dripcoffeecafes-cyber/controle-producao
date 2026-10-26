@@ -36,6 +36,7 @@
           <button data-area="producao" aria-current="page">Produção</button>
           <button data-area="orcar">Orçar kit</button>
           <button data-area="produtos">Produtos</button>
+          <button data-area="leads">Leads</button>
         </nav>
         <button id="abrirAjustes" class="icon-btn" aria-label="Ajustes">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 7h10.2a3 3 0 0 0 5.6 0H20a1 1 0 1 0 0-2h-.2a3 3 0 0 0-5.6 0H4a1 1 0 1 0 0 2Zm13-2a1 1 0 1 1 0 2 1 1 0 0 1 0-2ZM20 11h-8.2a3 3 0 0 0-5.6 0H4a1 1 0 1 0 0 2h2.2a3 3 0 0 0 5.6 0H20a1 1 0 1 0 0-2ZM9 13a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm11 4h-2.2a3 3 0 0 0-5.6 0H4a1 1 0 1 0 0 2h8.2a3 3 0 0 0 5.6 0H20a1 1 0 1 0 0-2Zm-5 2a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></svg>
@@ -104,9 +105,31 @@
     <!-- Produtos: caixas e itens com preço -->
     <main id="areaProdutos" class="lista" hidden></main>
 
+    <!-- Leads: quem pediu contato e em que ponto da conversa está -->
+    <main id="areaLeads" class="pagina" hidden>
+      <div class="pagina-corpo">
+        <div id="leadsResumo" class="resumo"></div>
+        <nav id="leadsAbas" class="abas-leads" aria-label="Filtrar leads">
+          <button data-aba="abertos" aria-selected="true">Em aberto</button>
+          <button data-aba="fechados" aria-selected="false">Fechados</button>
+          <button data-aba="perdidos" aria-selected="false">Perdidos</button>
+          <button data-aba="todos" aria-selected="false">Todos</button>
+        </nav>
+        <div class="filtros">
+          <input id="leadsBusca" type="search" placeholder="Buscar" aria-label="Buscar lead">
+          <select id="leadsOrigem" aria-label="Filtrar por origem"></select>
+        </div>
+        <div id="leadsLista" class="leads-lista" aria-live="polite"></div>
+      </div>
+    </main>
+
     <button id="novoPedido" class="fab" aria-label="Novo pedido">
       <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M11 5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5Z"/></svg>
       <span id="fabTexto">Novo pedido</span>
+    </button>
+    <button id="novoLead" class="fab" aria-label="Novo lead" hidden>
+      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M11 5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5Z"/></svg>
+      <span>Novo lead</span>
     </button>
   </div>
 
@@ -180,6 +203,39 @@
         <span class="espaco"></span>
         <button type="button" class="btn" data-fechar>Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar pedido</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Formulário do lead -->
+  <dialog id="dlgLead" class="sheet">
+    <form id="formLead" method="dialog" novalidate>
+      <div class="sheet-topo">
+        <h2 id="leadTitulo">Novo lead</h2>
+        <button type="button" class="icon-btn" data-fechar aria-label="Fechar">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg>
+        </button>
+      </div>
+      <div class="sheet-corpo">
+        <label>Nome<input name="nome" required autocomplete="off" placeholder="Nome da pessoa ou da empresa"></label>
+        <label>WhatsApp<input name="contato" inputmode="tel" autocomplete="off" placeholder="(11) 99999-9999"></label>
+        <div class="grid2">
+          <label>Origem<select name="origem"></select></label>
+          <label>Interesse<select name="interesse"></select></label>
+        </div>
+        <div class="grid2">
+          <label>Situação<select name="status"></select></label>
+          <label>Próximo contato<input type="date" name="proximoContato"></label>
+        </div>
+        <label>Observações<textarea name="obs" rows="3" placeholder="O que a pessoa pediu, quantidade, prazo, combinados"></textarea></label>
+        <p id="leadMeta" class="meta"></p>
+        <p id="leadErro" class="erro" role="alert"></p>
+      </div>
+      <div class="sheet-rodape">
+        <button type="button" id="excluirLead" class="btn btn-perigo" hidden>Excluir</button>
+        <span class="espaco"></span>
+        <button type="button" class="btn" data-fechar>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar lead</button>
       </div>
     </form>
   </dialog>

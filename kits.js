@@ -57,6 +57,7 @@ export function criarKits(ctx) {
     editando: null,       // produto aberto no formulário
     fotoItem: '', fotoPrincipal: '',
     imagem: null,         // { blob, url, nome }
+    contato: '',          // WhatsApp do lead que originou o orçamento (vai para o pedido)
   };
 
   const areaOrcar = $('#areaOrcar');
@@ -209,6 +210,14 @@ export function criarKits(ctx) {
     $('#kitQtd').value = '1';
     $('#kitDesconto').value = '';
     $('#kitCliente').value = '';
+    k.contato = '';
+  }
+
+  // Vindo da aba Leads: começa um orçamento novo já com o nome e o WhatsApp do lead
+  function comecarPara({ cliente, contato }) {
+    limparMontador();
+    $('#kitCliente').value = cliente || '';
+    k.contato = contato || '';
   }
 
   function renderCaixas() {
@@ -657,9 +666,10 @@ export function criarKits(ctx) {
       itens: t.ls.map(l => ({ id: l.id, nome: l.nome, qtd: l.qtd, preco: l.preco })),
     };
     const cliente = $('#kitCliente').value.trim();
+    const contato = k.contato;
     limparMontador();
     renderOrcar();
-    ctx.abrirPedido({ cliente, descricao, valor: t.total, obs }, { kit });
+    ctx.abrirPedido({ cliente, contato, descricao, valor: t.total, obs }, { kit });
   });
 
   // ---------------- Fotos: reduz para caber no banco ----------------
@@ -849,5 +859,5 @@ export function criarKits(ctx) {
 
   $('#kitLimpar').addEventListener('click', () => { limparMontador(); renderOrcar(); window.scrollTo({ top: 0 }); });
 
-  return { html, conectar, renderOrcar };
+  return { html, conectar, renderOrcar, comecarPara };
 }

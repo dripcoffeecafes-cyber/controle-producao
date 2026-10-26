@@ -1,5 +1,6 @@
 import { criarStoreLocal, criarStoreFirebase, pedidosLocais, limparPedidosLocais } from './store.js';
 import { criarKits } from './kits.js';
+import { criarLeads } from './leads.js';
 
 // ---------------- Utilidades ----------------
 const $ = (s, el = document) => el.querySelector(s);
@@ -222,8 +223,17 @@ const kits = criarKits({
   aoMudar: () => { if (estado.area === 'produtos') renderProdutos(); },
 });
 
-// ---------------- Áreas do app (cabeçalho): Produção, Orçar kit, Produtos ----------------
-const AREAS = ['producao', 'orcar', 'produtos'];
+// ---------------- Leads ----------------
+const leads = criarLeads({
+  store: () => estado.store,
+  toast: (...a) => toast(...a),
+  quem: () => quem(),
+  // do cartão do lead direto para o montador de kits, já com nome e WhatsApp
+  orcarKit: lead => { kits.comecarPara({ cliente: lead.nome, contato: lead.contato }); irPara('orcar'); },
+});
+
+// ---------------- Áreas do app (cabeçalho): Produção, Orçar kit, Produtos, Leads ----------------
+const AREAS = ['producao', 'orcar', 'produtos', 'leads'];
 function renderProdutos() { $('#areaProdutos').innerHTML = kits.html(); }
 function irPara(area) {
   if (!AREAS.includes(area)) area = 'producao';
@@ -238,10 +248,13 @@ function irPara(area) {
   $('#topoProducao').hidden = !producao;
   $('#lista').hidden = !producao;
   $('#novoPedido').hidden = !producao;
+  $('#novoLead').hidden = area !== 'leads';
   $('#areaOrcar').hidden = area !== 'orcar';
   $('#areaProdutos').hidden = area !== 'produtos';
+  $('#areaLeads').hidden = area !== 'leads';
   if (area === 'orcar') kits.renderOrcar();
   if (area === 'produtos') renderProdutos();
+  if (area === 'leads') leads.render();
   if (mudou) window.scrollTo({ top: 0 });
 }
 $$('.areas button').forEach(b => b.addEventListener('click', () => irPara(b.dataset.area)));
@@ -338,6 +351,7 @@ function abrirForm(p, preencher, extra) {
   // vindo do montador de kits: descrição, valor e observação já preenchidos
   if (!p && preencher) {
     if (preencher.cliente) form.cliente.value = preencher.cliente;
+    if (preencher.contato) form.contato.value = formatarTelefone(preencher.contato);
     if (preencher.descricao) form.descricao.value = preencher.descricao;
     if (preencher.valor) form.valor.value = numeroParaCampo(preencher.valor);
     if (preencher.obs) form.obs.value = preencher.obs;
@@ -566,6 +580,7 @@ function conectarDados() {
       err => toast(err?.code === 'permission-denied' ? 'Link da equipe inválido. Abra o app pelo link correto.' : 'Erro ao carregar pedidos')),
     estado.store.onConfig(cfg => { estado.config = cfg; render(); }),
     ...kits.conectar(),
+    ...leads.conectar(),
   ];
 }
 
