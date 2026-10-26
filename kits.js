@@ -332,8 +332,12 @@ export function criarKits(ctx) {
   });
   $('#kitItens').addEventListener('focusin', e => { if (e.target.classList.contains('stepper-qtd')) e.target.select(); });
   $('#kitQtd').addEventListener('input', renderTotal);
-  for (const [sel, chave] of [['#kitImposto', 'cp_imposto'], ['#kitCartao', 'cp_cartao']]) {
-    try { $(sel).value = localStorage.getItem(chave) || ''; } catch {}
+  // Começam preenchidos (imposto 4% e cartão 3,9%); a equipe altera ou apaga e o aparelho guarda a escolha.
+  // Só usa o padrão se o aparelho nunca guardou nada: um campo apagado de propósito continua vazio.
+  for (const [sel, chave, padrao] of [['#kitImposto', 'cp_imposto', '4'], ['#kitCartao', 'cp_cartao', '3,9']]) {
+    let guardado = null;
+    try { guardado = localStorage.getItem(chave); } catch {}
+    $(sel).value = guardado === null ? padrao : guardado;
     $(sel).addEventListener('input', () => {
       try { localStorage.setItem(chave, $(sel).value.trim()); } catch {}
       renderTotal();
