@@ -601,7 +601,7 @@ export function criarKits(ctx) {
       g.fillText('DRIP COFFEE LABEL', xr, topo + 14);
       cy = topo + 28 + 17;
       linhaTxt('globo', 'www.bloomingclub.com.br', xl, cy);
-      linhaTxt('email', 'driplabel@bloomingclub.com.br', xr, cy);
+      linhaTxt('globo', 'driplabel.bloomingclub.com.br', xr, cy);
       cy += 34;
       linhaTxt('instagram', '@bloomingclubcafes', xl, cy);
       linhaTxt('instagram', '@driplabel.cafes', xr, cy);
