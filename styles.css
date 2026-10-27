@@ -384,6 +384,18 @@ legend { font-size: 13.5px; font-weight: 500; color: var(--ink-2); margin-bottom
 .login .btn-block { margin-top: 6px; }
 .login .btn-link { display: block; margin: 6px auto 0; }
 .login form { margin-top: 18px; }
+.btn-google {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  color: var(--ink); font-weight: 600;
+}
+.login .btn-google { margin-top: 18px; }
+.btn-google svg { flex: none; }
+.login .ou {
+  display: flex; align-items: center; gap: 12px; margin: 18px 0 2px;
+  color: var(--ink-2); font-size: 13px;
+}
+.login .ou::before, .login .ou::after { content: ''; flex: 1; height: 1px; background: var(--line-suave); }
+.login .ou + form { margin-top: 12px; }
 .login .muted { line-height: 1.45; }
 .aviso-login {
   background: var(--caramelo-claro); color: var(--ink); border-radius: var(--radius-sm);

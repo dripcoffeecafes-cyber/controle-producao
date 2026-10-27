@@ -802,6 +802,21 @@ $('#formEntrar').addEventListener('submit', async e => {
   }
 });
 
+$('#entrarGoogle').addEventListener('click', async () => {
+  const erro = $('#entrarErro');
+  erro.textContent = ''; $('#entrarAviso').hidden = true;
+  if (!estado.acesso) { erro.textContent = 'Sem conexão com a internet. Tente de novo quando a conexão voltar.'; return; }
+  const botao = $('#entrarGoogle');
+  botao.disabled = true;
+  try {
+    await estado.acesso.entrarComGoogle(); // o resto acontece em onUsuario
+  } catch (err) {
+    if (err?.code !== 'auth/cancelled-popup-request') erro.textContent = mensagemErro(err);
+  } finally {
+    botao.disabled = false;
+  }
+});
+
 $('#esqueciSenha').addEventListener('click', async () => {
   const f = $('#formEntrar');
   const erro = $('#entrarErro');

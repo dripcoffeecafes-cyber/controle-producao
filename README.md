@@ -12,7 +12,7 @@ App web (PWA) para controlar pedidos e produção: fila por prioridade, prazos, 
 - **Resumo no topo:** quantos estão a produzir, prontos, atrasados e quanto falta receber.
 - **Filtros** por pagamento e busca por cliente/descrição.
 - **WhatsApp** do cliente com um toque.
-- **Login da equipe:** cada pessoa entra com o próprio e-mail e senha. O administrador cria, bloqueia e libera as contas em *Ajustes → Equipe*.
+- **Login da equipe:** cada pessoa entra com a conta Google ou com o próprio e-mail e senha. O administrador cria, bloqueia e libera as contas em *Ajustes → Equipe*.
 - **Histórico:** cada pedido mostra quem alterou por último e quando (o nome da conta de quem alterou).
 - **Exportar planilha (CSV)** em Ajustes, para backup ou abrir no Excel/Google Planilhas.
 
@@ -26,10 +26,11 @@ A equipe entra com **e-mail e senha** (Firebase Authentication). Os dados ficam 
 
 ### Login da equipe
 
-- **No Firebase:** *Authentication → Método de login → E-mail/senha* ativado; em *Configurações → Domínios autorizados*, `cafes.bloomingclub.com.br`.
+- **No Firebase:** *Authentication → Método de login → E-mail/senha* e *Google* ativados; em *Configurações → Domínios autorizados*, `cafes.bloomingclub.com.br`.
 - **Perfis:** coleção `membros`, um documento por pessoa (id = uid da conta) com `nome`, `email`, `papel` (`admin` ou `equipe`), `ativo` e `chave`. O primeiro administrador é criado direto no Firebase; os demais, pelo app.
 - **Adicionar pessoa:** *Ajustes → Equipe → Adicionar pessoa* (nome e e-mail). O app cria a conta e manda o e-mail de "redefinir senha", para a pessoa criar a própria senha. Na lista dá para reenviar o e-mail, bloquear e liberar.
-- **Esqueci minha senha:** na tela de entrada, com o e-mail preenchido.
+- **Entrar com Google:** abre a janela do Google. Para Gmail, o Firebase junta com a conta criada pelo administrador (mesmo acesso). No app instalado no iPhone a janela pode não voltar sozinha; aí, entrar com e-mail e senha.
+- **Esqueci minha senha:** na tela de entrada, com o e-mail preenchido. Serve também para quem só usava o Google e quer criar uma senha.
 - **Desligar o link:** quando todos tiverem conta, trocar a regra de `equipes` pela versão "DEPOIS DA TROCA" do `firestore.rules`. A partir daí, bloquear uma pessoa tira o acesso na hora, sem trocar a chave.
 
 1. Acesse **console.firebase.google.com**, clique em **Criar projeto** (ex.: `producao-blooming`). O Google Analytics pode ficar desativado.

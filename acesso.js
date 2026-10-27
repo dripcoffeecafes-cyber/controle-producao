@@ -1,4 +1,4 @@
-// Login da equipe: e-mail e senha (Firebase Authentication).
+// Login da equipe: e-mail e senha ou conta Google (Firebase Authentication).
 // Cada pessoa tem um documento em membros/{uid} com nome, e-mail, papel (admin ou equipe),
 // se está ativa e a chave da equipe (só enquanto estiver ativa).
 // Quem cria as contas é o administrador, em Ajustes > Equipe: o app cria a conta com uma
@@ -17,7 +17,11 @@ const MENSAGENS = {
   'auth/too-many-requests': 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.',
   'auth/network-request-failed': 'Sem conexão com a internet. Tente de novo quando a conexão voltar.',
   'auth/email-already-in-use': 'Já existe uma conta com esse e-mail no Firebase, mas ela não está na lista da equipe.',
-  'auth/operation-not-allowed': 'O login por e-mail ainda não foi ativado no Firebase.',
+  'auth/operation-not-allowed': 'Esse jeito de entrar ainda não foi ativado no Firebase.',
+  'auth/popup-closed-by-user': 'A janela do Google foi fechada antes de terminar. Se ela não voltou sozinha para o app, entre com e-mail e senha.',
+  'auth/popup-blocked': 'O navegador bloqueou a janela do Google. Libere as janelas pop-up para este site e tente de novo.',
+  'auth/account-exists-with-different-credential': 'Esse e-mail já tem conta com senha. Entre com o e-mail e a senha.',
+  'auth/unauthorized-domain': 'Este endereço ainda não está autorizado no Firebase.',
   'permission-denied': 'Sem permissão para essa ação.',
 };
 export function mensagemErro(err) {
@@ -68,6 +72,14 @@ export async function criarAcesso(firebaseConfig) {
     onUsuario(cb) { return au.onAuthStateChanged(auth, u => cb(u ? { uid: u.uid, email: u.email } : null)); },
 
     async entrar(email, senha) { await au.signInWithEmailAndPassword(auth, email.trim(), senha); },
+
+    // Conta Google: abre a janela do Google. Para Gmail, o Firebase junta com a conta
+    // criada pelo administrador (mesmo uid), então o acesso continua o mesmo.
+    async entrarComGoogle() {
+      const provedor = new au.GoogleAuthProvider();
+      provedor.setCustomParameters({ prompt: 'select_account' });
+      await au.signInWithPopup(auth, provedor, au.browserPopupRedirectResolver);
+    },
 
     async sair() {
       guardarPerfil(null);
