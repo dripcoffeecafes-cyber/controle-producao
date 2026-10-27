@@ -12,7 +12,8 @@ App web (PWA) para controlar pedidos e produção: fila por prioridade, prazos, 
 - **Resumo no topo:** quantos estão a produzir, prontos, atrasados e quanto falta receber.
 - **Filtros** por pagamento e busca por cliente/descrição.
 - **WhatsApp** do cliente com um toque.
-- **Histórico:** cada pedido mostra quem alterou por último e quando.
+- **Login da equipe:** cada pessoa entra com o próprio e-mail e senha. O administrador cria, bloqueia e libera as contas em *Ajustes → Equipe*.
+- **Histórico:** cada pedido mostra quem alterou por último e quando (o nome da conta de quem alterou).
 - **Exportar planilha (CSV)** em Ajustes, para backup ou abrir no Excel/Google Planilhas.
 
 Sem o Firebase configurado, o app roda em **modo de teste**: tudo fica salvo só no aparelho.
@@ -21,7 +22,15 @@ Sem o Firebase configurado, o app roda em **modo de teste**: tudo fica salvo só
 
 ## 1. Configurar o Firebase (uma vez, ~5 minutos)
 
-O app não tem login: a equipe entra direto por um **link com uma chave secreta** (`https://cafes.bloomingclub.com.br/#k=CHAVE`). Só quem tem esse link consegue ver e editar os pedidos.
+A equipe entra com **e-mail e senha** (Firebase Authentication). Os dados ficam em `equipes/{chave}/...`, e a chave fica guardada no perfil de cada pessoa (`membros/{uid}`), nunca no código. Enquanto a troca para o login não termina, o **link com a chave** (`https://cafes.bloomingclub.com.br/#k=CHAVE`) ainda funciona: a tela de entrada mostra "Continuar pelo link da equipe".
+
+### Login da equipe
+
+- **No Firebase:** *Authentication → Método de login → E-mail/senha* ativado; em *Configurações → Domínios autorizados*, `cafes.bloomingclub.com.br`.
+- **Perfis:** coleção `membros`, um documento por pessoa (id = uid da conta) com `nome`, `email`, `papel` (`admin` ou `equipe`), `ativo` e `chave`. O primeiro administrador é criado direto no Firebase; os demais, pelo app.
+- **Adicionar pessoa:** *Ajustes → Equipe → Adicionar pessoa* (nome e e-mail). O app cria a conta e manda o e-mail de "redefinir senha", para a pessoa criar a própria senha. Na lista dá para reenviar o e-mail, bloquear e liberar.
+- **Esqueci minha senha:** na tela de entrada, com o e-mail preenchido.
+- **Desligar o link:** quando todos tiverem conta, trocar a regra de `equipes` pela versão "DEPOIS DA TROCA" do `firestore.rules`. A partir daí, bloquear uma pessoa tira o acesso na hora, sem trocar a chave.
 
 1. Acesse **console.firebase.google.com**, clique em **Criar projeto** (ex.: `producao-blooming`). O Google Analytics pode ficar desativado.
 2. **Banco de dados:** *Firestore Database → Criar banco de dados*. Edição **Standard**, local **southamerica-east1 (São Paulo)**, modo **produção**.
@@ -31,7 +40,7 @@ O app não tem login: a equipe entra direto por um **link com uma chave secreta*
 
 > Os dados do `firebaseConfig` não são senha; eles só identificam o projeto. Quem protege os pedidos é a chave do link, conferida pelas regras do passo 3.
 
-**Para trocar a chave** (por exemplo, se alguém que saiu da equipe tinha o link): crie uma chave nova, coloque nas regras e publique, e mande o link novo para a equipe. Os pedidos ficam guardados por chave, então avise antes para exportar a planilha ou peça ajuda para migrar os dados.
+**Para trocar a chave** (normalmente não é preciso: com o login, basta bloquear a pessoa): crie uma chave nova, coloque nas regras e publique, e mande o link novo para a equipe. Os pedidos ficam guardados por chave, então avise antes para exportar a planilha ou peça ajuda para migrar os dados.
 
 O plano gratuito (Spark) do Firebase cobre com folga o uso de uma equipe pequena.
 
@@ -47,7 +56,7 @@ No plano gratuito do GitHub, o Pages só funciona com repositório **público**.
 
 ## 3. Instalar no celular
 
-Abra sempre pelo **link da equipe** (com `#k=`). Em *Ajustes → Link da equipe* dá para copiar ou compartilhar o link. Em *Ajustes → Seu nome*, cada pessoa coloca o nome para aparecer no histórico.
+Abra `https://cafes.bloomingclub.com.br` e entre com o seu e-mail e a sua senha. A conta fica guardada no aparelho; para sair, *Ajustes → Sua conta → Sair*.
 
 
 - **iPhone:** abra o endereço no **Safari** → botão Compartilhar → **Adicionar à Tela de Início**.

@@ -21,13 +21,44 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Aparece só se o app for aberto sem o link da equipe -->
-  <section id="semChave" class="login" hidden>
+  <!-- Entrada: e-mail e senha da equipe -->
+  <section id="telaEntrar" class="login" hidden>
     <div class="login-card">
       <img src="icons/icon-192.png" alt="" width="64" height="64" class="login-logo">
       <h1>Produção</h1>
-      <p class="muted">Abra o app pelo link da equipe. Peça o link para a administração.</p>
+      <p class="muted">Entre com o seu e-mail e a sua senha. A conta é criada pela administração.</p>
+      <form id="formEntrar" novalidate>
+        <label>E-mail
+          <input name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        </label>
+        <label>Senha
+          <input name="senha" type="password" autocomplete="current-password" required>
+        </label>
+        <p id="entrarErro" class="erro" role="alert"></p>
+        <p id="entrarAviso" class="aviso-login" role="status" hidden></p>
+        <button id="botaoEntrar" class="btn btn-primary btn-block" type="submit">Entrar</button>
+      </form>
+      <button id="esqueciSenha" class="btn-link" type="button">Esqueci minha senha</button>
+      <div id="entrarPeloLink" class="login-transicao" hidden>
+        <p class="muted">Ainda não tem conta? Enquanto a equipe faz a troca, dá para continuar pelo link.</p>
+        <button id="usarLink" class="btn btn-block" type="button">Continuar pelo link da equipe</button>
+      </div>
     </div>
+  </section>
+
+  <!-- Entrou, mas a conta não está liberada -->
+  <section id="telaSemAcesso" class="login" hidden>
+    <div class="login-card">
+      <img src="icons/icon-192.png" alt="" width="64" height="64" class="login-logo">
+      <h1>Acesso não liberado</h1>
+      <p class="muted"><span id="semAcessoEmail"></span> ainda não tem acesso ao app, ou o acesso foi bloqueado. Fale com a administração.</p>
+      <button id="sairSemAcesso" class="btn btn-block" type="button">Sair e entrar com outra conta</button>
+    </div>
+  </section>
+
+  <!-- Enquanto confere a conta -->
+  <section id="telaCarregando" class="login" aria-busy="true">
+    <img src="icons/icon-192.png" alt="Carregando" width="64" height="64" class="login-logo carregando">
   </section>
 
   <div id="app" hidden>
@@ -264,6 +295,26 @@
       </button>
     </div>
     <div class="sheet-corpo">
+      <section class="bloco" id="blocoConta" hidden>
+        <h3>Sua conta</h3>
+        <p id="infoConta" class="muted"></p>
+        <div class="botoes">
+          <button id="entrarComConta" class="btn btn-primary" type="button" hidden>Entrar com e-mail e senha</button>
+          <button id="sairConta" class="btn" type="button" hidden>Sair</button>
+        </div>
+      </section>
+      <section class="bloco" id="blocoEquipe" hidden>
+        <h3>Equipe</h3>
+        <p class="muted">Quem pode entrar no app. Ao adicionar, a pessoa recebe um e-mail para criar a própria senha (vale olhar o spam).</p>
+        <ul id="listaEquipe" class="lista-equipe"></ul>
+        <form id="formPessoa" class="form-pessoa" novalidate>
+          <h4>Adicionar pessoa</h4>
+          <label>Nome <input name="nome" autocomplete="off" placeholder="Ex.: Maria"></label>
+          <label>E-mail <input name="email" type="email" inputmode="email" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="maria@email.com"></label>
+          <p id="pessoaErro" class="erro" role="alert"></p>
+          <button class="btn btn-primary" type="submit">Adicionar e enviar e-mail</button>
+        </form>
+      </section>
       <section class="bloco">
         <h3>Dados</h3>
         <p id="infoConexao" class="muted"></p>
@@ -280,7 +331,7 @@
         <p class="muted"><strong>iPhone:</strong> abra no Safari, toque em Compartilhar e depois em "Adicionar à Tela de Início".</p>
         <p class="muted"><strong>Android:</strong> abra no Chrome, toque no menu ⋮ e depois em "Instalar app".</p>
       </section>
-      <section class="bloco">
+      <section class="bloco" id="blocoNome">
         <h3>Seu nome</h3>
         <p class="muted">Aparece no histórico de quem alterou cada pedido.</p>
         <form id="formNome" class="linha-add">
@@ -290,7 +341,7 @@
       </section>
       <section class="bloco" id="blocoLink" hidden>
         <h3>Link da equipe</h3>
-        <p class="muted">Mande este link para quem vai usar o app. Quem tiver o link vê e edita os pedidos, então não publique em redes sociais.</p>
+        <p class="muted">Enquanto a troca para o login não termina, quem tiver este link ainda vê e edita os pedidos. Não publique em redes sociais. Depois que todos tiverem conta, o acesso pelo link será desligado.</p>
         <button id="copiarLink" class="btn" type="button">Copiar link da equipe</button>
       </section>
     </div>

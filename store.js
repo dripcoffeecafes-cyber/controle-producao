@@ -80,26 +80,36 @@ function gravarLocalOk(chave, valor) {
 }
 
 // ---------------- Modo Firebase ----------------
-// Sem login: os dados da equipe ficam em equipes/{chave}/..., e só quem tem a chave
-// (que vem no link da equipe) consegue ler ou gravar. A chave nunca fica no código.
+// Os dados da equipe ficam em equipes/{chave}/... A chave nunca fica no código:
+// vem da conta de quem entrou (membros/{uid}) ou, na transição, do link da equipe.
+
+// App do Firebase e banco, criados uma vez só e usados pelo login (acesso.js) e pelos dados.
+export const SDK_FIREBASE = SDK;
+let base = null;
+export function baseFirebase(firebaseConfig) {
+  if (!base) base = (async () => {
+    const [appMod, fs] = await Promise.all([
+      import(`${SDK}/firebase-app.js`),
+      import(`${SDK}/firebase-firestore.js`),
+    ]);
+    const app = appMod.initializeApp(firebaseConfig);
+    // Cache offline: o app abre e mostra os pedidos mesmo sem internet,
+    // e envia as alterações quando a conexão volta.
+    let db;
+    try {
+      db = fs.initializeFirestore(app, {
+        localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }),
+      });
+    } catch {
+      db = fs.getFirestore(app);
+    }
+    return { app, db, fs, appMod };
+  })();
+  return base;
+}
+
 export async function criarStoreFirebase(firebaseConfig, chave) {
-  const [{ initializeApp }, fs] = await Promise.all([
-    import(`${SDK}/firebase-app.js`),
-    import(`${SDK}/firebase-firestore.js`),
-  ]);
-
-  const app = initializeApp(firebaseConfig);
-
-  // Cache offline: o app abre e mostra os pedidos mesmo sem internet,
-  // e envia as alterações quando a conexão volta.
-  let db;
-  try {
-    db = fs.initializeFirestore(app, {
-      localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }),
-    });
-  } catch {
-    db = fs.getFirestore(app);
-  }
+  const { db, fs } = await baseFirebase(firebaseConfig);
 
   const colPedidos = fs.collection(db, 'equipes', chave, 'pedidos');
   const docConfig = fs.doc(db, 'equipes', chave, 'config', 'geral');

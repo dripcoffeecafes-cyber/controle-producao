@@ -383,6 +383,45 @@ legend { font-size: 13.5px; font-weight: 500; color: var(--ink-2); margin-bottom
 .login h1 { margin: 0; font-size: 34px; font-weight: 600; letter-spacing: -0.04em; }
 .login .btn-block { margin-top: 6px; }
 .login .btn-link { display: block; margin: 6px auto 0; }
+.login form { margin-top: 18px; }
+.login .muted { line-height: 1.45; }
+.aviso-login {
+  background: var(--caramelo-claro); color: var(--ink); border-radius: var(--radius-sm);
+  padding: 10px 12px; font-size: 14px; line-height: 1.4; margin: 4px 0 8px;
+}
+.login-transicao { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line-suave); }
+.login-transicao .muted { margin-top: 0; }
+#telaCarregando { place-items: center; }
+.carregando { animation: pulsar 1.4s ease-in-out infinite; margin: 0; }
+@keyframes pulsar { 50% { opacity: .45; transform: scale(.96); } }
+@media (prefers-reduced-motion: reduce) { .carregando { animation: none; } }
+
+/* ---------- Ajustes > Equipe ---------- */
+.lista-equipe { list-style: none; padding: 0; margin: 6px 0 14px; }
+.lista-equipe li {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 0; border-bottom: 1px solid var(--line-suave);
+}
+.lista-equipe li:last-child { border-bottom: 0; }
+.lista-equipe .pessoa { flex: 1 1 180px; min-width: 0; }
+.lista-equipe .pessoa b { display: block; font-weight: 600; font-size: 15px; }
+.lista-equipe .pessoa small { display: block; color: var(--ink-2); font-size: 13px; overflow-wrap: anywhere; }
+.lista-equipe .selo {
+  display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px;
+  font-size: 11.5px; font-weight: 600; vertical-align: 1px;
+  background: var(--surface-2); color: var(--ink-2);
+}
+.lista-equipe .selo.admin { background: var(--caramelo-claro); color: var(--caramelo); }
+.lista-equipe .selo.bloqueado { background: var(--vermelho-claro); color: var(--vermelho); }
+.lista-equipe li.inativo .pessoa b { color: var(--ink-2); }
+.lista-equipe .acoes-pessoa { display: flex; gap: 2px; }
+.lista-equipe .acoes-pessoa .btn-link { padding: 6px 8px; font-size: 13.5px; }
+.lista-equipe .acoes-pessoa .btn-link.perigo { color: var(--vermelho); }
+.lista-equipe .vazio-equipe { color: var(--ink-2); font-size: 14px; }
+.form-pessoa { background: var(--surface-2); border-radius: var(--radius-lg); padding: 14px 14px 10px; }
+.form-pessoa h4 { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+.sheet .form-pessoa input:not([type=radio]) { background: var(--surface); }
+.form-pessoa .btn { margin-top: 2px; }
 
 /* ---------- Toast ---------- */
 .toast {

@@ -1,4 +1,5 @@
 import { criarStoreLocal, criarStoreFirebase, pedidosLocais, limparPedidosLocais } from './store.js';
+import { criarAcesso, mensagemErro } from './acesso.js';
 import { criarKits } from './kits.js';
 import { criarLeads } from './leads.js';
 
@@ -280,8 +281,16 @@ function toast(msg, acao) {
 }
 
 // ---------------- Ações ----------------
+// Nome que vai para o histórico: o da conta; pelo link (transição), o nome digitado em Ajustes
 function quem() {
+  if (estado.perfil) return estado.perfil.nome || estado.perfil.email || 'Equipe';
   try { return localStorage.getItem('cp_nome') || 'Equipe'; } catch { return 'Equipe'; }
+}
+const ehAdmin = () => estado.perfil?.papel === 'admin';
+function erroPermissao() {
+  return estado.modo === 'conta'
+    ? 'Sem permissão. Saia e entre de novo, ou fale com a administração.'
+    : 'Link da equipe inválido. Abra o app pelo link correto.';
 }
 
 async function salvar(p, msg, desfazer) {
@@ -485,13 +494,118 @@ $('#filtroPagamento').addEventListener('change', e => { estado.pagamento = e.tar
 // ---------------- Ajustes ----------------
 $('#abrirAjustes').addEventListener('click', () => {
   const fb = estado.store.modo === 'firebase';
+  const conta = estado.modo === 'conta';
   $('#infoConexao').textContent = fb
     ? 'Sincronizado com a nuvem (Firebase). Alterações aparecem na hora para toda a equipe, e o app funciona sem internet.'
     : 'Modo de teste: os pedidos ficam só neste aparelho. Exporte a planilha de vez em quando como cópia de segurança.';
-  $('#blocoLink').hidden = !fb;
+
+  // Sua conta: com login, mostra quem está conectado; pelo link, convida a entrar com a conta
+  $('#blocoConta').hidden = !estado.acesso;
+  $('#infoConta').innerHTML = conta
+    ? `Conectado como <strong>${esc(estado.perfil.nome || estado.perfil.email)}</strong> (${esc(estado.perfil.email)}).`
+    : 'Você entrou pelo link da equipe. Quando a administração criar a sua conta, entre com o seu e-mail e a sua senha.';
+  $('#sairConta').hidden = !conta;
+  $('#entrarComConta').hidden = conta;
+  $('#blocoNome').hidden = conta; // com login, o nome vem da conta
+  $('#blocoLink').hidden = !(fb && (ehAdmin() || estado.modo === 'link'));
+
   try { $('#formNome').nome.value = localStorage.getItem('cp_nome') || ''; } catch {}
   $('#migrarLocal').hidden = !(fb && pedidosLocais().length);
+  abrirEquipe();
   $('#dlgAjustes').showModal();
+});
+$('#dlgAjustes').addEventListener('close', () => { pararEquipe?.(); pararEquipe = null; });
+
+$('#sairConta').addEventListener('click', async () => {
+  if (!confirm('Sair da sua conta neste aparelho?')) return;
+  $('#dlgAjustes').close();
+  await estado.acesso.sair(); // a tela de entrada aparece em seguida
+});
+$('#entrarComConta').addEventListener('click', () => {
+  $('#dlgAjustes').close();
+  mostrarTelaEntrar();
+});
+
+// ---------------- Ajustes > Equipe (só administrador) ----------------
+let pararEquipe = null;
+function abrirEquipe() {
+  const mostrar = estado.modo === 'conta' && ehAdmin();
+  $('#blocoEquipe').hidden = !mostrar;
+  if (!mostrar) return;
+  pararEquipe?.();
+  pararEquipe = estado.acesso.onMembros(
+    lista => { estado.equipe = lista; renderEquipe(); },
+    err => { $('#listaEquipe').innerHTML = `<li class="vazio-equipe">${esc(mensagemErro(err))}</li>`; });
+}
+
+function renderEquipe() {
+  const eu = estado.usuario?.uid;
+  const ordem = p => (p.uid === eu ? 0 : p.papel === 'admin' ? 1 : p.ativo ? 2 : 3);
+  const lista = [...(estado.equipe || [])].sort((a, b) =>
+    ordem(a) - ordem(b) || (a.nome || a.email || '').localeCompare(b.nome || b.email || '', 'pt-BR'));
+  $('#listaEquipe').innerHTML = lista.length ? lista.map(p => `
+    <li class="${p.ativo ? '' : 'inativo'}" data-uid="${esc(p.uid)}">
+      <div class="pessoa">
+        <b>${esc(p.nome || p.email)}${p.papel === 'admin' ? '<span class="selo admin">Administrador</span>' : ''}${p.ativo ? '' : '<span class="selo bloqueado">Bloqueado</span>'}</b>
+        <small>${esc(p.email)}</small>
+      </div>
+      <div class="acoes-pessoa">${p.uid === eu ? '<span class="selo">Você</span>'
+        : p.ativo
+          ? '<button class="btn-link" type="button" data-equipe="senha">Reenviar e-mail</button><button class="btn-link perigo" type="button" data-equipe="bloquear">Bloquear</button>'
+          : '<button class="btn-link" type="button" data-equipe="liberar">Liberar</button>'}
+      </div>
+    </li>`).join('') : '<li class="vazio-equipe">Ninguém cadastrado ainda.</li>';
+}
+
+$('#listaEquipe').addEventListener('click', async e => {
+  const b = e.target.closest('[data-equipe]'); if (!b) return;
+  const p = (estado.equipe || []).find(x => x.uid === b.closest('[data-uid]').dataset.uid); if (!p) return;
+  const nome = p.nome || p.email;
+  try {
+    if (b.dataset.equipe === 'senha') {
+      b.disabled = true;
+      await estado.acesso.reenviarSenha(p.email);
+      toast(`E-mail para criar a senha reenviado para ${nome}`);
+    } else if (b.dataset.equipe === 'bloquear') {
+      if (!confirm(`Bloquear ${nome}? A pessoa deixa de entrar com a conta. Enquanto o link da equipe estiver valendo, quem tiver o link ainda entra por ele.`)) return;
+      await estado.acesso.bloquear(p.uid, quem());
+      toast(`${nome} bloqueado(a)`);
+    } else if (b.dataset.equipe === 'liberar') {
+      await estado.acesso.liberar(p.uid, estado.chave, quem());
+      toast(`${nome} liberado(a)`);
+    }
+  } catch (err) {
+    toast(mensagemErro(err));
+  } finally { b.disabled = false; }
+});
+
+$('#formPessoa').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target;
+  const nome = f.nome.value.trim();
+  const email = f.email.value.trim().toLowerCase();
+  const erro = $('#pessoaErro');
+  erro.textContent = '';
+  if (!nome) { erro.textContent = 'Digite o nome da pessoa.'; f.nome.focus(); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { erro.textContent = 'Digite um e-mail válido.'; f.email.focus(); return; }
+  const existente = (estado.equipe || []).find(p => (p.email || '').toLowerCase() === email);
+  if (existente) {
+    erro.textContent = existente.ativo
+      ? 'Essa pessoa já está na equipe. Se ela não recebeu o e-mail, use "Reenviar e-mail" na lista.'
+      : 'Essa pessoa está bloqueada. Use "Liberar" na lista para devolver o acesso.';
+    return;
+  }
+  const botao = f.querySelector('button[type=submit]');
+  botao.disabled = true; botao.textContent = 'Adicionando…';
+  try {
+    await estado.acesso.adicionarPessoa({ nome, email, chave: estado.chave, quem: quem() });
+    f.reset();
+    toast(`${nome} adicionado(a). O e-mail para criar a senha foi enviado.`);
+  } catch (err) {
+    erro.textContent = mensagemErro(err);
+  } finally {
+    botao.disabled = false; botao.textContent = 'Adicionar e enviar e-mail';
+  }
 });
 
 
@@ -606,19 +720,113 @@ function conectarDados() {
   desinscrever.forEach(f => f && f());
   desinscrever = [
     estado.store.onPedidos(lista => { estado.pedidos = lista; render(); },
-      err => toast(err?.code === 'permission-denied' ? 'Link da equipe inválido. Abra o app pelo link correto.' : 'Erro ao carregar pedidos')),
+      err => toast(err?.code === 'permission-denied' ? erroPermissao() : 'Erro ao carregar pedidos')),
     estado.store.onConfig(cfg => { estado.config = cfg; render(); }),
     ...kits.conectar(),
     ...leads.conectar(),
   ];
 }
 
+// Telas: carregando, entrar (login), sem acesso, ou o app
+const TELAS = { carregando: '#telaCarregando', entrar: '#telaEntrar', semAcesso: '#telaSemAcesso', app: '#app' };
+function mostrarTela(nome) {
+  Object.entries(TELAS).forEach(([k, sel]) => { $(sel).hidden = k !== nome; });
+}
+
 function mostrarApp() {
-  $('#semChave').hidden = true; $('#app').hidden = false;
+  mostrarTela('app');
   let area = 'producao';
   try { area = localStorage.getItem('cp_area') || 'producao'; } catch {}
   irPara(area);
 }
+
+// Chave do link da equipe (#k=...), usada só na transição para o login
+function lerChaveLink() {
+  const daUrl = new URLSearchParams(location.hash.slice(1)).get('k');
+  try {
+    if (daUrl) localStorage.setItem('cp_chave', daUrl);
+    return daUrl || localStorage.getItem('cp_chave');
+  } catch { return daUrl; }
+}
+const semChaveNoEndereco = () => { if (location.hash) history.replaceState(null, '', location.pathname + location.search); };
+
+function mostrarTelaEntrar(aviso) {
+  const f = $('#formEntrar');
+  $('#entrarErro').textContent = '';
+  $('#entrarAviso').hidden = !aviso;
+  $('#entrarAviso').textContent = aviso || '';
+  // na transição, quem ainda não tem conta continua pelo link
+  $('#entrarPeloLink').hidden = !(estado.store || lerChaveLink());
+  $('#usarLink').textContent = estado.store ? 'Voltar para o app' : 'Continuar pelo link da equipe';
+  mostrarTela('entrar');
+  if (!f.email.value) setTimeout(() => f.email.focus(), 50);
+}
+
+async function abrirComChave(chave, modo) {
+  const cfg = window.FIREBASE_CONFIG;
+  estado.chave = chave;
+  estado.modo = modo;
+  try {
+    estado.store = await criarStoreFirebase(cfg, chave);
+  } catch (err) {
+    console.error(err);
+    estado.store = criarStoreLocal();
+    $('#avisoLocal').hidden = false;
+    $('#avisoLocal').textContent = 'Não foi possível conectar à nuvem agora. Verifique a internet e abra o app de novo.';
+    mostrarApp(); conectarDados();
+    return;
+  }
+  estado.store._onErro = err => toast(err?.code === 'permission-denied' ? erroPermissao() : 'Erro ao salvar na nuvem');
+  mostrarApp();
+  conectarDados();
+}
+
+// Entrar com e-mail e senha
+$('#formEntrar').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target;
+  const erro = $('#entrarErro');
+  erro.textContent = ''; $('#entrarAviso').hidden = true;
+  if (!f.email.value.trim()) { erro.textContent = 'Digite o seu e-mail.'; f.email.focus(); return; }
+  if (!f.senha.value) { erro.textContent = 'Digite a sua senha.'; f.senha.focus(); return; }
+  if (!estado.acesso) { erro.textContent = 'Sem conexão com a internet. Tente de novo quando a conexão voltar.'; return; }
+  const botao = $('#botaoEntrar');
+  botao.disabled = true; botao.textContent = 'Entrando…';
+  try {
+    await estado.acesso.entrar(f.email.value, f.senha.value);
+    f.senha.value = ''; // o resto acontece quando o Firebase confirma a conta (onUsuario)
+  } catch (err) {
+    erro.textContent = mensagemErro(err);
+  } finally {
+    botao.disabled = false; botao.textContent = 'Entrar';
+  }
+});
+
+$('#esqueciSenha').addEventListener('click', async () => {
+  const f = $('#formEntrar');
+  const erro = $('#entrarErro');
+  erro.textContent = ''; $('#entrarAviso').hidden = true;
+  const email = f.email.value.trim();
+  if (!email) { erro.textContent = 'Digite o seu e-mail no campo acima e toque de novo em "Esqueci minha senha".'; f.email.focus(); return; }
+  if (!estado.acesso) { erro.textContent = 'Sem conexão com a internet. Tente de novo quando a conexão voltar.'; return; }
+  try {
+    await estado.acesso.esqueciSenha(email);
+    $('#entrarAviso').textContent = `Se ${email} tiver conta, chega um e-mail com o link para criar uma senha nova. Olhe também a caixa de spam.`;
+    $('#entrarAviso').hidden = false;
+  } catch (err) {
+    erro.textContent = mensagemErro(err);
+  }
+});
+
+$('#usarLink').addEventListener('click', () => {
+  if (estado.store) { mostrarTela('app'); return; }
+  const chave = lerChaveLink(); if (!chave) return;
+  // pelo link, a chave continua no endereço, para o app instalado no iPhone também abrir com ela
+  if (!location.hash) history.replaceState(null, '', `#k=${chave}`);
+  abrirComChave(chave, 'link');
+});
+
+$('#sairSemAcesso').addEventListener('click', () => estado.acesso?.sair());
 
 async function iniciar() {
   const cfg = window.FIREBASE_CONFIG;
@@ -631,31 +839,46 @@ async function iniciar() {
     return;
   }
 
-  // A chave vem no link (#k=...). Fica guardada no aparelho e continua no endereço,
-  // para o app instalado na tela inicial do iPhone também abrir com ela.
-  const daUrl = new URLSearchParams(location.hash.slice(1)).get('k');
-  let chave = daUrl;
-  try {
-    if (daUrl) localStorage.setItem('cp_chave', daUrl);
-    else chave = localStorage.getItem('cp_chave');
-  } catch {}
-  if (!chave) { $('#app').hidden = true; $('#semChave').hidden = false; return; }
-  estado.chave = chave;
-  if (!daUrl) history.replaceState(null, '', `#k=${chave}`);
+  lerChaveLink(); // guarda a chave se o app foi aberto pelo link
 
   try {
-    estado.store = await criarStoreFirebase(cfg, chave);
+    estado.acesso = await criarAcesso(cfg);
   } catch (err) {
+    // sem internet na primeira abertura: na transição, ainda dá para seguir pelo link
     console.error(err);
-    estado.store = criarStoreLocal();
-    $('#avisoLocal').hidden = false;
-    $('#avisoLocal').textContent = 'Não foi possível conectar à nuvem agora. Verifique a internet e abra o app de novo.';
-    mostrarApp(); conectarDados();
+    mostrarTelaEntrar('Sem conexão com a internet agora. Verifique a conexão e abra o app de novo.');
     return;
   }
-  estado.store._onErro = err => toast(err?.code === 'permission-denied' ? 'Link da equipe inválido. Abra o app pelo link correto.' : 'Erro ao salvar na nuvem');
-  mostrarApp();
-  conectarDados();
+
+  estado.acesso.onUsuario(async u => {
+    const antes = estado.usuario;
+    estado.usuario = u;
+    if (u) {
+      // entrou com a conta depois de já estar usando pelo link: recomeça já com a conta
+      if (estado.store && estado.modo === 'link') { location.reload(); return; }
+      let perfil;
+      try {
+        perfil = await estado.acesso.meuPerfil(u.uid);
+      } catch {
+        mostrarTelaEntrar('Não foi possível conferir a sua conta agora. Verifique a internet e tente de novo.');
+        return;
+      }
+      if (!perfil || !perfil.ativo || !perfil.chave) {
+        $('#semAcessoEmail').textContent = u.email;
+        mostrarTela('semAcesso');
+        return;
+      }
+      estado.perfil = perfil;
+      semChaveNoEndereco();
+      if (!estado.store) abrirComChave(perfil.chave, 'conta');
+    } else {
+      estado.perfil = null;
+      // saiu da conta com o app aberto: recomeça limpo
+      if (antes && estado.store) { semChaveNoEndereco(); location.reload(); return; }
+      if (estado.store) return; // já está usando pelo link
+      mostrarTelaEntrar();
+    }
+  });
 }
 
 // atualiza "em X dias" quando o dia vira com o app aberto

@@ -1,12 +1,40 @@
 rules_version = '2';
 
-// Acesso sem login: só quem tem o link da equipe (com a chave) lê e grava os pedidos.
-// Troque CHAVE_DA_EQUIPE pela chave do link (o texto depois de "#k=").
-// A chave verdadeira NÃO deve ser salva neste repositório, porque ele é público.
+// Regras de referência. A chave verdadeira NÃO deve ser salva neste repositório, porque ele é público:
+// troque CHAVE_DA_EQUIPE pela chave só no console do Firebase.
+//
+// Login da equipe: cada pessoa tem uma conta (e-mail e senha) e um documento em membros/{uid}
+// com nome, e-mail, papel ('admin' ou 'equipe'), ativo (true/false) e a chave da equipe.
+// Só o administrador cria, bloqueia e libera pessoas.
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function temPerfil() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/membros/$(request.auth.uid));
+    }
+    function perfil() {
+      return get(/databases/$(database)/documents/membros/$(request.auth.uid)).data;
+    }
+    function membroAtivo() { return temPerfil() && perfil().ativo == true; }
+    function admin() { return membroAtivo() && perfil().papel == 'admin'; }
+
     match /equipes/{chave}/{colecao}/{doc} {
+      // TRANSIÇÃO: vale o link da equipe (quem tem a chave) e também quem entra com a conta.
       allow read, write: if chave == 'CHAVE_DA_EQUIPE';
+
+      // DEPOIS DA TROCA (todos com conta): trocar a linha acima por esta, para valer só o login.
+      // allow read, write: if chave == 'CHAVE_DA_EQUIPE' && membroAtivo();
+    }
+
+    match /membros/{uid} {
+      // cada um lê o próprio perfil; o administrador lê todos
+      allow read: if request.auth != null && (request.auth.uid == uid || admin());
+      // só o administrador cadastra, bloqueia e libera (e não pode tirar o próprio acesso)
+      allow create: if admin();
+      allow update: if admin() && (uid != request.auth.uid
+        || (request.resource.data.ativo == true && request.resource.data.papel == 'admin'));
+      allow delete: if false;
     }
   }
 }
