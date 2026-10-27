@@ -21,7 +21,7 @@ Sem o Firebase configurado, o app roda em **modo de teste**: tudo fica salvo só
 
 ## 1. Configurar o Firebase (uma vez, ~5 minutos)
 
-O app não tem login: a equipe entra direto por um **link com uma chave secreta** (`https://gestao.bloomingclub.com.br/#k=CHAVE`). Só quem tem esse link consegue ver e editar os pedidos.
+O app não tem login: a equipe entra direto por um **link com uma chave secreta** (`https://cafes.bloomingclub.com.br/#k=CHAVE`). Só quem tem esse link consegue ver e editar os pedidos.
 
 1. Acesse **console.firebase.google.com**, clique em **Criar projeto** (ex.: `producao-blooming`). O Google Analytics pode ficar desativado.
 2. **Banco de dados:** *Firestore Database → Criar banco de dados*. Edição **Standard**, local **southamerica-east1 (São Paulo)**, modo **produção**.
@@ -41,7 +41,7 @@ O plano gratuito (Spark) do Firebase cobre com folga o uso de uma equipe pequena
 2. Em *Source*, escolha **Deploy from a branch**, branch **main**, pasta **/ (root)** e salve.
 3. Em 1 ou 2 minutos o endereço aparece no topo da página.
 
-**Endereço próprio:** o app abre em `https://gestao.bloomingclub.com.br`. O arquivo `CNAME` deste repositório guarda esse endereço, e no painel do domínio existe um registro CNAME `gestao` apontando para `dripcoffeecafes-cyber.github.io`. Em *Settings → Pages*, a opção **Enforce HTTPS** fica marcada. O endereço antigo do GitHub redireciona sozinho para o novo.
+**Endereço próprio:** o app abre em `https://cafes.bloomingclub.com.br`. O arquivo `CNAME` deste repositório guarda esse endereço, e no painel do domínio existe um registro CNAME `cafes` apontando para `dripcoffeecafes-cyber.github.io`. Em *Settings → Pages*, a opção **Enforce HTTPS** fica marcada. O endereço antigo do GitHub redireciona sozinho para o novo.
 
 No plano gratuito do GitHub, o Pages só funciona com repositório **público**. O código fica visível, mas os pedidos não: eles ficam no Firebase e só abrem com a chave do link da equipe.
 
