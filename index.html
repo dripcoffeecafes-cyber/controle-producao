@@ -320,6 +320,16 @@
           <button class="btn btn-primary" type="submit">Adicionar e enviar e-mail</button>
         </form>
       </section>
+      <section class="bloco" id="blocoCliente">
+        <h3>Página do cliente</h3>
+        <p class="muted">O cliente monta o kit sozinho, sem login, e o pedido chega na aba Leads. Aparecem só os produtos marcados "Mostrar na página do cliente".</p>
+        <p class="link-cliente"><span id="linkCliente"></span></p>
+        <p id="avisoCatalogo" class="aviso-login" hidden>Entre com a sua conta para o app atualizar o catálogo do cliente e receber os pedidos do site.</p>
+        <div class="botoes-linha">
+          <button id="copiarLinkCliente" class="btn" type="button">Copiar link</button>
+          <button id="abrirPaginaCliente" class="btn" type="button">Abrir a página</button>
+        </div>
+      </section>
       <section class="bloco">
         <h3>Dados</h3>
         <p id="infoConexao" class="muted"></p>
@@ -410,6 +420,10 @@
           <label>Custo (R$)<input name="custo" inputmode="decimal" autocomplete="off" placeholder="Opcional"></label>
         </div>
         <p class="muted">O custo é só para a equipe ver a margem. Ele nunca aparece para o cliente.</p>
+        <label class="opcao-cliente">
+          <input type="checkbox" name="cliente">
+          <span><b>Mostrar na página do cliente</b><small>Aparece no "Monte seu kit" (só nome, foto e preço; precisa ter preço).</small></span>
+        </label>
         <p id="itemErro" class="erro" role="alert"></p>
       </div>
       <div class="sheet-rodape">

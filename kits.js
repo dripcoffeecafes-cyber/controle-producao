@@ -1,3 +1,5 @@
+import { TITULO_KIT, CAIXAS, CATEGORIAS, categoriaDe, ehCaixa, ordemCategoria, precoDoKit, arred, LIMITE_CAFES } from './regras-kit.js';
+
 // Kits de presente: a caixa (produto da categoria Caixas) traz a foto do item e a foto principal do orçamento.
 // Depois escolhemos os produtos que vão dentro, e o app gera a imagem 3:4 para o cliente.
 // Os preços ficam na caixa e nos produtos; o valor do kit é calculado na hora.
@@ -9,7 +11,6 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const dinheiro = v => brl.format(Number(v) || 0);
 const novoId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
-const arred = n => Math.round(n * 100) / 100;
 
 function lerNumero(txt) {
   if (txt == null) return 0;
@@ -21,19 +22,7 @@ function lerNumero(txt) {
 const paraCampo = n => (n ? String(n).replace('.', ',') : '');
 const precoCampo = n => (n ? Number(n).toFixed(2).replace('.', ',') : '');
 
-// Categorias fixas. Um produto na categoria Caixas é a caixa do kit (escolhida no passo 1).
-const CAIXAS = 'Caixas';
-const CATEGORIAS = ['Cafés', 'Acessórios', 'Xícaras', CAIXAS];
-// "Outros" passou a se chamar Caixas. Só muda o nome mostrado: o documento salvo continua igual até alguém editá-lo.
-// Drip vira Cafés; qualquer outra categoria antiga (Outros, Embalagem…) aparece em Caixas.
-const categoriaDe = c => CATEGORIAS.includes(c) ? c : (c === 'Drip' ? 'Cafés' : CAIXAS);
-const ehCaixa = i => categoriaDe(i?.categoria) === CAIXAS;
-const ordemCategoria = c => CATEGORIAS.indexOf(categoriaDe(c));
-// Regra dos cafés: se os cafés do kit somam menos de R$ 120, o valor do kit sobe 10%.
-// Com R$ 120 ou mais em cafés, vale o preço cadastrado de cada item. Kit sem café também leva o acréscimo.
-const LIMITE_CAFES = 120;
-const ACRESCIMO_CAFES = 10;
-const TITULO_KIT = 'Kit Blooming Club Cafés';
+// Categorias, regra dos cafés e título do kit: em regras-kit.js (também usado pela página do cliente).
 
 // Lista de partida: só nomes e categorias. Preços zerados para a equipe preencher.
 const EXEMPLO_ITENS = [
@@ -58,6 +47,8 @@ export function criarKits(ctx) {
     fotoItem: '', fotoPrincipal: '',
     imagem: null,         // { blob, url, nome }
     contato: '',          // WhatsApp do lead que originou o orçamento (vai para o pedido)
+    itensProntos: false,  // já chegou a lista de produtos (para não publicar o catálogo vazio por engano)
+    catalogo: null,       // catálogo público da página do cliente (null = ainda não carregou)
   };
 
   const areaOrcar = $('#areaOrcar');
@@ -65,6 +56,46 @@ export function criarKits(ctx) {
   const dlgItem = $('#dlgItem');
   const dlgImagem = $('#dlgImagem');
   const formItem = $('#formItem');
+
+  // ---------------- Página do cliente ----------------
+  // "Mostrar na página do cliente": marcado no produto. Sem marcação (produtos antigos),
+  // vale ligado para quem já tem foto e preço. Sem preço nunca aparece (o valor estimado ficaria errado).
+  const marcadoCliente = d => d.cliente ?? !!((d.foto || d.fotoPrincipal) && Number(d.preco) > 0);
+  const vaiParaCliente = d => marcadoCliente(d) && Number(d.preco) > 0;
+  // O que vai para o catálogo público: nunca o custo nem outro campo da equipe
+  const docCatalogo = d => ({
+    id: d.id,
+    nome: d.nome || '',
+    categoria: categoriaDe(d.categoria),
+    preco: Number(d.preco) || 0,
+    foto: d.foto || '',
+    fotoPrincipal: ehCaixa(d) ? (d.fotoPrincipal || '') : '',
+  });
+  const assinatura = d => JSON.stringify([d.nome, d.categoria, d.preco, d.foto, d.fotoPrincipal]);
+
+  // Mantém o catálogo público igual aos produtos marcados. Só quem entrou com a conta grava
+  // (as regras do Firebase exigem login). Espera as duas listas chegarem antes de comparar.
+  let timerCatalogo = null;
+  function agendarCatalogo() {
+    clearTimeout(timerCatalogo);
+    timerCatalogo = setTimeout(sincronizarCatalogo, 1500);
+  }
+  async function sincronizarCatalogo() {
+    const st = ctx.store();
+    if (!st.salvarPublico || !ctx.podePublicar() || !k.itensProntos || !k.catalogo) return;
+    const desejado = new Map(k.itens.filter(vaiParaCliente).map(d => [d.id, docCatalogo(d)]));
+    const atual = new Map(k.catalogo.map(d => [d.id, d]));
+    const tarefas = [];
+    for (const [id, d] of desejado) {
+      if (!atual.has(id) || assinatura(atual.get(id)) !== assinatura(d)) {
+        tarefas.push(st.salvarPublico('catalogo', { ...d, atualizadoEm: new Date().toISOString() }));
+      }
+    }
+    for (const id of atual.keys()) if (!desejado.has(id)) tarefas.push(st.excluirPublico('catalogo', id));
+    if (!tarefas.length) return;
+    const r = await Promise.allSettled(tarefas);
+    if (r.some(x => x.status === 'rejected')) console.warn('Catálogo do cliente: algumas atualizações falharam', r);
+  }
 
   // ---------------- Cálculos ----------------
   const acharItem = id => k.itens.find(i => i.id === id);
@@ -97,11 +128,8 @@ export function criarKits(ctx) {
     const ls = linhas();
     const cx = caixaAtual();
     const cxPreco = Number(cx?.preco) || 0, cxCusto = Number(cx?.custo) || 0;
-    const base = arred(ls.reduce((s, l) => s + l.preco * l.qtd, 0) + cxPreco);
-    // Regra dos cafés: soma dos cafés (preço × quantidade) abaixo do limite → +10% sobre o valor calculado
-    const cafes = arred(ls.filter(l => l.categoria === 'Cafés').reduce((s, l) => s + l.preco * l.qtd, 0));
-    const acrescimo = cafes < LIMITE_CAFES ? ACRESCIMO_CAFES : 0;
-    const preco = arred(base * (1 + acrescimo / 100));
+    // Regra dos cafés (regras-kit.js): cafés abaixo do limite → +10% sobre o valor calculado
+    const { base, cafes, acrescimo, preco } = precoDoKit(ls, cxPreco);
     const custo = arred(ls.reduce((s, l) => s + l.custo * l.qtd, 0) + cxCusto);
     const n = qtdKits(), d = desconto();
     const porKit = arred(preco * (1 - d / 100));
@@ -125,7 +153,8 @@ export function criarKits(ctx) {
     : `<span class="${cls} ${cls}-vazia" aria-hidden="true">${esc((nome || '?').trim().charAt(0).toUpperCase())}</span>`;
 
   function linhaProduto(d) {
-    const sinal = ehCaixa(d) && !d.fotoPrincipal ? '<span class="prod-aviso">sem foto principal</span>' : '';
+    const sinal = (ehCaixa(d) && !d.fotoPrincipal ? '<span class="prod-aviso">sem foto principal</span>' : '')
+      + (vaiParaCliente(d) ? '<span class="prod-cliente">no site</span>' : '');
     return `
         <div class="prod-linha" data-iid="${esc(d.id)}">
           <button class="prod-abrir" data-kacao="editar-item" aria-label="Editar ${esc(d.nome)}">
@@ -163,7 +192,7 @@ export function criarKits(ctx) {
           <h2>Produtos e preços</h2>
           <button class="btn btn-sm" data-kacao="novo-item">+ Produto</button>
         </div>
-        <p class="muted">Toque no preço para atualizar. Toque no produto para mudar foto, nome, categoria ou custo. As caixas têm duas fotos: a do item e a principal do orçamento.</p>
+        <p class="muted">Toque no preço para atualizar. Toque no produto para mudar foto, nome, categoria ou custo. As caixas têm duas fotos: a do item e a principal do orçamento. O selo "no site" mostra o que aparece na página do cliente.</p>
         <div class="item-lista">${grupos.join('')}</div>
       </section>`;
   }
@@ -214,10 +243,21 @@ export function criarKits(ctx) {
   }
 
   // Vindo da aba Leads: começa um orçamento novo já com o nome e o WhatsApp do lead
-  function comecarPara({ cliente, contato }) {
+  function comecarPara({ cliente, contato, kit }) {
     limparMontador();
     $('#kitCliente').value = cliente || '';
     k.contato = contato || '';
+    // Lead que montou o kit na página do cliente: abre o montador com a escolha dele
+    if (kit) {
+      let faltam = 0;
+      if (kit.caixa?.id) { if (acharCaixa(kit.caixa.id)) k.caixaId = kit.caixa.id; else faltam++; }
+      for (const it of kit.itens || []) {
+        if (acharItem(it.id) && !ehCaixa(acharItem(it.id))) k.qtd[it.id] = Math.max(1, Number(it.qtd) || 1);
+        else faltam++;
+      }
+      if (kit.qtdKits) $('#kitQtd').value = String(kit.qtdKits);
+      if (faltam) setTimeout(() => ctx.toast(`${faltam} ${faltam === 1 ? 'item do kit do cliente não existe' : 'itens do kit do cliente não existem'} mais nos produtos`), 300);
+    }
   }
 
   function renderCaixas() {
@@ -737,6 +777,7 @@ export function criarKits(ctx) {
       `<label><input type="radio" name="categoria" value="${esc(c)}" ${c === cat ? 'checked' : ''}><span>${esc(c)}</span></label>`).join('');
     formItem.preco.value = paraCampo(doc?.preco);
     formItem.custo.value = paraCampo(doc?.custo);
+    formItem.cliente.checked = doc ? marcadoCliente(doc) : true;
     renderFotoItem(); renderFotoPrincipal(); mostrarCampoCaixa();
     dlgItem.showModal();
     $('.sheet-corpo', dlgItem).scrollTop = 0;
@@ -802,6 +843,7 @@ export function criarKits(ctx) {
       preco: lerNumero(formItem.preco.value),
       custo: custoTxt ? lerNumero(custoTxt) : '',
       foto: k.fotoItem,
+      cliente: formItem.cliente.checked,
       criadoEm: existente?.criadoEm || new Date().toISOString(),
     };
     if (cat === CAIXAS) d.fotoPrincipal = k.fotoPrincipal;
@@ -843,11 +885,17 @@ export function criarKits(ctx) {
   function conectar() {
     const st = ctx.store();
     if (!st.onColecao) return [];
+    const extras = st.onPublico && ctx.podePublicar()
+      ? [st.onPublico('catalogo', lista => { k.catalogo = lista; agendarCatalogo(); }, () => {})]
+      : [];
     return [
+      ...extras,
       st.onColecao('itens', lista => {
         k.itens = lista;
+        k.itensProntos = true;
         if (orcando()) renderOrcar();
         ctx.aoMudar();
+        agendarCatalogo();
       }),
       st.onColecao('caixas', lista => {
         k.caixasAntigas = lista;

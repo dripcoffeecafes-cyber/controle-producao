@@ -2,6 +2,8 @@
 // Ficam na coleção "leads" do Firebase, ao lado dos pedidos e dos itens: equipes/{chave}/leads.
 // Não separa por empresa: Blooming Club e Drip Coffee Label ficam juntas na mesma lista.
 // Cada lead guarda "externoId" (vazio por enquanto) para, no futuro, receber leads automáticos do Meta Ads sem duplicar.
+// Pedidos da página do cliente (kit/) chegam na coleção pública "solicitacoes": quem está com a conta aberta
+// transforma cada um em lead (mesmo id, então não duplica entre aparelhos) e apaga o pedido de lá.
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -52,7 +54,7 @@ const INTERESSES = ['Kit de presente', 'Drip personalizado', 'Evento', 'Casament
 
 export function criarLeads(ctx) {
   // ctx: { store: () => store, toast, quem, orcarKit(lead) }
-  const L = { leads: [], aba: 'abertos', busca: '', origem: '', editando: null };
+  const L = { leads: [], carregados: false, solicitacoes: [], aba: 'abertos', busca: '', origem: '', editando: null };
 
   const lista = $('#leadsLista');
   const dlg = $('#dlgLead');
@@ -117,7 +119,7 @@ export function criarLeads(ctx) {
           </div>
           <p class="descricao lead-nome">${esc(l.nome)}</p>
           ${l.obs ? `<p class="lead-obs">${esc(l.obs)}</p>` : ''}
-          <div class="chips">${chipRetorno(l)}</div>
+          <div class="chips">${l.kit ? '<span class="chip chip-site">Kit montado no site</span>' : ''}${chipRetorno(l)}</div>
         </div>
         <div class="lead-acoes">
           <select class="lead-status s-${esc(l.status)}" data-lacao="status" aria-label="Situação de ${esc(l.nome)}">
@@ -261,10 +263,68 @@ export function criarLeads(ctx) {
   function conectar() {
     const st = ctx.store();
     if (!st.onColecao) return [];
+    const extras = st.onPublico && ctx.podePublicar()
+      ? [st.onPublico('solicitacoes', lista => { L.solicitacoes = lista; importarDoSite(); }, () => {})]
+      : [];
     return [
-      st.onColecao('leads', lista => { L.leads = lista; render(); },
-        err => ctx.toast(err?.code === 'permission-denied' ? 'Link da equipe inválido. Abra o app pelo link correto.' : 'Erro ao carregar leads')),
+      st.onColecao('leads', lista => { L.leads = lista; L.carregados = true; render(); importarDoSite(); },
+        err => ctx.toast(err?.code === 'permission-denied' ? 'Sem permissão para ver os leads. Entre de novo com a sua conta.' : 'Erro ao carregar leads')),
+      ...extras,
     ];
+  }
+
+  // ---------------- Pedidos da página do cliente ----------------
+  const dinheiro = v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0);
+  const quando = v => (v?.toDate ? v.toDate().toISOString() : typeof v === 'string' && v ? v : new Date().toISOString());
+
+  function leadDoSite(s) {
+    const itens = Array.isArray(s.itens) ? s.itens : [];
+    const qtdKits = Math.max(1, Number(s.qtdKits) || 1);
+    const valor = Number(s.valorEstimado) || 0;
+    const resumo = [
+      `Montou o kit pelo site: ${s.caixa?.nome || 'sem caixa'}${itens.length ? ' + ' + itens.map(i => `${i.qtd}× ${i.nome}`).join(', ') : ''}.`,
+      `${qtdKits} ${qtdKits === 1 ? 'kit' : 'kits'}${valor ? `, estimado ${dinheiro(valor)} por kit` : ''}.`,
+      s.obs ? `Obs. do cliente: ${s.obs}` : '',
+    ].filter(Boolean).join('\n');
+    return {
+      id: s.id,
+      nome: String(s.nome || 'Cliente do site').slice(0, 80),
+      contato: String(s.contato || ''),
+      origem: 'Site',
+      interesse: 'Kit de presente',
+      status: 'novo',
+      proximoContato: '',
+      obs: resumo,
+      externoId: '',
+      kit: {
+        caixa: s.caixa ? { id: String(s.caixa.id || ''), nome: String(s.caixa.nome || '') } : null,
+        itens: itens.map(i => ({ id: String(i.id || ''), nome: String(i.nome || ''), qtd: Math.max(1, Number(i.qtd) || 1) })),
+        qtdKits,
+        valorEstimado: valor,
+      },
+      criadoEm: quando(s.criadoEm),
+      criadoPor: 'Página do cliente',
+    };
+  }
+
+  let importando = false;
+  async function importarDoSite() {
+    if (importando || !L.carregados || !L.solicitacoes.length) return;
+    importando = true;
+    try {
+      for (const s of L.solicitacoes) {
+        const novo = !L.leads.some(l => l.id === s.id);
+        if (novo) {
+          await ctx.store().salvarDoc('leads', leadDoSite(s));
+          ctx.toast(`Novo pedido do site: ${String(s.nome || 'cliente').slice(0, 40)}`);
+        }
+        await ctx.store().excluirPublico('solicitacoes', s.id);
+      }
+    } catch (err) {
+      console.warn('Pedidos do site: não foi possível importar agora', err);
+    } finally {
+      importando = false;
+    }
   }
 
   return { render, conectar };

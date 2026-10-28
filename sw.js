@@ -1,6 +1,6 @@
 // Service worker: guarda o app no aparelho para abrir rápido e funcionar sem internet.
 // Ao publicar uma nova versão, aumente o número abaixo.
-const VERSAO = 'producao-v30';
+const VERSAO = 'producao-v31';
 const ARQUIVOS = [
   './',
   'index.html',
@@ -10,6 +10,7 @@ const ARQUIVOS = [
   'kits.js',
   'leads.js',
   'acesso.js',
+  'regras-kit.js',
   'config.js',
   'manifest.webmanifest',
   'marca/logo-blooming-club.svg',

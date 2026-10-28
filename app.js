@@ -222,6 +222,7 @@ const kits = criarKits({
   // pedido criado a partir do orçamento: volta para a Produção e abre o formulário preenchido
   abrirPedido: (preencher, extra) => { irPara('producao'); abrirForm(null, preencher, extra); },
   aoMudar: () => { if (estado.area === 'produtos') renderProdutos(); },
+  podePublicar: () => podePublicar(),
 });
 
 // ---------------- Leads ----------------
@@ -230,8 +231,14 @@ const leads = criarLeads({
   toast: (...a) => toast(...a),
   quem: () => quem(),
   // do cartão do lead direto para o montador de kits, já com nome e WhatsApp
-  orcarKit: lead => { kits.comecarPara({ cliente: lead.nome, contato: lead.contato }); irPara('orcar'); },
+  orcarKit: lead => { kits.comecarPara({ cliente: lead.nome, contato: lead.contato, kit: lead.kit }); irPara('orcar'); },
+  podePublicar: () => podePublicar(),
 });
+
+// Catálogo e pedidos da página do cliente ficam fora da equipe no Firebase: só quem entrou
+// com a conta pode gravar ali (no modo de teste, tudo fica no aparelho).
+function podePublicar() { return estado.modo === 'conta' || estado.store?.modo === 'local'; }
+const linkCliente = () => new URL('kit/', location.href.split('#')[0]).href;
 
 // ---------------- Áreas do app (cabeçalho): Produção, Orçar kit, Produtos, Leads ----------------
 const AREAS = ['producao', 'orcar', 'produtos', 'leads'];
@@ -508,6 +515,8 @@ $('#abrirAjustes').addEventListener('click', () => {
   $('#entrarComConta').hidden = conta;
   $('#blocoNome').hidden = conta; // com login, o nome vem da conta
   $('#blocoLink').hidden = !(fb && (ehAdmin() || estado.modo === 'link'));
+  $('#linkCliente').textContent = linkCliente().replace(/^https?:\/\//, '');
+  $('#avisoCatalogo').hidden = podePublicar();
 
   try { $('#formNome').nome.value = localStorage.getItem('cp_nome') || ''; } catch {}
   $('#migrarLocal').hidden = !(fb && pedidosLocais().length);
@@ -664,6 +673,18 @@ $('#copiarLink').addEventListener('click', async () => {
     if (err?.name !== 'AbortError') prompt('Copie o link da equipe:', link);
   }
 });
+
+$('#copiarLinkCliente').addEventListener('click', async () => {
+  const link = linkCliente();
+  try {
+    if (navigator.share) { await navigator.share({ title: 'Monte seu kit · Blooming Club', url: link }); return; }
+    await navigator.clipboard.writeText(link);
+    toast('Link da página do cliente copiado');
+  } catch (err) {
+    if (err?.name !== 'AbortError') prompt('Copie o link da página do cliente:', link);
+  }
+});
+$('#abrirPaginaCliente').addEventListener('click', () => window.open(linkCliente(), '_blank', 'noopener'));
 
 // ---------------- Instalação (PWA) ----------------
 // Funciona no celular e no computador (Chrome e Edge mostram o pedido de instalação).

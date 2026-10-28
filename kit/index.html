@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Monte seu kit · Blooming Club</title>
+  <meta name="description" content="Monte o seu Kit Blooming Club Cafés: escolha a caixa e o que vai dentro, veja o valor estimado e peça o orçamento pelo WhatsApp.">
+  <meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta property="og:title" content="Monte seu kit · Blooming Club">
+  <meta property="og:description" content="Escolha a caixa e o que vai dentro do seu kit de cafés especiais.">
+  <link rel="icon" href="../icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="kit.css">
+</head>
+<body>
+  <header class="topo">
+    <img class="logo" src="../marca/logo-blooming-club.svg" alt="Blooming Club" width="96" height="64">
+  </header>
+
+  <main id="montador">
+    <section class="hero">
+      <p class="sobretitulo">Kit Blooming Club Cafés</p>
+      <h1>Monte o seu kit de presente</h1>
+      <p class="intro">Escolha a caixa e o que vai dentro. O valor estimado aparece na hora, e a nossa equipe confirma tudo com você pelo WhatsApp.</p>
+    </section>
+
+    <p id="carregando" class="estado-carga" role="status">Carregando os produtos…</p>
+    <div id="erroCarga" class="estado-carga erro-carga" hidden>
+      <p>Não foi possível carregar os produtos agora. Tente de novo em instantes ou fale com a gente pelo WhatsApp.</p>
+      <div class="linha-botoes">
+        <button id="tentarDeNovo" class="btn" type="button">Tentar de novo</button>
+        <a class="btn btn-whats" data-whats-simples target="_blank" rel="noopener">Falar no WhatsApp</a>
+      </div>
+    </div>
+
+    <div id="conteudo" hidden>
+      <section class="passo" id="passoCaixa" aria-labelledby="t1">
+        <h2 id="t1"><span class="num">1</span>Escolha a caixa</h2>
+        <div id="caixas" class="caixas" role="radiogroup" aria-labelledby="t1"></div>
+        <figure id="amostra" class="amostra" hidden></figure>
+      </section>
+
+      <section class="passo" id="passoItens" aria-labelledby="t2">
+        <h2 id="t2"><span class="num">2</span>Escolha o que vai dentro</h2>
+        <div id="itens"></div>
+      </section>
+
+      <section class="passo" id="passoDados" aria-labelledby="t3">
+        <h2 id="t3"><span class="num">3</span>Seus dados</h2>
+        <div id="resumo" class="resumo"></div>
+        <form id="formPedido" class="cartao-form" novalidate>
+          <label>Seu nome
+            <input name="nome" autocomplete="name" maxlength="80" required>
+          </label>
+          <label>WhatsApp
+            <input name="contato" type="tel" inputmode="tel" autocomplete="tel" placeholder="(54) 99999-9999" maxlength="20" required>
+          </label>
+          <div class="campo-qtd">
+            <span class="rotulo" id="rotuloQtd">Quantidade de kits</span>
+            <div class="stepper grande" role="group" aria-labelledby="rotuloQtd">
+              <button type="button" data-qtd="-1" aria-label="Menos um kit">−</button>
+              <input name="qtdKits" inputmode="numeric" value="1" aria-labelledby="rotuloQtd" maxlength="5">
+              <button type="button" data-qtd="1" aria-label="Mais um kit">+</button>
+            </div>
+          </div>
+          <label>Observações <span class="opcional">(opcional)</span>
+            <textarea name="obs" rows="3" maxlength="1000" placeholder="Personalização, cidade de entrega, data que precisa…"></textarea>
+          </label>
+          <p id="erroForm" class="erro" role="alert"></p>
+          <button id="enviar" class="btn btn-primario btn-bloco" type="submit">Enviar pedido de orçamento</button>
+          <p class="nota">O valor é uma estimativa. A nossa equipe confirma o valor final, o prazo e a entrega pelo WhatsApp.</p>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <!-- Depois de enviar -->
+  <main id="enviado" class="enviado" hidden>
+    <div class="cartao-ok">
+      <div class="selo-ok" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="30" height="30"><path d="m6.5 12.5 3.6 3.6 7.4-7.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h1>Pedido enviado!</h1>
+      <p>Recebemos o seu kit. Agora mande a mensagem no WhatsApp para a nossa equipe confirmar o valor e o prazo.</p>
+      <a id="abrirWhats" class="btn btn-whats btn-bloco" target="_blank" rel="noopener">Abrir o WhatsApp</a>
+      <button id="montarOutro" class="btn-texto" type="button">Montar outro kit</button>
+    </div>
+  </main>
+
+  <!-- Barra com o valor estimado -->
+  <div id="barra" class="barra" hidden>
+    <div class="barra-dentro">
+      <div class="barra-valor">
+        <span id="barraRotulo">Valor estimado por kit</span>
+        <strong id="barraTotal">—</strong>
+      </div>
+      <button id="barraBotao" class="btn btn-primario" type="button">Continuar</button>
+    </div>
+  </div>
+
+  <footer class="rodape">
+    <a class="btn btn-whats" data-whats-simples target="_blank" rel="noopener">WhatsApp (54) 99968-3444</a>
+    <p><a href="https://www.bloomingclub.com.br" target="_blank" rel="noopener">bloomingclub.com.br</a> · <a href="https://www.instagram.com/bloomingclubcafes" target="_blank" rel="noopener">@bloomingclubcafes</a></p>
+    <p><a href="https://driplabel.bloomingclub.com.br" target="_blank" rel="noopener">driplabel.bloomingclub.com.br</a> · <a href="https://www.instagram.com/driplabel.cafes" target="_blank" rel="noopener">@driplabel.cafes</a></p>
+  </footer>
+
+  <script src="../config.js"></script>
+  <script type="module" src="kit.js"></script>
+</body>
+</html>

@@ -27,6 +27,30 @@ service cloud.firestore {
       // allow read, write: if chave == 'CHAVE_DA_EQUIPE' && membroAtivo();
     }
 
+    // Página do cliente (kit/): catálogo público, sem custo. Qualquer um lê; só a equipe com conta grava.
+    match /catalogo/{id} {
+      allow read: if true;
+      allow write: if membroAtivo();
+    }
+
+    // Pedidos enviados pela página do cliente. Qualquer um cria (com os campos conferidos);
+    // só a equipe com conta lê e apaga (o app transforma cada pedido em lead).
+    match /solicitacoes/{id} {
+      allow create: if request.resource.data.keys().hasOnly(
+            ['nome', 'contato', 'qtdKits', 'obs', 'caixa', 'itens', 'valorEstimado', 'origem', 'criadoEm'])
+        && request.resource.data.nome is string && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 80
+        && request.resource.data.contato is string && request.resource.data.contato.size() >= 10 && request.resource.data.contato.size() <= 30
+        && request.resource.data.qtdKits is int && request.resource.data.qtdKits >= 1 && request.resource.data.qtdKits <= 9999
+        && request.resource.data.obs is string && request.resource.data.obs.size() <= 1000
+        && request.resource.data.caixa is map
+        && request.resource.data.itens is list && request.resource.data.itens.size() >= 1 && request.resource.data.itens.size() <= 40
+        && request.resource.data.valorEstimado is number
+        && request.resource.data.origem == 'pagina-kit'
+        && request.resource.data.criadoEm == request.time;
+      allow read, delete: if membroAtivo();
+      allow update: if false;
+    }
+
     match /membros/{uid} {
       // cada um lê o próprio perfil; o administrador lê todos
       allow read: if request.auth != null && (request.auth.uid == uid || admin());

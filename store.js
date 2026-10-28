@@ -63,6 +63,12 @@ export function criarStoreLocal() {
       c.docs = c.docs.filter(x => x.id !== id);
       gravarLocal(c.chave, c.docs); c.emitir();
     },
+
+    // Coleções públicas (catálogo e pedidos da página do cliente). No teste, ficam no aparelho
+    // com o prefixo "pub_", e a página do cliente (kit/) lê e grava as mesmas chaves.
+    onPublico(nome, cb) { return this.onColecao('pub_' + nome, cb); },
+    salvarPublico(nome, d) { return this.salvarDoc('pub_' + nome, d); },
+    excluirPublico(nome, id) { return this.excluirDoc('pub_' + nome, id); },
   };
 }
 
@@ -149,6 +155,21 @@ export async function criarStoreFirebase(firebaseConfig, chave) {
     },
     async excluirDoc(nome, id) {
       fs.deleteDoc(fs.doc(db, 'equipes', chave, nome, id)).catch(e => store._onErro && store._onErro(e));
+    },
+
+    // Coleções públicas, fora da equipe: "catalogo" (a página do cliente lê) e "solicitacoes"
+    // (pedidos que a página do cliente envia). Só quem entrou com a conta grava ou lê os pedidos.
+    onPublico(nome, cb, onErro) {
+      return fs.onSnapshot(fs.collection(db, nome),
+        snap => cb(snap.docs.map(d => ({ ...d.data(), id: d.id }))),
+        err => onErro && onErro(err));
+    },
+    async salvarPublico(nome, d) {
+      const { id, ...dados } = d;
+      await fs.setDoc(fs.doc(db, nome, id), dados);
+    },
+    async excluirPublico(nome, id) {
+      await fs.deleteDoc(fs.doc(db, nome, id));
     },
   };
   return store;

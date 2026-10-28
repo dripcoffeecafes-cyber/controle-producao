@@ -84,6 +84,14 @@ Se cadastrou pedidos antes de configurar o Firebase, abra o app no mesmo aparelh
 | `manifest.webmanifest`, `icons/` | Nome e ícone do app instalado |
 | `firestore.rules` | Modelo das regras de acesso (a chave real fica só no Firebase) |
 
+## Página do cliente (Monte seu kit)
+
+- Endereço: `https://cafes.bloomingclub.com.br/kit/` (pasta `kit/`). Abre sem login e mostra só o montador: o cliente escolhe a caixa e os itens, vê o **valor estimado por kit** (não o preço de cada item), preenche nome, WhatsApp, quantidade de kits e observações, e envia. O pedido vai para a aba **Leads** e o WhatsApp abre com o resumo para a equipe.
+- **Catálogo público:** coleção `catalogo` (na raiz do Firestore), com só nome, categoria, foto e preço de venda. O app da equipe atualiza sozinho a partir dos produtos marcados *Mostrar na página do cliente* (precisa ter preço; selo "no site" na lista). Só quem entrou com a conta grava.
+- **Pedidos:** coleção `solicitacoes`. Qualquer um cria (as regras conferem os campos); o app da equipe, com alguém conectado pela conta, transforma cada pedido em lead (origem Site, com o kit) e apaga o pedido. No lead, *Orçar kit* abre o montador com a escolha do cliente.
+- A regra do preço (cafés abaixo de R$ 120 → +10%) fica em `regras-kit.js`, usado pelo app e pela página.
+- Link para copiar: *Ajustes → Página do cliente*.
+
 ## Kits de presente (áreas Orçar kit e Produtos)
 
 - **Produtos e preços:** cada produto tem foto, categoria (Cafés, Acessórios, Xícaras ou Caixas), preço de venda e custo opcional. O preço pode ser trocado direto na lista, para a atualização do mês.

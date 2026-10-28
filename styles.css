@@ -638,6 +638,29 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 
 /* Caixas na lista de produtos */
 .prod-aviso { display: block; font-size: 12px; font-weight: 500; color: var(--ambar); margin-top: 2px; }
+.prod-cliente {
+  display: inline-block; margin-top: 3px; padding: 1px 7px; border-radius: 99px;
+  font-size: 11px; font-weight: 600; background: var(--caramelo-claro); color: var(--caramelo);
+}
+.prod-aviso + .prod-cliente { margin-top: 2px; }
+.chip.chip-site { background: var(--caramelo-claro); color: var(--caramelo); border-color: transparent; }
+
+/* Produto: opção "Mostrar na página do cliente" */
+.sheet label.opcao-cliente {
+  display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 12px;
+  padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink);
+}
+.sheet .opcao-cliente input {
+  display: inline-block; width: 20px; height: 20px; min-height: 0; margin: 1px 0 0; padding: 0; flex: none;
+  accent-color: var(--ink);
+}
+.opcao-cliente b { display: block; font-weight: 600; font-size: 14.5px; }
+.opcao-cliente small { display: block; color: var(--ink-2); font-size: 13px; font-weight: 400; margin-top: 2px; }
+
+/* Ajustes: página do cliente */
+.link-cliente { margin: 4px 0 8px; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; color: var(--caramelo); }
+.botoes-linha { display: flex; gap: 8px; flex-wrap: wrap; }
+.bloco .botoes-linha .btn { margin: 2px 0 4px; }
 .prod-vazio { margin: 4px 0 8px; }
 .antigas { margin: 4px 0 8px; }
 .antigas-lista { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
