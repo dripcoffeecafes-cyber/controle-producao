@@ -657,7 +657,7 @@ function linkEquipe() { return `${location.origin}${location.pathname}#k=${estad
 $('#copiarLink').addEventListener('click', async () => {
   const link = linkEquipe();
   try {
-    if (navigator.share) { await navigator.share({ title: 'Produção', url: link }); return; }
+    if (navigator.share) { await navigator.share({ title: 'Gestão Blooming Club', url: link }); return; }
     await navigator.clipboard.writeText(link);
     toast('Link copiado');
   } catch (err) {

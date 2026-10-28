@@ -1,4 +1,4 @@
-# Controle de Produção — Grupo Blooming
+# Gestão Blooming Club
 
 App web (PWA) para controlar pedidos e produção: fila por prioridade, prazos, data de entrega, valor, pagamento e observações. Instala na tela inicial do celular e funciona sem internet. Os dados ficam no Firebase e sincronizam na hora entre todos da equipe.
 

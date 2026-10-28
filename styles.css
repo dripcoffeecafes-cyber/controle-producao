@@ -380,7 +380,7 @@ legend { font-size: 13.5px; font-weight: 500; color: var(--ink-2); margin-bottom
   border: 1px solid var(--line-suave); border-radius: 28px; padding: 32px 24px 22px; text-align: left; box-shadow: var(--sombra);
 }
 .login-logo { border-radius: 14px; display: block; margin-bottom: 14px; }
-.login h1 { margin: 0; font-size: 34px; font-weight: 600; letter-spacing: -0.04em; }
+.login h1 { margin: 0 0 8px; font-size: 34px; line-height: 1.08; font-weight: 600; letter-spacing: -0.04em; }
 .login .btn-block { margin-top: 6px; }
 .login .btn-link { display: block; margin: 6px auto 0; }
 .login form { margin-top: 18px; }

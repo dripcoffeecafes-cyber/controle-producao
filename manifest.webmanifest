@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Produção — Grupo Blooming",
-  "short_name": "Produção",
-  "description": "Controle de pedidos e produção",
+  "name": "Gestão Blooming Club",
+  "short_name": "Gestão",
+  "description": "Gestão de produção, pedidos e orçamentos",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",
