@@ -52,12 +52,14 @@ async function criarDados() {
 
 // ---------------- Estado ----------------
 const s = { produtos: [], caixaId: null, qtd: {}, passo: 1, dados: null, enviando: false, pronto: false };
+let timerAvanco = null; // avanço automático depois de escolher a caixa
 
 const porNome = (a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
 const caixas = () => s.produtos.filter(ehCaixa).sort(porNome);
 const acharProduto = id => s.produtos.find(p => p.id === id);
 const caixaAtual = () => caixas().find(c => c.id === s.caixaId) || null;
-const fotoCaixa = c => c?.fotoPrincipal || c?.foto || '';
+// Para escolher, vale a foto da caixa (a do item); a do kit montado abre em "Ver kit montado"
+const fotoCaixa = c => c?.foto || c?.fotoPrincipal || '';
 
 function linhas() {
   return s.produtos
@@ -108,6 +110,7 @@ function aviso(texto, acao) {
 const foto = (src, nome, cls) => src
   ? `<img class="${cls}" src="${esc(src)}" alt="" loading="lazy" decoding="async">`
   : `<span class="${cls} sem-foto" aria-hidden="true">${esc((nome || '?').trim().charAt(0).toUpperCase())}</span>`;
+const ICONE_FOTO = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="m5 17 4.5-4.5 3 3 2.5-2.5L19.5 17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
 const ICONE_OK = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="m6.5 12.5 3.6 3.6 7.4-7.6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 function stepper(id, q, nome, cls = '') {
@@ -121,13 +124,16 @@ function stepper(id, q, nome, cls = '') {
 function renderCaixas() {
   const lista = caixas();
   $('#caixas').innerHTML = lista.length ? lista.map(c => `
-    <button type="button" class="caixa" role="radio" aria-checked="${c.id === s.caixaId}" data-caixa="${esc(c.id)}">
-      <span class="caixa-foto-moldura">${foto(fotoCaixa(c), c.nome, 'caixa-foto')}</span>
-      <span class="caixa-rodape">
-        <span class="caixa-nome">${esc(c.nome)}</span>
-        <span class="caixa-marca" aria-hidden="true">${ICONE_OK}</span>
-      </span>
-    </button>`).join('') : '<p class="vazio">As caixas ainda estão sendo preparadas. Fale com a gente pelo WhatsApp.</p>';
+    <div class="caixa ${c.id === s.caixaId ? 'on' : ''}">
+      <button type="button" class="caixa-escolher" role="radio" aria-checked="${c.id === s.caixaId}" data-caixa="${esc(c.id)}">
+        <span class="caixa-foto-moldura">${foto(fotoCaixa(c), c.nome, 'caixa-foto')}</span>
+        <span class="caixa-rodape">
+          <span class="caixa-nome">${esc(c.nome)}</span>
+          <span class="caixa-marca" aria-hidden="true">${ICONE_OK}</span>
+        </span>
+      </button>
+      ${c.fotoPrincipal ? `<button type="button" class="caixa-amostra" data-amostra="${esc(c.id)}">${ICONE_FOTO}<span>Ver kit montado</span></button>` : ''}
+    </div>`).join('') : '<p class="vazio">As caixas ainda estão sendo preparadas. Fale com a gente pelo WhatsApp.</p>';
 }
 
 function renderCats() {
@@ -267,6 +273,7 @@ function aoMudarKit() {
 
 // ---------------- Navegação entre etapas ----------------
 function irPara(passo, { historico = true, rolar = true } = {}) {
+  clearTimeout(timerAvanco);
   const t = totais();
   if (passo >= 2 && !t.cx) { passo = 1; if (s.passo !== 1) aviso('Escolha a caixa primeiro.'); }
   if (passo === 3 && !t.ls.length) { passo = 2; aviso('Coloque pelo menos um item no kit.'); }
@@ -332,13 +339,40 @@ $('#recomecar').addEventListener('click', () => {
 });
 
 // ---------------- Escolhas ----------------
-$('#caixas').addEventListener('click', e => {
-  const b = e.target.closest('[data-caixa]'); if (!b) return;
+// Amostra do kit montado com a caixa (foto principal), ampliada, com "Escolher esta caixa"
+const dlgAmostra = $('#dlgAmostra');
+function abrirAmostra(id) {
+  const c = caixas().find(x => x.id === id); if (!c?.fotoPrincipal) return;
+  $('#amostraImg').src = c.fotoPrincipal;
+  $('#amostraImg').alt = `Exemplo de kit montado com a ${c.nome}`;
+  $('#amostraNome').textContent = c.nome;
+  $('#amostraEscolher').dataset.caixa = c.id;
+  $('#amostraEscolher').textContent = c.id === s.caixaId ? 'Continuar com esta caixa' : 'Escolher esta caixa';
+  dlgAmostra.showModal();
+}
+dlgAmostra.addEventListener('click', e => {
+  if (e.target === dlgAmostra || e.target.closest('[data-fechar-amostra]')) dlgAmostra.close();
+});
+$('#amostraEscolher').addEventListener('click', () => {
+  const id = $('#amostraEscolher').dataset.caixa;
+  dlgAmostra.close();
+  escolherCaixa(id);
+});
+
+function escolherCaixa(id) {
   const primeira = !s.caixaId;
-  s.caixaId = b.dataset.caixa;
+  s.caixaId = id;
   renderCaixas(); aoMudarKit();
   // escolheu a caixa: segue sozinho para os itens (só depois de um instante, para ver a marcação)
-  if (s.passo === 1) setTimeout(() => irPara(2), primeira ? 380 : 260);
+  clearTimeout(timerAvanco);
+  if (s.passo === 1) timerAvanco = setTimeout(() => { if (s.passo === 1) irPara(2); }, primeira ? 380 : 260);
+}
+
+$('#caixas').addEventListener('click', e => {
+  const a = e.target.closest('[data-amostra]');
+  if (a) { abrirAmostra(a.dataset.amostra); return; }
+  const b = e.target.closest('[data-caixa]'); if (!b) return;
+  escolherCaixa(b.dataset.caixa);
 });
 
 function mudarQtd(id, passo) {

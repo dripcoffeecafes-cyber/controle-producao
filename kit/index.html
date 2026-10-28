@@ -138,6 +138,23 @@
       <button id="barraAvancar" class="btn btn-primario" type="button">Próximo</button>
     </div>
   </div>
+  <!-- Amostra do kit montado com a caixa -->
+  <dialog id="dlgAmostra" class="amostra" aria-labelledby="amostraNome">
+    <figure>
+      <img id="amostraImg" src="" alt="">
+      <figcaption>
+        <span class="amostra-rotulo">Imagem ilustrativa do kit montado</span>
+        <b id="amostraNome"></b>
+      </figcaption>
+    </figure>
+    <div class="amostra-botoes">
+      <button type="button" class="btn" data-fechar-amostra>Voltar</button>
+      <button type="button" id="amostraEscolher" class="btn btn-primario">Escolher esta caixa</button>
+    </div>
+    <button type="button" class="fechar amostra-fechar" data-fechar-amostra aria-label="Fechar">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </dialog>
   <div id="fundo" class="fundo" hidden></div>
   <div id="aviso" class="aviso" role="status" hidden></div>
 
