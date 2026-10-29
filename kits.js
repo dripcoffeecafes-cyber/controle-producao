@@ -1,4 +1,4 @@
-import { TITULO_KIT, CAIXAS, CATEGORIAS, categoriaDe, ehCaixa, ordemCategoria, precoDoKit, arred, LIMITE_CAFES } from './regras-kit.js';
+import { TITULO_KIT, CAIXAS, CATEGORIAS, categoriaDe, ehCaixa, ordemCategoria, precoDoKit, arred, LIMITE_CAFES, WHATSAPP_EQUIPE_TEXTO } from './regras-kit.js';
 
 // Kits de presente: a caixa (produto da categoria Caixas) traz a foto do item e a foto principal do orçamento.
 // Depois escolhemos os produtos que vão dentro, e o app gera a imagem 3:4 para o cliente.
@@ -628,7 +628,7 @@ export function criarKits(ctx) {
       };
       // linha 1: WhatsApp à esquerda, validade à direita
       let cy = fy0 + 22 + 17;
-      linhaTxt('whatsapp', '(54) 99968-3444', xl, cy, C.tinta, 800);
+      linhaTxt('whatsapp', WHATSAPP_EQUIPE_TEXTO, xl, cy, C.tinta, 800);
       g.font = `600 ${TXT - 2}px ${F}`; g.fillStyle = C.caramelo; g.textAlign = 'right';
       g.fillText('Orçamento válido por 10 dias', xd2, cy + TXT * 0.33); g.textAlign = 'left';
       // divisória

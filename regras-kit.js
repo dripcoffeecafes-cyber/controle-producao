@@ -28,6 +28,7 @@ export function precoDoKit(linhas, precoCaixa) {
   return { base, cafes, acrescimo, preco: arred(base * (1 + acrescimo / 100)) };
 }
 
-// Página do cliente
-export const WHATSAPP_EQUIPE = '5554999683444';
-export const WHATSAPP_EQUIPE_TEXTO = '(54) 99968-3444';
+// WhatsApp da equipe: usado pela página do cliente (links wa.me e rodapé) e pelo rodapé da imagem do orçamento (kits.js).
+// Se o número mudar, trocar só aqui.
+export const WHATSAPP_EQUIPE = '5554997081666';
+export const WHATSAPP_EQUIPE_TEXTO = '(54) 99708-1666';

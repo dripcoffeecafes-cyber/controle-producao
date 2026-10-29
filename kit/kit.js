@@ -4,7 +4,7 @@
 // Lê só o catálogo público (nome, categoria, foto e preço de venda; nunca o custo) e envia o pedido para a
 // coleção pública "solicitacoes". O app da equipe transforma o pedido em lead.
 // O cliente vê só o valor estimado do kit (não o preço de cada item).
-import { TITULO_KIT, CATEGORIAS, categoriaDe, ehCaixa, ordemCategoria, precoDoKit, arred, WHATSAPP_EQUIPE } from '../regras-kit.js';
+import { TITULO_KIT, CATEGORIAS, categoriaDe, ehCaixa, ordemCategoria, precoDoKit, arred, WHATSAPP_EQUIPE, WHATSAPP_EQUIPE_TEXTO } from '../regras-kit.js';
 
 const SDK = 'https://www.gstatic.com/firebasejs/10.12.2';
 const $ = (s, el = document) => el.querySelector(s);
@@ -533,8 +533,9 @@ $('#montarOutro').addEventListener('click', () => {
   irPara(1);
 });
 
-// Links simples para o WhatsApp (rodapé e erro de carga)
+// Links simples para o WhatsApp (rodapé e erro de carga); o número do rodapé vem de regras-kit.js
 $$('[data-whats-simples]').forEach(a => { a.href = linkWhats('Olá! Quero montar um Kit Blooming Club Cafés.'); });
+$$('[data-whats-numero]').forEach(a => { a.textContent = `WhatsApp ${WHATSAPP_EQUIPE_TEXTO}`; });
 
 // ---------------- Início ----------------
 async function carregar() {
