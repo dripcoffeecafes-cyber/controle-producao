@@ -705,6 +705,67 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 .lead-status.s-orcamento { background: var(--caramelo-claro); color: var(--caramelo); border-color: transparent; }
 .lead-status.s-novo { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 
+/* ---------- Custos (precificação) ---------- */
+#areaCustos .filtros select { flex: none; width: 46%; }
+.custos-lista { margin-top: 12px; padding-bottom: calc(100px + var(--safe-bottom)); }
+.custos-lista .item-cat:first-child { margin-top: 4px; }
+.custos-lista .item-lista .item-cat { margin-top: 14px; }
+.custos-grade { display: grid; gap: 10px; margin-bottom: 6px; }
+.custo-card .corpo { padding-left: 18px; }
+.custo-nome { font-size: 19px; letter-spacing: -0.025em; margin: 2px 0 8px; -webkit-line-clamp: 2; }
+.custo-numeros { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 8px; }
+.custo-numeros span { display: block; font-size: 12px; color: var(--ink-2); }
+.custo-numeros strong { font-size: 22px; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.custo-numeros strong.acento { color: var(--acento); }
+.custo-linha { width: 100%; border: 0; background: none; padding: 10px 0; text-align: left; border-bottom: 1px solid var(--line-suave); min-height: 52px; cursor: pointer; }
+.custo-linha:last-child { border-bottom: 0; }
+.custo-linha-txt { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.custo-linha-txt small { color: var(--ink-2); font-size: 12.5px; overflow-wrap: anywhere; }
+.custo-unit { display: grid; text-align: right; flex: none; }
+.custo-unit b { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.custo-unit small { color: var(--ink-2); font-size: 11.5px; }
+.custos-aviso { margin: 6px 2px 10px; }
+.previa-custo { margin: 2px 0 14px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--caramelo-claro); font-size: 14px; color: var(--ink); }
+.previa-custo b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.muted-inline { color: var(--ink-2); }
+.erro-inline { color: var(--vermelho); font-weight: 500; }
+
+/* ficha técnica */
+.comp-add { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; align-items: end; margin-bottom: 8px; }
+.sheet .comp-add select { margin: 0; }
+.comp-qtd-campo { display: flex; align-items: center; gap: 6px; background: var(--surface-2); border-radius: var(--radius-sm); padding: 0 12px 0 0; }
+.sheet .comp-qtd-campo input { margin: 0; background: none; flex: 1; min-width: 0; }
+.comp-qtd-campo span { font-size: 13px; color: var(--ink-2); flex: none; min-width: 18px; }
+.comp-add .btn { margin: 0; min-height: 46px; }
+.comp-lista { list-style: none; margin: 0 0 14px; padding: 0; border: 1px solid var(--line-suave); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
+.comp-linha { display: grid; grid-template-columns: minmax(0, 1fr) 82px 68px 30px; align-items: center; gap: 6px; padding: 8px 4px 8px 12px; border-bottom: 1px solid var(--line-suave); }
+.comp-linha:last-child { border-bottom: 0; }
+.comp-linha.comp-erro .comp-nome { color: var(--vermelho); }
+.comp-txt { display: grid; gap: 1px; min-width: 0; }
+.comp-nome { font-weight: 500; font-size: 14.5px; overflow-wrap: anywhere; line-height: 1.25; }
+.comp-txt small { color: var(--ink-2); font-size: 12px; }
+.comp-qtd { display: flex; align-items: center; gap: 4px; }
+.sheet .comp-qtd input { margin: 0; min-height: 38px; padding: 6px 8px; text-align: right; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; width: 54px; }
+.comp-qtd small { color: var(--ink-2); font-size: 11.5px; width: 20px; }
+.comp-sub { text-align: right; font-size: 14px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.comp-remover { width: 32px; height: 32px; font-size: 20px; color: var(--ink-2); }
+.comp-vazio { padding: 14px; color: var(--ink-2); font-size: 14px; text-align: center; }
+.pc-resumo { background: var(--surface-2); border-radius: var(--radius-lg); padding: 10px 16px; margin: 2px 0 16px; }
+.pc-linha { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; color: var(--ink-2); padding: 3px 0; font-variant-numeric: tabular-nums; }
+.pc-total { color: var(--ink); border-top: 1px solid var(--line); margin-top: 4px; padding-top: 8px; font-size: 15px; }
+.pc-total strong { font-size: 22px; font-weight: 600; letter-spacing: -0.03em; }
+.pc-canais { display: grid; gap: 8px; margin: 0 0 16px; }
+.pc-canal { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 10px 14px; border: 1px solid var(--line-suave); border-radius: var(--radius-sm); background: var(--surface); }
+.pc-canal-nome { font-weight: 600; font-size: 14.5px; display: grid; min-width: 0; }
+.pc-canal-nome small, .pc-canal-preco small, .pc-canal-hoje small { display: block; font-weight: 400; color: var(--ink-2); font-size: 11.5px; }
+.pc-canal-preco, .pc-canal-hoje { text-align: right; }
+.pc-canal-preco strong { font-size: 18px; font-weight: 600; letter-spacing: -0.03em; color: var(--acento); font-variant-numeric: tabular-nums; }
+.pc-canal-hoje strong { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pc-canal-hoje.ok strong { color: var(--verde); }
+.pc-canal-hoje.meio strong { color: var(--ambar); }
+.pc-canal-hoje.baixa strong { color: var(--vermelho); }
+.pc-canal-hoje:not(.ok):not(.meio):not(.baixa) { max-width: 90px; }
+
 /* ---------- Só no computador ---------- */
 .marca-lateral, .area-cab, .so-desktop, .lateral-btn { display: none; }
 
@@ -726,7 +787,7 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 
   .areas {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 8;
-    display: grid; grid-template-columns: repeat(4, 1fr);
+    display: grid; grid-template-columns: repeat(5, 1fr);
     margin: 0; overflow: visible;
     padding: 6px max(8px, calc((100% - 560px) / 2)) var(--safe-bottom);
     background: var(--vidro);
@@ -749,7 +810,7 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 
   /* abre espaço para a barra de baixo */
   .lista { padding-bottom: calc(var(--barra) + 96px); }
-  .leads-lista { padding-bottom: calc(var(--barra) + 84px); }
+  .leads-lista, .custos-lista { padding-bottom: calc(var(--barra) + 84px); }
   .fab { bottom: calc(var(--barra) + 14px); }
   .toast { bottom: calc(var(--barra) + 80px); }
   /* barra do total: painel destacado da página, com os itens sumindo por baixo dela */
@@ -885,8 +946,19 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
     grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start;
   }
 
+  /* Custos: abas e filtros lado a lado, fichas em grade */
+  #areaCustos .pagina-corpo {
+    display: grid; grid-template-columns: 440px minmax(0, 520px); gap: 14px 16px; align-items: center;
+    padding: 4px 48px 64px;
+  }
+  #areaCustos .filtros select { width: 220px; }
+  .custos-lista { grid-column: 1 / -1; margin-top: 8px; padding-bottom: 0; max-width: 1100px; }
+  .custos-grade { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+  .custos-lista .item-lista { max-width: 760px; }
+  .comp-add { grid-template-columns: 130px minmax(0, 1fr) 120px auto; }
   .toast { left: calc(50% + var(--lateral) / 2); bottom: 28px; }
   dialog.sheet { max-width: 600px; }
+  dialog.sheet.sheet-ficha { max-width: 720px; }
   #dlgImagem { max-width: 720px; }
 }
 @media (max-width: 1023px) and (prefers-color-scheme: dark) {
