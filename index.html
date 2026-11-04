@@ -218,14 +218,17 @@
         <label>Grupo<select name="grupo"></select></label>
         <p class="kit-rotulo">Como você compra</p>
         <div class="grid2">
-          <label>Preço pago (R$)<input name="preco" inputmode="decimal" autocomplete="off" placeholder="Ex.: 95,00"></label>
-          <label>Rende<input name="rende" inputmode="decimal" autocomplete="off" placeholder="Ex.: 1000"></label>
+          <label><span id="insumoRotuloPreco">Preço pago (R$)</span><input name="preco" inputmode="decimal" autocomplete="off" placeholder="Ex.: 95,00"></label>
+          <label id="insumoCampoRende">Rende<input name="rende" inputmode="decimal" autocomplete="off" placeholder="Ex.: 1000"></label>
         </div>
-        <div class="grid2">
-          <label>Unidade de uso<select name="unidade"></select></label>
-          <label>Perda (%)<input name="perda" inputmode="decimal" autocomplete="off" placeholder="0"></label>
+        <div id="insumoCompra">
+          <div class="grid2">
+            <label>Unidade de uso<select name="unidade"></select></label>
+            <label>Perda (%)<input name="perda" inputmode="decimal" autocomplete="off" placeholder="0"></label>
+          </div>
+          <p class="muted">"Rende" é quanto dessa compra vira produto, na unidade de uso: um pacote de 1 kg de café rende 1000 g; uma caixa com 100 filtros rende 100 un. A perda é o que se desperdiça no manuseio (pó que fica na máquina, sachê que rasga).</p>
         </div>
-        <p class="muted">"Rende" é quanto dessa compra vira produto, na unidade de uso: um pacote de 1 kg de café rende 1000 g; uma caixa com 100 filtros rende 100 un. A perda é o que se desperdiça no manuseio (pó que fica na máquina, sachê que rasga).</p>
+        <p id="insumoRevenda" class="muted" hidden>Item comprado pronto para ir na box (xícara, coador, acessório). Informe só o custo de 1 unidade.</p>
         <p id="insumoPrevia" class="previa-custo"></p>
         <label>Observações<textarea name="obs" rows="2" placeholder="Fornecedor, data da última compra, combinados"></textarea></label>
         <p id="insumoErro" class="erro" role="alert"></p>
@@ -304,6 +307,7 @@
     <form id="formProdutoCusto" method="dialog" novalidate>
       <div class="sheet-topo">
         <h2 id="produtoCustoTitulo">Nova ficha de produto</h2>
+        <button type="button" id="duplicarProdutoCusto" class="btn btn-sm btn-duplicar" hidden>Duplicar</button>
         <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
       </div>
       <div class="sheet-corpo">
@@ -311,7 +315,9 @@
           <label>Nome<input name="nome" required autocomplete="off" placeholder="Ex.: Drip 10 g, Box Essencial"></label>
           <label>Tipo<select name="tipo"></select></label>
         </div>
-        <p class="kit-rotulo">Composição de 1 unidade</p>
+        <label id="campoCiclo" hidden>Ciclo / mês<input name="ciclo" autocomplete="off" placeholder="Ex.: Novembro 2026"></label>
+        <p class="kit-rotulo" id="compRotulo">Composição de 1 unidade</p>
+        <div id="boxBlocos" class="box-blocos" hidden></div>
         <div class="comp-add">
           <select id="compTipo" aria-label="Tipo do componente">
             <option value="insumo">Insumo</option>

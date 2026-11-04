@@ -750,6 +750,24 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 .comp-sub { text-align: right; font-size: 14px; font-variant-numeric: tabular-nums; font-weight: 600; }
 .comp-remover { width: 32px; height: 32px; font-size: 20px; color: var(--ink-2); }
 .comp-vazio { padding: 14px; color: var(--ink-2); font-size: 14px; text-align: center; }
+/* montador de box: blocos com +/− */
+.btn-duplicar { margin-right: 4px; }
+.box-blocos { display: grid; gap: 10px; margin-bottom: 14px; }
+.box-bloco { border: 1px solid var(--line-suave); border-radius: var(--radius-lg); background: var(--surface); padding: 4px 14px 6px; }
+.box-bloco-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0 4px; }
+.box-bloco-topo h4 { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink-2); letter-spacing: -0.01em; }
+.box-bloco-sub { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--caramelo); }
+.box-bloco-vazio { margin: 2px 0 8px; font-size: 13px; color: var(--ink-2); }
+.box-item { display: grid; grid-template-columns: minmax(0, 1fr) auto 74px; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line-suave); }
+.box-item:not(.on) .box-item-nome { color: var(--ink-2); font-weight: 400; }
+.box-item-txt { display: grid; gap: 1px; min-width: 0; }
+.box-item-nome { font-weight: 500; font-size: 14.5px; line-height: 1.25; overflow-wrap: anywhere; }
+.box-item-txt small { color: var(--ink-2); font-size: 12px; }
+.box-item-sub { text-align: right; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; min-height: 1em; }
+.box-stepper button { width: 34px; height: 36px; font-size: 20px; }
+.sheet .box-stepper .stepper-qtd { width: 38px; font-size: 15px; }
+.box-item:not(.on) .box-stepper .stepper-qtd { color: var(--ink-2); font-weight: 500; }
+
 .pc-resumo { background: var(--surface-2); border-radius: var(--radius-lg); padding: 10px 16px; margin: 2px 0 16px; }
 .pc-linha { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; color: var(--ink-2); padding: 3px 0; font-variant-numeric: tabular-nums; }
 .pc-total { color: var(--ink); border-top: 1px solid var(--line); margin-top: 4px; padding-top: 8px; font-size: 15px; }
