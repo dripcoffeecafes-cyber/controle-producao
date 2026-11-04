@@ -29,8 +29,12 @@ function lerNumero(txt) {
 const paraCampo = n => (n || n === 0) && n !== '' ? String(n).replace('.', ',') : '';
 
 export const UNIDADES = { g: 'grama (g)', ml: 'mililitro (ml)', un: 'unidade (un)' };
-export const GRUPOS_INSUMO = ['Café', 'Embalagem', 'Material', 'Frete', 'Outro'];
+// Revenda = produto comprado pronto para ir na box (xícara, coador, acessório): custo fixo por unidade.
+export const GRUPOS_INSUMO = ['Café', 'Embalagem', 'Material', 'Frete', 'Revenda', 'Outro'];
+export const REVENDA = 'Revenda';
 export const TIPOS_PRODUTO = ['Café', 'Drip', 'Box', 'Kit', 'Outro'];
+// Box e Kit usam o montador por blocos em vez da ficha livre
+export const ehBox = tipo => tipo === 'Box' || tipo === 'Kit';
 // Canais padrão (aparecem até a equipe editar; aí passam a vir do Firebase)
 export const CANAIS_PADRAO = [
   { id: 'site', nome: 'Site / loja', imposto: 4, cartao: 3.9, frete: 0, comissao: 0, margem: 40 },
@@ -101,7 +105,7 @@ export function resultadoDoPreco(preco, custo, canal) {
 
 export function criarCustos(ctx) {
   // ctx: { store: () => store, toast, quem }
-  const D = { insumos: [], processos: [], produtos: [], canais: [], aba: 'produtos', busca: '', canalId: '' };
+  const D = { insumos: [], processos: [], produtos: [], canais: [], itens: [], aba: 'produtos', busca: '', canalId: '' };
   const area = $('#areaCustos');
   const lista = $('#custosLista');
 
@@ -150,6 +154,7 @@ export function criarCustos(ctx) {
     const res = resultadoDoPreco(p.precoAtual, r.total, canal);
     const problemas = r.linhas.filter(l => l.faltando).length;
     const chips = [];
+    if (p.ciclo) chips.push(`<span class="chip chip-site">${esc(p.ciclo)}</span>`);
     if (r.ciclo) chips.push('<span class="chip atrasado">Produto dentro dele mesmo</span>');
     if (problemas) chips.push(`<span class="chip atrasado">${problemas} item apagado</span>`);
     if (!r.linhas.length) chips.push('<span class="chip prevista">Sem componentes</span>');
@@ -173,22 +178,42 @@ export function criarCustos(ctx) {
     </article>`;
   }
 
+  // produtos da aba Produtos com custo que ainda não viraram insumo de revenda
+  const importaveis = () => D.itens.filter(it => Number(it.custo) > 0 && !D.insumos.some(i => i.origemItem === it.id));
+
   function renderInsumos() {
     const itens = D.insumos.filter(i => bate(`${i.nome} ${i.grupo}`)).sort(ordenar);
-    if (!D.insumos.length) return vazio('Nenhum insumo ainda', 'Insumo é tudo que você compra: café torrado, filtro de drip, envelope, caixa, etiqueta, frete.', 'Cadastrar insumo');
+    const botaoImportar = importaveis().length
+      ? `<p class="custos-aviso"><button type="button" class="btn btn-sm" data-cacao="importar">Trazer da aba Produtos (${importaveis().length})</button> <span class="muted-inline">produtos com custo cadastrado viram itens de revenda</span></p>`
+      : '';
+    if (!D.insumos.length) return vazio('Nenhum insumo ainda', 'Insumo é tudo que você compra: café torrado, filtro de drip, envelope, caixa, etiqueta, frete, e os itens de revenda (xícara, acessório) que vão na box.', 'Cadastrar insumo') + botaoImportar;
     if (!itens.length) return '<div class="vazio"><h2>Nada encontrado</h2><p>Ajuste a busca.</p></div>';
     const grupos = {};
     itens.forEach(i => { (grupos[i.grupo || 'Outro'] ||= []).push(i); });
-    return `<div class="item-lista">${GRUPOS_INSUMO.filter(g => grupos[g]).map(g => `
+    return botaoImportar + `<div class="item-lista">${GRUPOS_INSUMO.filter(g => grupos[g]).map(g => `
       <p class="item-cat">${esc(g)}</p>
       ${grupos[g].map(i => `
         <button type="button" class="prod-linha custo-linha" data-id="${esc(i.id)}" data-cacao="editar">
           <span class="custo-linha-txt">
             <span class="item-nome">${esc(i.nome)}</span>
-            <small>${dinheiro(i.preco)} rende ${num(i.rende)} ${esc(i.unidade || 'un')}${Number(i.perda) ? ` · perda ${pct(i.perda)}` : ''}</small>
+            <small>${i.grupo === REVENDA ? `custo fixo${i.origemItem ? ' · da aba Produtos' : ''}` : `${dinheiro(i.preco)} rende ${num(i.rende)} ${esc(i.unidade || 'un')}${Number(i.perda) ? ` · perda ${pct(i.perda)}` : ''}`}</small>
           </span>
           <span class="custo-unit"><b>${dinheiroFino(custoInsumo(i))}</b><small>por ${esc(i.unidade || 'un')}</small></span>
         </button>`).join('')}`).join('')}</div>`;
+  }
+
+  async function importarDaAbaProdutos() {
+    const lista = importaveis();
+    if (!lista.length) return;
+    if (!confirm(`Trazer ${lista.length} produto(s) com custo da aba Produtos como itens de revenda? O custo é copiado (se mudar lá, ajuste aqui também).`)) return;
+    for (const it of lista) {
+      await ctx.store().salvarDoc('custos_insumos', {
+        id: novoId(), nome: it.nome, grupo: REVENDA, preco: Number(it.custo) || 0, rende: 1, unidade: 'un', perda: 0,
+        obs: '', origemItem: it.id, criadoEm: new Date().toISOString(), criadoPor: ctx.quem(),
+        atualizadoEm: new Date().toISOString(), atualizadoPor: ctx.quem(),
+      });
+    }
+    ctx.toast(`${lista.length} item(ns) de revenda cadastrados`);
   }
 
   function renderProcessos() {
@@ -260,11 +285,26 @@ export function criarCustos(ctx) {
     fIns.unidade.value = d.unidade || 'un';
     fIns.perda.value = paraCampo(d.perda);
     fIns.obs.value = d.obs || '';
-    previaInsumo();
+    modoInsumo();
     dlgInsumo.showModal();
     if (!i) fIns.nome.focus();
   }
+  const ehRevenda = () => fIns.grupo.value === REVENDA;
+  // Revenda: só o custo fixo por unidade (rende 1 un, sem perda)
+  function modoInsumo() {
+    const rev = ehRevenda();
+    $('#insumoCompra').hidden = rev;
+    $('#insumoCampoRende').hidden = rev;
+    $('#insumoRevenda').hidden = !rev;
+    $('#insumoRotuloPreco').textContent = rev ? 'Custo por unidade (R$)' : 'Preço pago (R$)';
+    previaInsumo();
+  }
   function previaInsumo() {
+    if (ehRevenda()) {
+      const c = lerNumero(fIns.preco.value);
+      $('#insumoPrevia').innerHTML = c ? `Custo por unidade: <b>${dinheiro(c)}</b> (item comprado pronto, custo fixo)` : 'Informe o custo de 1 unidade.';
+      return;
+    }
     const i = { preco: lerNumero(fIns.preco.value), rende: lerNumero(fIns.rende.value), perda: lerNumero(fIns.perda.value) };
     const c = custoInsumo(i);
     $('#insumoPrevia').innerHTML = c
@@ -272,16 +312,17 @@ export function criarCustos(ctx) {
       : 'Preencha o preço e o rendimento para ver o custo por unidade.';
   }
   fIns.addEventListener('input', previaInsumo);
-  fIns.addEventListener('change', previaInsumo);
+  fIns.addEventListener('change', e => { if (e.target.name === 'grupo') modoInsumo(); else previaInsumo(); });
   fIns.addEventListener('submit', async e => {
     e.preventDefault();
     const nome = fIns.nome.value.trim();
-    const preco = lerNumero(fIns.preco.value), rende = lerNumero(fIns.rende.value);
+    const rev = ehRevenda();
+    const preco = lerNumero(fIns.preco.value), rende = rev ? 1 : lerNumero(fIns.rende.value);
     if (!nome) { $('#insumoErro').textContent = 'Dê um nome ao insumo.'; fIns.nome.focus(); return; }
     if (!rende) { $('#insumoErro').textContent = 'Informe quanto rende (ex.: 1000 g, 100 un).'; fIns.rende.focus(); return; }
     const d = {
       ...(editando || {}), id: editando?.id || novoId(), nome, grupo: fIns.grupo.value, preco, rende,
-      unidade: fIns.unidade.value, perda: lerNumero(fIns.perda.value), obs: fIns.obs.value.trim(),
+      unidade: rev ? 'un' : fIns.unidade.value, perda: rev ? 0 : lerNumero(fIns.perda.value), obs: fIns.obs.value.trim(),
       criadoEm: editando?.criadoEm || new Date().toISOString(), criadoPor: editando?.criadoPor || ctx.quem(),
     };
     dlgInsumo.close();
@@ -384,24 +425,129 @@ export function criarCustos(ctx) {
   let rascunho = null; // { componentes: [...] } enquanto edita
   fProd.tipo.innerHTML = TIPOS_PRODUTO.map(t => `<option>${t}</option>`).join('');
 
-  function abrirProduto(p) {
-    editando = p || null;
+  // copia = abrir como novo, já preenchido (Duplicar)
+  function abrirProduto(p, copia) {
+    editando = copia ? null : (p || null);
     fProd.reset();
-    $('#produtoCustoTitulo').textContent = p ? 'Editar ficha' : 'Nova ficha de produto';
-    $('#excluirProdutoCusto').hidden = !p;
+    $('#produtoCustoTitulo').textContent = editando ? 'Editar ficha' : 'Nova ficha de produto';
+    $('#excluirProdutoCusto').hidden = !editando;
+    $('#duplicarProdutoCusto').hidden = !editando;
     $('#produtoCustoErro').textContent = '';
     const d = p || { tipo: 'Café' };
-    fProd.nome.value = d.nome || '';
+    fProd.nome.value = copia ? `${d.nome || ''} (cópia)` : (d.nome || '');
     fProd.tipo.value = d.tipo || 'Outro';
+    fProd.ciclo.value = copia ? '' : (d.ciclo || '');
     fProd.perda.value = paraCampo(d.perda);
     fProd.precoAtual.value = paraCampo(d.precoAtual);
     fProd.obs.value = d.obs || '';
-    rascunho = { id: d.id || '__novo__', componentes: (d.componentes || []).map(c => ({ ...c })) };
+    rascunho = { id: editando ? d.id : '__novo__', componentes: (d.componentes || []).map(c => ({ ...c })) };
     preencherOpcoesComponente();
-    renderComponentes();
+    modoFicha();
     dlgProd.showModal();
     if (!p) fProd.nome.focus();
+    if (copia) { fProd.nome.focus(); fProd.nome.select(); }
   }
+  $('#duplicarProdutoCusto').addEventListener('click', () => {
+    const base = { ...produtoDoForm(), obs: fProd.obs.value };
+    abrirProduto(base, true);
+  });
+
+  // Box/Kit: montador por blocos; o resto: ficha livre
+  function modoFicha() {
+    const box = ehBox(fProd.tipo.value);
+    $('#campoCiclo').hidden = !box;
+    $('#boxBlocos').hidden = !box;
+    $('.comp-add', fProd).hidden = box;
+    $('#compLista').hidden = box;
+    $('#compRotulo').textContent = box ? 'Monte a box (1 unidade)' : 'Composição de 1 unidade';
+    if (box) renderBox(); else renderComponentes();
+  }
+  fProd.tipo.addEventListener('change', modoFicha);
+
+  // Blocos do montador de box. Cada item pode ser produto (ficha), insumo ou processo.
+  const BLOCOS_BOX = [
+    { id: 'cafes', titulo: 'Cafés', vazio: 'Cadastre a ficha do café (tipo Café) para ele aparecer aqui.', itens: () => D.produtos.filter(p => p.tipo === 'Café' && p.id !== rascunho.id).map(p => ({ tipo: 'produto', ref: p.id })) },
+    { id: 'drips', titulo: 'Drips', vazio: 'Cadastre a ficha do drip (tipo Drip) para ele aparecer aqui.', itens: () => D.produtos.filter(p => p.tipo === 'Drip' && p.id !== rascunho.id).map(p => ({ tipo: 'produto', ref: p.id })) },
+    { id: 'revenda', titulo: 'Itens de revenda', vazio: 'Cadastre insumos no grupo Revenda (xícara, coador, acessório) ou traga da aba Produtos.', itens: () => D.insumos.filter(i => i.grupo === REVENDA).map(i => ({ tipo: 'insumo', ref: i.id })) },
+    { id: 'embalagem', titulo: 'Embalagem e envio', vazio: 'Cadastre insumos nos grupos Embalagem, Material e Frete.', itens: () => D.insumos.filter(i => ['Embalagem', 'Material', 'Frete', 'Outro'].includes(i.grupo || 'Outro')).map(i => ({ tipo: 'insumo', ref: i.id })) },
+    { id: 'montagem', titulo: 'Montagem', vazio: 'Cadastre o processo de montar a box.', itens: () => D.processos.map(p => ({ tipo: 'processo', ref: p.id })) },
+    { id: 'outros', titulo: 'Outros produtos', vazio: '', itens: () => D.produtos.filter(p => !['Café', 'Drip'].includes(p.tipo) && p.id !== rascunho.id).map(p => ({ tipo: 'produto', ref: p.id })) },
+  ];
+  // em qual bloco uma linha da composição cai (para o resumo da box)
+  function blocoDe(l) {
+    if (l.tipo === 'processo') return 'montagem';
+    if (l.tipo === 'insumo') return D.insumos.find(i => i.id === l.ref)?.grupo === REVENDA ? 'revenda' : 'embalagem';
+    const t = D.produtos.find(p => p.id === l.ref)?.tipo;
+    return t === 'Café' ? 'cafes' : t === 'Drip' ? 'drips' : 'outros';
+  }
+  function infoItem(c) {
+    if (c.tipo === 'insumo') { const i = D.insumos.find(x => x.id === c.ref); return i ? { nome: i.nome, unit: custoInsumo(i), unidade: i.unidade || 'un' } : null; }
+    if (c.tipo === 'processo') { const p = D.processos.find(x => x.id === c.ref); return p ? { nome: p.nome, unit: custoProcesso(p), unidade: 'un' } : null; }
+    const s = D.produtos.find(x => x.id === c.ref); return s ? { nome: s.nome, unit: custoProduto(s, D, [rascunho.id]).total, unidade: 'un' } : null;
+  }
+  const qtdDe = c => Number(rascunho.componentes.find(x => x.tipo === c.tipo && x.ref === c.ref)?.qtd) || 0;
+
+  function renderBox() {
+    const html = BLOCOS_BOX.map(b => {
+      const itens = b.itens();
+      if (!itens.length && !b.vazio) return '';
+      // na box, os itens escolhidos vêm primeiro; os sem quantidade ficam esmaecidos
+      const linhas = itens.map(c => ({ c, info: infoItem(c), qtd: qtdDe(c) })).filter(x => x.info)
+        .sort((a, b) => (b.qtd > 0) - (a.qtd > 0) || a.info.nome.localeCompare(b.info.nome, 'pt-BR'));
+      const sub = linhas.reduce((s, x) => s + x.info.unit * x.qtd, 0);
+      return `<section class="box-bloco" data-bloco="${b.id}">
+        <div class="box-bloco-topo"><h4>${b.titulo}</h4><b class="box-bloco-sub" data-sub>${sub ? dinheiro(sub) : ''}</b></div>
+        ${linhas.length ? linhas.map(x => `
+          <div class="box-item ${x.qtd > 0 ? 'on' : ''}" data-tipo="${x.c.tipo}" data-ref="${esc(x.c.ref)}">
+            <span class="box-item-txt"><span class="box-item-nome">${esc(x.info.nome)}</span><small>${dinheiroFino(x.info.unit)} por ${esc(x.info.unidade)}</small></span>
+            <span class="stepper box-stepper">
+              <button type="button" data-box="menos" aria-label="Menos" ${x.qtd <= 0 ? 'disabled' : ''}>−</button>
+              <input type="text" inputmode="decimal" class="stepper-qtd" value="${x.qtd ? esc(paraCampo(x.qtd)) : '0'}" data-box="qtd" aria-label="Quantidade de ${esc(x.info.nome)}">
+              <button type="button" data-box="mais" aria-label="Mais">+</button>
+            </span>
+            <b class="box-item-sub" data-item-sub>${x.qtd ? dinheiro(x.info.unit * x.qtd) : ''}</b>
+          </div>`).join('') : `<p class="box-bloco-vazio">${b.vazio}</p>`}
+      </section>`;
+    }).join('');
+    $('#boxBlocos').innerHTML = html;
+    const p = produtoDoForm();
+    renderResumoProduto(p, custoProduto(p, D));
+  }
+  function definirQtd(tipo, ref, qtd) {
+    const i = rascunho.componentes.findIndex(x => x.tipo === tipo && x.ref === ref);
+    if (qtd > 0) { if (i >= 0) rascunho.componentes[i].qtd = qtd; else rascunho.componentes.push({ tipo, ref, qtd }); }
+    else if (i >= 0) rascunho.componentes.splice(i, 1);
+  }
+  // atualiza só os números da linha e do bloco (sem redesenhar, para não perder o foco ao digitar)
+  function atualizarLinhaBox(linha) {
+    const c = { tipo: linha.dataset.tipo, ref: linha.dataset.ref };
+    const info = infoItem(c); const qtd = qtdDe(c);
+    linha.classList.toggle('on', qtd > 0);
+    linha.querySelector('[data-box="menos"]').disabled = qtd <= 0;
+    linha.querySelector('[data-item-sub]').textContent = qtd ? dinheiro(info.unit * qtd) : '';
+    const bloco = linha.closest('.box-bloco');
+    const sub = [...bloco.querySelectorAll('.box-item')].reduce((s, l) => { const i = infoItem({ tipo: l.dataset.tipo, ref: l.dataset.ref }); return s + (i ? i.unit * qtdDe({ tipo: l.dataset.tipo, ref: l.dataset.ref }) : 0); }, 0);
+    bloco.querySelector('[data-sub]').textContent = sub ? dinheiro(sub) : '';
+    const p = produtoDoForm();
+    renderResumoProduto(p, custoProduto(p, D));
+  }
+  $('#boxBlocos').addEventListener('click', e => {
+    const b = e.target.closest('[data-box]'); if (!b || b.tagName !== 'BUTTON') return;
+    const linha = b.closest('.box-item');
+    const c = { tipo: linha.dataset.tipo, ref: linha.dataset.ref };
+    const atual = qtdDe(c);
+    const nova = b.dataset.box === 'mais' ? atual + 1 : Math.max(0, atual - 1);
+    definirQtd(c.tipo, c.ref, nova);
+    linha.querySelector('[data-box="qtd"]').value = nova ? paraCampo(nova) : '0';
+    atualizarLinhaBox(linha);
+  });
+  $('#boxBlocos').addEventListener('input', e => {
+    if (e.target.dataset.box !== 'qtd') return;
+    const linha = e.target.closest('.box-item');
+    definirQtd(linha.dataset.tipo, linha.dataset.ref, Math.max(0, lerNumero(e.target.value)));
+    atualizarLinhaBox(linha);
+  });
+  $('#boxBlocos').addEventListener('focusin', e => { if (e.target.dataset.box === 'qtd') e.target.select(); });
 
   function preencherOpcoesComponente() {
     const sel = $('#compRef');
@@ -433,7 +579,7 @@ export function criarCustos(ctx) {
 
   function produtoDoForm() {
     return {
-      id: rascunho.id, nome: fProd.nome.value.trim(), tipo: fProd.tipo.value,
+      id: rascunho.id, nome: fProd.nome.value.trim(), tipo: fProd.tipo.value, ciclo: fProd.ciclo.value.trim(),
       componentes: rascunho.componentes, perda: lerNumero(fProd.perda.value), precoAtual: lerNumero(fProd.precoAtual.value),
     };
   }
@@ -460,6 +606,7 @@ export function criarCustos(ctx) {
     rascunho.componentes[i].qtd = lerNumero(e.target.value);
     const p = produtoDoForm(), r = custoProduto(p, D);
     e.target.closest('.comp-linha').querySelector('.comp-sub').textContent = dinheiro(r.linhas[i].sub);
+    // (a ficha livre e o montador compartilham o rascunho; a tela ativa é só uma)
     renderResumoProduto(p, r);
   });
   $('#compLista').addEventListener('click', e => {
@@ -472,9 +619,16 @@ export function criarCustos(ctx) {
 
   function renderResumoProduto(p, r) {
     const linhas = [];
-    if (r.insumos) linhas.push(['Insumos', dinheiro(r.insumos)]);
-    if (r.processos) linhas.push(['Processos', dinheiro(r.processos)]);
-    if (r.subprodutos) linhas.push(['Outros produtos', dinheiro(r.subprodutos)]);
+    if (ehBox(p.tipo)) {
+      // box: quanto é café, drip, revenda, embalagem/envio e montagem
+      const soma = {};
+      r.linhas.forEach(l => { const b = blocoDe(l); soma[b] = (soma[b] || 0) + l.sub; });
+      BLOCOS_BOX.forEach(b => { if (soma[b.id]) linhas.push([b.titulo, dinheiro(soma[b.id])]); });
+    } else {
+      if (r.insumos) linhas.push(['Insumos', dinheiro(r.insumos)]);
+      if (r.processos) linhas.push(['Processos', dinheiro(r.processos)]);
+      if (r.subprodutos) linhas.push(['Outros produtos', dinheiro(r.subprodutos)]);
+    }
     if (r.perda) linhas.push([`Perda no processo (${pct(r.perda)})`, dinheiro(r.total - r.base)]);
     $('#produtoCustoResumo').innerHTML = `
       ${linhas.map(([k, v]) => `<div class="pc-linha"><span>${k}</span><span>${v}</span></div>`).join('')}
@@ -498,6 +652,7 @@ export function criarCustos(ctx) {
     const comps = rascunho.componentes.filter(c => Number(c.qtd) > 0).map(c => ({ tipo: c.tipo, ref: c.ref, qtd: Number(c.qtd) }));
     const d = {
       ...(editando || {}), id: editando?.id || novoId(), nome, tipo: fProd.tipo.value, componentes: comps,
+      ciclo: ehBox(fProd.tipo.value) ? fProd.ciclo.value.trim() : '',
       perda: lerNumero(fProd.perda.value), precoAtual: lerNumero(fProd.precoAtual.value), obs: fProd.obs.value.trim(),
       criadoEm: editando?.criadoEm || new Date().toISOString(), criadoPor: editando?.criadoPor || ctx.quem(),
     };
@@ -520,6 +675,7 @@ export function criarCustos(ctx) {
     const alvo = e.target.closest('[data-cacao]');
     if (!alvo) return;
     if (alvo.dataset.cacao === 'novo') return abrirNovo();
+    if (alvo.dataset.cacao === 'importar') return importarDaAbaProdutos();
     const id = alvo.closest('[data-id]')?.dataset.id;
     if (D.aba === 'produtos') abrirProduto(D.produtos.find(x => x.id === id));
     if (D.aba === 'insumos') abrirInsumo(D.insumos.find(x => x.id === id));
@@ -545,6 +701,8 @@ export function criarCustos(ctx) {
       st.onColecao('custos_processos', l => { D.processos = l; render(); }, erro),
       st.onColecao('custos_produtos', l => { D.produtos = l; render(); }, erro),
       st.onColecao('custos_canais', l => { D.canais = l; render(); }, erro),
+      // só leitura: produtos da aba Produtos, para trazer os de revenda
+      st.onColecao('itens', l => { D.itens = l; if (D.aba === 'insumos') render(); }, () => {}),
     ];
   }
 
