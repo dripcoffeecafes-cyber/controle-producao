@@ -79,6 +79,7 @@
           <button data-area="orcar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 10h15v9.5a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1V10Z"/><path d="M3.5 6.5h17V10h-17zM12 6.5v14M12 6.5C10.5 3.5 7 3.5 7 5.3c0 1.2 2.4 1.2 5 1.2Zm0 0c1.5-3 5-3 5-1.2 0 1.2-2.4 1.2-5 1.2Z"/></svg><span>Orçar kit</span></button>
           <button data-area="produtos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9.5h12v5.5a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V9.5Z"/><path d="M17 11h1.3a2.3 2.3 0 0 1 0 4.6H16.6M9 3.5c-.8 1 .8 2-.1 3M12.5 3.5c-.8 1 .8 2-.1 3"/></svg><span>Produtos</span></button>
           <button data-area="leads"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="8.5" r="3.5"/><path d="M3.5 19.5c.7-3.2 3.1-5 6-5s5.3 1.8 6 5M16 5.5a3 3 0 0 1 0 6M18 14.8c1.4.7 2.3 2.2 2.6 4.2"/></svg><span>Leads</span></button>
+          <button data-area="custos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h14v15H5z"/><path d="M8 8.5h8M8 12h3M13 12h3M8 15.5h3M13 15.5h3"/></svg><span>Custos</span></button>
         </nav>
         <button id="instalarApp" class="lateral-btn" type="button" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 7.5v6M9.5 11l2.5 2.5 2.5-2.5"/></svg>
@@ -174,6 +175,23 @@
       </div>
     </main>
 
+    <!-- Custos: ficha técnica dos produtos (insumos + processos) e preço por canal -->
+    <main id="areaCustos" class="pagina" hidden>
+      <div class="pagina-corpo">
+        <nav id="custosAbas" class="abas-leads" aria-label="Partes da precificação">
+          <button data-aba="produtos" aria-selected="true">Produtos</button>
+          <button data-aba="insumos" aria-selected="false">Insumos</button>
+          <button data-aba="processos" aria-selected="false">Processos</button>
+          <button data-aba="canais" aria-selected="false">Canais</button>
+        </nav>
+        <div class="filtros">
+          <input id="custosBusca" type="search" placeholder="Buscar" aria-label="Buscar">
+          <select id="custosCanal" aria-label="Canal do preço sugerido"></select>
+        </div>
+        <div id="custosLista" class="custos-lista" aria-live="polite"></div>
+      </div>
+    </main>
+
     <button id="novoPedido" class="fab" aria-label="Novo pedido">
       <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M11 5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5Z"/></svg>
       <span id="fabTexto">Novo pedido</span>
@@ -182,7 +200,147 @@
       <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M11 5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5Z"/></svg>
       <span>Novo lead</span>
     </button>
+    <button id="novoCusto" class="fab" aria-label="Novo" hidden>
+      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M11 5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5Z"/></svg>
+      <span>Novo produto</span>
+    </button>
   </div>
+
+  <!-- Custos: insumo (o que se compra) -->
+  <dialog id="dlgInsumo" class="sheet">
+    <form id="formInsumo" method="dialog" novalidate>
+      <div class="sheet-topo">
+        <h2 id="insumoTitulo">Novo insumo</h2>
+        <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
+      </div>
+      <div class="sheet-corpo">
+        <label>Nome<input name="nome" required autocomplete="off" placeholder="Ex.: Café torrado Catuaí, Filtro de drip, Caixa da box"></label>
+        <label>Grupo<select name="grupo"></select></label>
+        <p class="kit-rotulo">Como você compra</p>
+        <div class="grid2">
+          <label>Preço pago (R$)<input name="preco" inputmode="decimal" autocomplete="off" placeholder="Ex.: 95,00"></label>
+          <label>Rende<input name="rende" inputmode="decimal" autocomplete="off" placeholder="Ex.: 1000"></label>
+        </div>
+        <div class="grid2">
+          <label>Unidade de uso<select name="unidade"></select></label>
+          <label>Perda (%)<input name="perda" inputmode="decimal" autocomplete="off" placeholder="0"></label>
+        </div>
+        <p class="muted">"Rende" é quanto dessa compra vira produto, na unidade de uso: um pacote de 1 kg de café rende 1000 g; uma caixa com 100 filtros rende 100 un. A perda é o que se desperdiça no manuseio (pó que fica na máquina, sachê que rasga).</p>
+        <p id="insumoPrevia" class="previa-custo"></p>
+        <label>Observações<textarea name="obs" rows="2" placeholder="Fornecedor, data da última compra, combinados"></textarea></label>
+        <p id="insumoErro" class="erro" role="alert"></p>
+      </div>
+      <div class="sheet-rodape">
+        <button type="button" id="excluirInsumo" class="btn btn-perigo" hidden>Excluir</button>
+        <span class="espaco"></span>
+        <button type="button" class="btn" data-fechar>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar insumo</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Custos: processo (o que a equipe faz) -->
+  <dialog id="dlgProcesso" class="sheet">
+    <form id="formProcesso" method="dialog" novalidate>
+      <div class="sheet-topo">
+        <h2 id="processoTitulo">Novo processo</h2>
+        <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
+      </div>
+      <div class="sheet-corpo">
+        <label>Nome<input name="nome" required autocomplete="off" placeholder="Ex.: Envasar e selar drips, Montar box"></label>
+        <label>Custo da hora (R$)<input name="custoHora" inputmode="decimal" autocomplete="off" placeholder="Ex.: 25,00"></label>
+        <p class="muted">Quanto custa uma hora desse trabalho: salário com encargos dividido pelas horas do mês, mais energia e desgaste da máquina, se quiser.</p>
+        <div class="grid2">
+          <label>Minutos por lote<input name="minutos" inputmode="decimal" autocomplete="off" placeholder="Ex.: 30"></label>
+          <label>Unidades por lote<input name="unidades" inputmode="decimal" autocomplete="off" placeholder="Ex.: 50"></label>
+        </div>
+        <p id="processoPrevia" class="previa-custo"></p>
+        <label>Observações<textarea name="obs" rows="2" placeholder="Como foi medido o tempo"></textarea></label>
+        <p id="processoErro" class="erro" role="alert"></p>
+      </div>
+      <div class="sheet-rodape">
+        <button type="button" id="excluirProcesso" class="btn btn-perigo" hidden>Excluir</button>
+        <span class="espaco"></span>
+        <button type="button" class="btn" data-fechar>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar processo</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Custos: canal de venda (taxas e margem) -->
+  <dialog id="dlgCanal" class="sheet">
+    <form id="formCanal" method="dialog" novalidate>
+      <div class="sheet-topo">
+        <h2 id="canalTitulo">Novo canal</h2>
+        <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
+      </div>
+      <div class="sheet-corpo">
+        <label>Nome<input name="nome" required autocomplete="off" placeholder="Ex.: Site / loja, Assinatura, Atacado"></label>
+        <p class="kit-rotulo">Taxas sobre o preço de venda (%)</p>
+        <div class="grid2">
+          <label>Imposto<input name="imposto" inputmode="decimal" autocomplete="off" placeholder="4"></label>
+          <label>Cartão / plataforma<input name="cartao" inputmode="decimal" autocomplete="off" placeholder="3,9"></label>
+        </div>
+        <div class="grid2">
+          <label>Frete embutido<input name="frete" inputmode="decimal" autocomplete="off" placeholder="0"></label>
+          <label>Comissão<input name="comissao" inputmode="decimal" autocomplete="off" placeholder="0"></label>
+        </div>
+        <label>Margem desejada (%)<input name="margem" inputmode="decimal" autocomplete="off" placeholder="35"></label>
+        <p class="muted">A margem é a parte do preço que sobra para a empresa depois do custo do produto e das taxas. Ela paga as despesas fixas (aluguel, marketing, pró-labore) e deixa o lucro.</p>
+        <p id="canalPrevia" class="previa-custo"></p>
+        <p id="canalErro" class="erro" role="alert"></p>
+      </div>
+      <div class="sheet-rodape">
+        <button type="button" id="excluirCanal" class="btn btn-perigo" hidden>Excluir</button>
+        <span class="espaco"></span>
+        <button type="button" class="btn" data-fechar>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar canal</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Custos: ficha técnica do produto -->
+  <dialog id="dlgProdutoCusto" class="sheet sheet-ficha">
+    <form id="formProdutoCusto" method="dialog" novalidate>
+      <div class="sheet-topo">
+        <h2 id="produtoCustoTitulo">Nova ficha de produto</h2>
+        <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
+      </div>
+      <div class="sheet-corpo">
+        <div class="grid2 grid-ficha">
+          <label>Nome<input name="nome" required autocomplete="off" placeholder="Ex.: Drip 10 g, Box Essencial"></label>
+          <label>Tipo<select name="tipo"></select></label>
+        </div>
+        <p class="kit-rotulo">Composição de 1 unidade</p>
+        <div class="comp-add">
+          <select id="compTipo" aria-label="Tipo do componente">
+            <option value="insumo">Insumo</option>
+            <option value="processo">Processo</option>
+            <option value="produto">Produto</option>
+          </select>
+          <select id="compRef" aria-label="Qual"></select>
+          <div class="comp-qtd-campo"><input id="compQtd" type="text" inputmode="decimal" placeholder="Qtd" aria-label="Quantidade"><span id="compUnidade"></span></div>
+          <button type="button" id="compAdd" class="btn btn-sm">Adicionar</button>
+        </div>
+        <ul id="compLista" class="comp-lista"></ul>
+        <div class="grid2">
+          <label>Perda no processo (%)<input name="perda" inputmode="decimal" autocomplete="off" placeholder="0"></label>
+          <label>Preço praticado hoje (R$)<input name="precoAtual" inputmode="decimal" autocomplete="off" placeholder="Opcional"></label>
+        </div>
+        <div id="produtoCustoResumo" class="pc-resumo"></div>
+        <p class="kit-rotulo">Preço sugerido por canal</p>
+        <div id="produtoCustoCanais" class="pc-canais"></div>
+        <label>Observações<textarea name="obs" rows="2" placeholder="Receita, gramagem, detalhes"></textarea></label>
+        <p id="produtoCustoErro" class="erro" role="alert"></p>
+      </div>
+      <div class="sheet-rodape">
+        <button type="button" id="excluirProdutoCusto" class="btn btn-perigo" hidden>Excluir</button>
+        <span class="espaco"></span>
+        <button type="button" class="btn" data-fechar>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar ficha</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- Formulário do pedido -->
   <dialog id="dlgPedido" class="sheet">
