@@ -23,15 +23,13 @@ jobs:
           curl -fsSL "$base/experiments.js" -o __/auth/experiments.js
           curl -fsSL "$base/iframe" -o __/auth/iframe.html
           curl -fsSL "$base/iframe.js" -o __/auth/iframe.js
-          mkdir -p __/firebase
-          curl -fsSL https://producao-blooming-app.firebaseapp.com/__/firebase/init.json -o __/firebase/init.json
           touch .nojekyll
           ls -la __/auth
       - name: Gravar no repositório
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .nojekyll __/auth __/firebase
+          git add .nojekyll __/auth
           if git diff --cached --quiet; then echo "Nada mudou"; exit 0; fi
           git commit -m "Atualiza arquivos de login do Firebase (/__/auth)"
           git push
