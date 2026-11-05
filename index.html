@@ -80,6 +80,7 @@
           <button data-area="produtos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9.5h12v5.5a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V9.5Z"/><path d="M17 11h1.3a2.3 2.3 0 0 1 0 4.6H16.6M9 3.5c-.8 1 .8 2-.1 3M12.5 3.5c-.8 1 .8 2-.1 3"/></svg><span>Produtos</span></button>
           <button data-area="leads"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="8.5" r="3.5"/><path d="M3.5 19.5c.7-3.2 3.1-5 6-5s5.3 1.8 6 5M16 5.5a3 3 0 0 1 0 6M18 14.8c1.4.7 2.3 2.2 2.6 4.2"/></svg><span>Leads</span></button>
           <button data-area="custos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h14v15H5z"/><path d="M8 8.5h8M8 12h3M13 12h3M8 15.5h3M13 15.5h3"/></svg><span>Custos</span></button>
+          <button data-area="notas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z"/><path d="M8.5 9l1.5 1.5 2.5-3M14.5 9H16M8.5 15h7.5"/></svg><span>Notas</span></button>
         </nav>
         <button id="instalarApp" class="lateral-btn" type="button" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 7.5v6M9.5 11l2.5 2.5 2.5-2.5"/></svg>
@@ -192,6 +193,24 @@
       </div>
     </main>
 
+    <!-- Notas: anotações (como fiz algo) e pendências (o que fazer) -->
+    <main id="areaNotas" class="pagina" hidden>
+      <div class="pagina-corpo">
+        <div id="notasResumo" class="resumo"></div>
+        <nav id="notasAbas" class="abas-leads" aria-label="Filtrar notas">
+          <button data-aba="pendencias" aria-selected="true">Pendências</button>
+          <button data-aba="anotacoes" aria-selected="false">Anotações</button>
+          <button data-aba="concluidas" aria-selected="false">Concluídas</button>
+          <button data-aba="todas" aria-selected="false">Todas</button>
+        </nav>
+        <div class="filtros">
+          <input id="notasBusca" type="search" placeholder="Buscar" aria-label="Buscar nas notas">
+          <select id="notasEtiqueta" aria-label="Filtrar por etiqueta"></select>
+        </div>
+        <div id="notasLista" class="notas-lista" aria-live="polite"></div>
+      </div>
+    </main>
+
     <button id="novoPedido" class="fab" aria-label="Novo pedido">
       <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M11 5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5Z"/></svg>
       <span id="fabTexto">Novo pedido</span>
@@ -204,7 +223,57 @@
       <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M11 5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5Z"/></svg>
       <span>Novo produto</span>
     </button>
+    <button id="novaNota" class="fab" aria-label="Nova nota" hidden>
+      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M11 5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5Z"/></svg>
+      <span>Nova nota</span>
+    </button>
   </div>
+
+  <!-- Notas: anotação ou pendência -->
+  <dialog id="dlgNota" class="sheet">
+    <form id="formNota" method="dialog" novalidate>
+      <div class="sheet-topo">
+        <h2 id="notaTitulo">Nova pendência</h2>
+        <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
+      </div>
+      <div class="sheet-corpo">
+        <div class="segmentado nota-tipo" role="radiogroup" aria-label="Tipo de nota">
+          <label><input type="radio" name="tipo" value="pendencia" checked><span>Pendência</span></label>
+          <label><input type="radio" name="tipo" value="anotacao"><span>Anotação</span></label>
+        </div>
+        <label>Título<input name="titulo" autocomplete="off" maxlength="120"></label>
+        <label>Detalhes<textarea name="texto" rows="3"></textarea></label>
+        <label>Etiqueta<input name="etiqueta" list="notaEtiquetas" autocomplete="off" placeholder="Ex.: Impressão, Fornecedor"></label>
+        <datalist id="notaEtiquetas"></datalist>
+        <div id="notaCampoPrazo">
+          <label>Prazo<input name="prazo" type="date"></label>
+          <div id="notaAtalhos" class="nota-atalhos">
+            <button type="button" class="btn btn-sm" data-dias="0">Hoje</button>
+            <button type="button" class="btn btn-sm" data-dias="1">Amanhã</button>
+            <button type="button" class="btn btn-sm" data-dias="7">Em 1 semana</button>
+            <button type="button" class="btn btn-sm" data-dias="30">Em 1 mês</button>
+            <button type="button" class="btn btn-sm" data-dias="-1">Sem prazo</button>
+          </div>
+        </div>
+        <label id="notaCampoFeito" class="opcao-cliente" hidden>
+          <input type="checkbox" name="feito">
+          <span><b>Feita</b><small>Vai para Concluídas.</small></span>
+        </label>
+        <label id="notaCampoFixada" class="opcao-cliente" hidden>
+          <input type="checkbox" name="fixada">
+          <span><b>Fixar no topo</b><small>Fica em primeiro na lista de anotações.</small></span>
+        </label>
+        <p id="notaInfo" class="muted"></p>
+        <p id="notaErro" class="erro" role="alert"></p>
+      </div>
+      <div class="sheet-rodape">
+        <button type="button" id="excluirNota" class="btn btn-perigo" hidden>Excluir</button>
+        <span class="espaco"></span>
+        <button type="button" class="btn" data-fechar>Cancelar</button>
+        <button type="submit" id="salvarNota" class="btn btn-primary">Salvar pendência</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- Custos: insumo (o que se compra) -->
   <dialog id="dlgInsumo" class="sheet">
