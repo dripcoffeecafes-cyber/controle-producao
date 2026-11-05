@@ -3,6 +3,7 @@ import { criarAcesso, mensagemErro } from './acesso.js';
 import { criarKits } from './kits.js';
 import { criarLeads } from './leads.js';
 import { criarCustos } from './custos.js';
+import { criarNotas } from './notas.js';
 
 // ---------------- Utilidades ----------------
 const $ = (s, el = document) => el.querySelector(s);
@@ -243,13 +244,20 @@ const custos = criarCustos({
   quem: () => quem(),
 });
 
+// ---------------- Notas (anotações e pendências) ----------------
+const notas = criarNotas({
+  store: () => estado.store,
+  toast: (...a) => toast(...a),
+  quem: () => quem(),
+});
+
 // Catálogo e pedidos da página do cliente ficam fora da equipe no Firebase: só quem entrou
 // com a conta pode gravar ali (no modo de teste, tudo fica no aparelho).
 function podePublicar() { return estado.modo === 'conta' || estado.store?.modo === 'local'; }
 const linkCliente = () => new URL('kit/', location.href.split('#')[0]).href;
 
-// ---------------- Áreas do app (cabeçalho): Produção, Orçar kit, Produtos, Leads, Custos ----------------
-const AREAS = ['producao', 'orcar', 'produtos', 'leads', 'custos'];
+// ---------------- Áreas do app (cabeçalho): Produção, Orçar kit, Produtos, Leads, Custos, Notas ----------------
+const AREAS = ['producao', 'orcar', 'produtos', 'leads', 'custos', 'notas'];
 // Título e frase de cada área (aparecem no computador, acima do conteúdo)
 const TITULOS = {
   producao: ['Produção', 'Os pedidos da equipe, do pedido à entrega.'],
@@ -257,6 +265,7 @@ const TITULOS = {
   produtos: ['Produtos', 'Preços e fotos que entram no orçamento dos kits.'],
   leads: ['Leads', 'Quem pediu contato e em que ponto está a conversa.'],
   custos: ['Custos', 'Quanto custa cada produto e por quanto vender em cada canal.'],
+  notas: ['Notas', 'Pendências para não esquecer e anotações de como cada coisa foi feita.'],
 };
 function renderProdutos() { $('#areaProdutos').innerHTML = kits.html(); }
 function irPara(area) {
@@ -276,14 +285,17 @@ function irPara(area) {
   $('#novoPedido').hidden = !producao;
   $('#novoLead').hidden = area !== 'leads';
   $('#novoCusto').hidden = area !== 'custos';
+  $('#novaNota').hidden = area !== 'notas';
   $('#areaOrcar').hidden = area !== 'orcar';
   $('#areaProdutos').hidden = area !== 'produtos';
   $('#areaLeads').hidden = area !== 'leads';
   $('#areaCustos').hidden = area !== 'custos';
+  $('#areaNotas').hidden = area !== 'notas';
   if (area === 'orcar') kits.renderOrcar();
   if (area === 'produtos') renderProdutos();
   if (area === 'leads') leads.render();
   if (area === 'custos') custos.render();
+  if (area === 'notas') notas.render();
   if (mudou) window.scrollTo({ top: 0 });
 }
 $$('.areas button').forEach(b => b.addEventListener('click', () => irPara(b.dataset.area)));
@@ -758,6 +770,7 @@ function conectarDados() {
     ...kits.conectar(),
     ...leads.conectar(),
     ...custos.conectar(),
+    ...notas.conectar(),
   ];
 }
 

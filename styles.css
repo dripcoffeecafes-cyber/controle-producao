@@ -784,6 +784,31 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 .pc-canal-hoje.baixa strong { color: var(--vermelho); }
 .pc-canal-hoje:not(.ok):not(.meio):not(.baixa) { max-width: 90px; }
 
+/* ---------- Notas (anotações e pendências) ---------- */
+.notas-lista { display: grid; gap: 10px; margin-top: 12px; padding-bottom: calc(100px + var(--safe-bottom)); }
+#areaNotas .filtros select { flex: none; width: 46%; }
+.nota .corpo { display: flex; align-items: flex-start; gap: 12px; }
+.nota .abrir { flex: 1; min-width: 0; }
+.nota-titulo { font-size: 17px; letter-spacing: -0.02em; margin: 0 0 4px; -webkit-line-clamp: 3; }
+.nota-texto {
+  margin: 0 0 8px; font-size: 14px; line-height: 1.45; color: var(--ink-2); white-space: pre-line; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden;
+}
+.nota-anot .nota-texto { -webkit-line-clamp: 8; color: var(--ink); }
+.nota-quando { margin: 6px 0 0; font-size: 12px; color: var(--ink-2); }
+.nota-check {
+  flex: none; width: 28px; height: 28px; margin-top: 1px; border-radius: 50%;
+  border: 2px solid var(--line); background: transparent; color: transparent;
+  display: grid; place-items: center; cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+}
+.nota-check:hover { border-color: var(--ink-2); }
+.nota-check.on { background: var(--verde); border-color: var(--verde); color: #fff; }
+.nota.p1 .nota-check:not(.on) { border-color: var(--vermelho); }
+.nota-feita .nota-titulo { text-decoration: line-through; color: var(--ink-2); }
+.nota-tipo { margin-bottom: 14px; }
+.nota-atalhos { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 14px; }
+.nota-atalhos .btn { min-height: 34px; padding: 6px 12px; font-size: 13px; }
+
 /* ---------- Só no computador ---------- */
 .marca-lateral, .area-cab, .so-desktop, .lateral-btn { display: none; }
 
@@ -805,7 +830,7 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 
   .areas {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 8;
-    display: grid; grid-template-columns: repeat(5, 1fr);
+    display: grid; grid-template-columns: repeat(6, 1fr);
     margin: 0; overflow: visible;
     padding: 6px max(8px, calc((100% - 560px) / 2)) var(--safe-bottom);
     background: var(--vidro);
@@ -828,7 +853,8 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 
   /* abre espaço para a barra de baixo */
   .lista { padding-bottom: calc(var(--barra) + 96px); }
-  .leads-lista, .custos-lista { padding-bottom: calc(var(--barra) + 84px); }
+  .leads-lista, .custos-lista, .notas-lista { padding-bottom: calc(var(--barra) + 84px); }
+  .areas button { font-size: 10.5px; }
   .fab { bottom: calc(var(--barra) + 14px); }
   .toast { bottom: calc(var(--barra) + 80px); }
   /* barra do total: painel destacado da página, com os itens sumindo por baixo dela */
@@ -960,6 +986,18 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
   #areaLeads .resumo { grid-column: 1 / -1; margin: 0 0 6px; max-width: 960px; }
   #areaLeads .filtros select { width: 200px; }
   .leads-lista {
+    grid-column: 1 / -1; margin-top: 8px; padding-bottom: 0;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start;
+  }
+
+  /* Notas: igual a Leads */
+  #areaNotas .pagina-corpo {
+    display: grid; grid-template-columns: 440px minmax(0, 520px); gap: 14px 16px; align-items: center;
+    padding: 4px 48px 64px;
+  }
+  #areaNotas .resumo { grid-column: 1 / -1; margin: 0 0 6px; max-width: 960px; }
+  #areaNotas .filtros select { width: 200px; }
+  .notas-lista {
     grid-column: 1 / -1; margin-top: 8px; padding-bottom: 0;
     grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start;
   }

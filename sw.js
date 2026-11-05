@@ -1,6 +1,6 @@
 // Service worker: guarda o app no aparelho para abrir rápido e funcionar sem internet.
 // Ao publicar uma nova versão, aumente o número abaixo.
-const VERSAO = 'producao-v36';
+const VERSAO = 'producao-v37';
 const ARQUIVOS = [
   './',
   'index.html',
@@ -10,6 +10,7 @@ const ARQUIVOS = [
   'kits.js',
   'leads.js',
   'custos.js',
+  'notas.js',
   'acesso.js',
   'regras-kit.js',
   'config.js',
@@ -44,11 +45,12 @@ self.addEventListener('fetch', e => {
   const cacheavel = mesmoSite || ['www.gstatic.com', 'fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname);
   if (!cacheavel) return;
 
-  // Arquivos do app: rede primeiro (pega atualizações), cache se estiver offline.
+  // Arquivos do app: rede primeiro (pega atualizações na hora: 'no-cache' confere com o servidor
+  // em vez de usar a cópia de até 10 min do navegador), cache se estiver offline.
   // Bibliotecas e fontes externas: cache primeiro.
   if (mesmoSite) {
     e.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-cache' })
         .then(res => {
           if (res.ok) { const copia = res.clone(); caches.open(VERSAO).then(c => c.put(req, copia)); }
           return res;
