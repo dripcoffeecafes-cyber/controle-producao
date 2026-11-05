@@ -21,3 +21,9 @@ window.FIREBASE_CONFIG = {
   messagingSenderId: "409421556320",
   appId: "1:409421556320:web:cf6de6c7036a01384b7105"
 };
+// No app instalado no iPhone (navigator.standalone), o login do Google passa pelos arquivos de apoio
+// copiados para /__/auth/ no próprio endereço: é o que faz o "Entrar com Google" funcionar ali.
+// No navegador e no computador continua como sempre (janela do Google pelo endereço do Firebase).
+if (location.hostname === 'cafes.bloomingclub.com.br' && navigator.standalone === true) {
+  window.FIREBASE_CONFIG.authDomain = location.hostname;
+}

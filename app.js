@@ -856,7 +856,10 @@ $('#entrarGoogle').addEventListener('click', async () => {
   const botao = $('#entrarGoogle');
   botao.disabled = true;
   try {
-    await estado.acesso.entrarComGoogle(); // o resto acontece em onUsuario
+    // no app instalado no iPhone a janela do Google não abre: vai e volta pela página do Google
+    const redirecionar = ios && standalone;
+    if (redirecionar) botao.querySelector('span').textContent = 'Abrindo o Google…';
+    await estado.acesso.entrarComGoogle({ redirecionar }); // o resto acontece em onUsuario
   } catch (err) {
     if (err?.code !== 'auth/cancelled-popup-request') erro.textContent = mensagemErro(err);
   } finally {
@@ -911,6 +914,11 @@ async function iniciar() {
     mostrarTelaEntrar('Sem conexão com a internet agora. Verifique a conexão e abra o app de novo.');
     return;
   }
+
+  // voltou da página do Google (app instalado no iPhone): mostra o erro, se houve
+  estado.acesso.resultadoGoogle().then(err => {
+    if (err && err.code !== 'auth/redirect-cancelled-by-user') { $('#entrarErro').textContent = mensagemErro(err); }
+  });
 
   estado.acesso.onUsuario(async u => {
     const antes = estado.usuario;

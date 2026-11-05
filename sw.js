@@ -1,6 +1,6 @@
 // Service worker: guarda o app no aparelho para abrir rápido e funcionar sem internet.
 // Ao publicar uma nova versão, aumente o número abaixo.
-const VERSAO = 'producao-v37';
+const VERSAO = 'producao-v38';
 const ARQUIVOS = [
   './',
   'index.html',
@@ -40,6 +40,9 @@ self.addEventListener('fetch', e => {
 
   // Banco de dados e login do Firebase: sempre direto pela rede (o próprio Firebase cuida do offline)
   if (/googleapis\.com$|firebaseapp\.com$/.test(url.hostname) && !url.hostname.startsWith('fonts.')) return;
+
+  // Arquivos de apoio do login (/__/): sempre direto pela rede
+  if (url.origin === self.location.origin && url.pathname.startsWith('/__/')) return;
 
   const mesmoSite = url.origin === self.location.origin;
   const cacheavel = mesmoSite || ['www.gstatic.com', 'fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname);
