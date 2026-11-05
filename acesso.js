@@ -73,12 +73,20 @@ export async function criarAcesso(firebaseConfig) {
 
     async entrar(email, senha) { await au.signInWithEmailAndPassword(auth, email.trim(), senha); },
 
-    // Conta Google: abre a janela do Google. Para Gmail, o Firebase junta com a conta
-    // criada pelo administrador (mesmo uid), então o acesso continua o mesmo.
-    async entrarComGoogle() {
+    // Conta Google. Para Gmail, o Firebase junta com a conta criada pelo administrador
+    // (mesmo uid), então o acesso continua o mesmo.
+    // redirecionar = true (app instalado no iPhone, onde a janela não abre): vai para a página
+    // do Google e volta para o app; o resultado chega por onUsuario (erros em resultadoGoogle).
+    async entrarComGoogle({ redirecionar = false } = {}) {
       const provedor = new au.GoogleAuthProvider();
       provedor.setCustomParameters({ prompt: 'select_account' });
-      await au.signInWithPopup(auth, provedor, au.browserPopupRedirectResolver);
+      if (redirecionar) await au.signInWithRedirect(auth, provedor, au.browserPopupRedirectResolver);
+      else await au.signInWithPopup(auth, provedor, au.browserPopupRedirectResolver);
+    },
+    // Ao abrir o app depois de voltar do Google: devolve o erro, se houve (null se deu certo ou não veio do Google)
+    async resultadoGoogle() {
+      try { await au.getRedirectResult(auth, au.browserPopupRedirectResolver); return null; }
+      catch (err) { return err; }
     },
 
     async sair() {
