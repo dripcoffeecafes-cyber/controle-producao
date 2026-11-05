@@ -1,0 +1,35 @@
+# Copia os arquivos de apoio do login do Firebase para o próprio endereço do app (/__/auth/),
+# para o "Entrar com Google" funcionar no app instalado no iPhone (login por redirecionamento
+# no mesmo endereço do app). Roda quando este arquivo muda ou pelo botão "Run workflow".
+name: Arquivos de login do Firebase
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/auth-firebase.yml']
+permissions:
+  contents: write
+jobs:
+  copiar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Baixar do Firebase
+        run: |
+          set -e
+          mkdir -p __/auth
+          base=https://producao-blooming-app.firebaseapp.com/__/auth
+          curl -fsSL "$base/handler" -o __/auth/handler.html
+          curl -fsSL "$base/handler.js" -o __/auth/handler.js
+          curl -fsSL "$base/experiments.js" -o __/auth/experiments.js
+          curl -fsSL "$base/iframe" -o __/auth/iframe.html
+          curl -fsSL "$base/iframe.js" -o __/auth/iframe.js
+          touch .nojekyll
+          ls -la __/auth
+      - name: Gravar no repositório
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .nojekyll __/auth
+          if git diff --cached --quiet; then echo "Nada mudou"; exit 0; fi
+          git commit -m "Atualiza arquivos de login do Firebase (/__/auth)"
+          git push
