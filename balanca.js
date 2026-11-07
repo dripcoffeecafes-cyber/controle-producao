@@ -257,17 +257,32 @@ export function criarBalanca(ev, opcoes = {}) {
   };
 }
 
-// Simulador: um coado de V60 (pré-infusão + 3 despejos), para testar a tela sem a balança.
+// Simulador: para testar a tela sem a balança. Sem receita, faz um coado de V60 (pré-infusão + 3 despejos);
+// com despejarPerfil(perfil), segue a curva-alvo da receita (com um pouco de atraso e de variação, como uma pessoa).
 export function criarSimulador(ev) {
-  let timer = null, peso = 0, zero = 0, inicio = 0, despejando = false;
-  // roteiro em segundos a partir do "Iniciar despejo" do simulador: [início, fim, g/s]
+  let timer = null, peso = 0, zero = 0, inicio = 0, despejando = false, perfil = null;
+  // roteiro em segundos a partir do "Despejar água" do simulador: [início, fim, g/s]
   const ROTEIRO = [[0, 6, 6], [40, 50, 6.5], [70, 80, 6.5], [100, 112, 6]]; // ≈ 240 g
+  const alvo = (t) => {
+    if (t <= perfil[0][0]) return perfil[0][1];
+    for (let i = 1; i < perfil.length; i++) {
+      const [t1, g1] = perfil[i], [t0, g0] = perfil[i - 1];
+      if (t <= t1) return t1 === t0 ? g1 : g0 + (g1 - g0) * (t - t0) / (t1 - t0);
+    }
+    return perfil[perfil.length - 1][1];
+  };
   const tick = () => {
     if (despejando) {
       const t = (performance.now() - inicio) / 1000;
-      const fase = ROTEIRO.find(([a, b]) => t >= a && t < b);
-      if (fase) peso += fase[2] * 0.1 * (0.85 + Math.random() * 0.3);
-      if (t > 125) despejando = false;
+      if (perfil) {
+        const falta = alvo(t - 0.6) * 1.004 - (peso - zero); // um pouco atrás da curva e passando 0,4%
+        if (falta > 0) peso += Math.min(falta, 0.9) * (0.8 + Math.random() * 0.4);
+        if (t > perfil[perfil.length - 1][0] + 3) despejando = false;
+      } else {
+        const fase = ROTEIRO.find(([a, b]) => t >= a && t < b);
+        if (fase) peso += fase[2] * 0.1 * (0.85 + Math.random() * 0.3);
+        if (t > 125) despejando = false;
+      }
     }
     const ruido = (Math.random() - 0.5) * 0.08;
     ev.peso?.(Math.round((peso - zero + ruido) * 10) / 10);
@@ -283,9 +298,10 @@ export function criarSimulador(ev) {
     },
     async desconectar() { clearInterval(timer); timer = null; ev.estado?.('desconectada'); },
     async tara() { zero = peso; },
-    // usado pela tela: simula colocar o café e depois despejar a água
+    // usados pela tela: simulam colocar o café e despejar a água
     colocar(g) { peso += g; },
-    despejar() { despejando = true; inicio = performance.now(); },
+    despejar() { perfil = null; despejando = true; inicio = performance.now(); },
+    despejarPerfil(p) { perfil = p?.length ? p : null; despejando = true; inicio = performance.now(); },
     pedirBateria() {},
   };
 }

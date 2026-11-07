@@ -234,10 +234,56 @@
   </div>
 
   <!-- Notas: anotação ou pendência -->
+  <!-- Extração: receita guiada (criar e editar) -->
+  <dialog id="dlgReceita" class="sheet sheet-ficha">
+    <form id="formReceita" method="dialog" novalidate>
+      <div class="sheet-topo">
+        <h2 id="receitaTitulo">Nova receita</h2>
+        <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
+      </div>
+      <div class="sheet-corpo">
+        <label>Nome da receita<input name="nome" autocomplete="off" maxlength="60" placeholder="Ex.: V60 do Arara"></label>
+        <fieldset class="campo-categoria"><legend>Método</legend><div class="rc-escolhas" id="receitaMetodos"></div></fieldset>
+        <label>Café<input name="cafe" autocomplete="off" maxlength="60" placeholder="Ex.: Arara"></label>
+        <fieldset class="campo-categoria"><legend>Cor do café: a família de sabor da nota que mais se destaca</legend><div class="rc-familias" id="receitaFamilias"></div></fieldset>
+        <div class="rc-dupla">
+          <label>Dose (g)<input name="dose" inputmode="decimal"></label>
+          <label>Proporção 1:<input name="proporcao" inputmode="decimal"></label>
+        </div>
+        <div class="rc-dupla">
+          <label>Temperatura °C<input name="temperatura" inputmode="decimal"></label>
+          <label>Moagem<input name="moagem" autocomplete="off" maxlength="40" placeholder="Ex.: média-fina"></label>
+        </div>
+        <div class="rc-despejos-cab">
+          <h3>Despejos</h3>
+          <span class="rc-agua"><b id="receitaAgua">240 g de água</b> <span id="receitaProporcaoReal"></span></span>
+        </div>
+        <p class="muted">Em cada despejo: até quantos gramas a balança deve chegar e em que tempo. Entre um despejo e outro, a tela pede para aguardar. Mudar a dose ou a proporção ajusta os despejos sozinho.</p>
+        <div id="receitaDespejos" class="rc-despejos"></div>
+        <div class="rc-despejos-acoes">
+          <button type="button" class="btn btn-sm" id="receitaAddDespejo">Adicionar despejo</button>
+          <span class="espaco"></span>
+          <label class="rc-gerar">Refazer em <select id="receitaQuantos" aria-label="Quantos despejos"><option>2</option><option selected>3</option><option>4</option><option>5</option></select> despejos</label>
+          <button type="button" class="btn btn-sm" id="receitaGerar">Refazer</button>
+        </div>
+        <label>Tempo total, com a drenagem<input name="tempoTotal" inputmode="numeric" placeholder="3:00"></label>
+        <div class="rc-previa" id="receitaPrevia" aria-hidden="true"></div>
+        <label>Observações<textarea name="obs" rows="2"></textarea></label>
+        <p id="receitaErro" class="erro" role="alert"></p>
+      </div>
+      <div class="sheet-rodape">
+        <button type="button" id="excluirReceita" class="btn btn-perigo" hidden>Excluir</button>
+        <span class="espaco"></span>
+        <button type="button" class="btn" data-fechar>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar receita</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="dlgExtracao" class="sheet">
     <form id="formExtracao" method="dialog" novalidate>
       <div class="sheet-topo">
-        <h2>Salvar extração</h2>
+        <h2>Salvar preparo</h2>
         <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
       </div>
       <div class="sheet-corpo">
