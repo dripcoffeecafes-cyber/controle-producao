@@ -668,11 +668,16 @@ export function criarEstudio(ctx) {
     out.push([tAte, aguaReceita(tAte)]);
     return out;
   }
+  // fluxo (g/s) ao longo do tempo: o medido pela balança, ou o que a receita pede no "só o método"
+  function serieFluxo(am) {
+    if (!ehMetodo()) return S.amostras.map(([s, , v]) => [s, Math.max(0, v || 0)]);
+    return am.map(([s]) => [s, Math.max(0, aguaReceita(s) - aguaReceita(Math.max(0, s - 1)))]);
+  }
   function desenhar() {
     const pr = prepararCanvas($('#esCanvas', el)); if (!pr) return;
     const { c, W, H } = pr;
     const u = unidade();
-    const pad = { l: u * 6.4, r: u * 2.8, t: u * 3.2, b: u * 4.4 };
+    const pad = { l: u * 6.4, r: u * 5.6, t: u * 3.2, b: u * 4.4 };
     const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
     const r = S.receita, t = tempo(), metodo = ehMetodo();
     const am = serieDoPreparo();
@@ -685,6 +690,14 @@ export function criarEstudio(ctx) {
     const passoT = tFim > 420 ? 60 : 30;
     const X = s => pad.l + (s / tFim) * pw;
     const Y = g => pad.t + ph - (Math.max(0, g) / gMax) * ph;
+    // eixo da direita: fluxo em g/s, com as mesmas linhas da grade
+    const fluxos = serieFluxo(am);
+    const nGrade = Math.max(1, gMax / passoG);
+    let fPico = 4;
+    for (const [, f] of fluxos) if (f > fPico) fPico = f;
+    const passoF = [0.5, 1, 2, 5, 10, 20, 50].find(p => p * nGrade >= fPico * 1.12) || 100;
+    const fMax = passoF * nGrade;
+    const YF = f => pad.t + ph - (Math.min(fMax, Math.max(0, f)) / fMax) * ph;
     c.lineCap = 'round'; c.lineJoin = 'round';
 
     // grade e eixos
@@ -696,6 +709,24 @@ export function criarEstudio(ctx) {
       c.beginPath(); c.moveTo(pad.l, y); c.lineTo(W - pad.r, y); c.stroke();
       c.fillText(g ? `${g}g` : '0', pad.l - u * 1.3, y);
     }
+    c.textAlign = 'left';
+    for (let i = 0; i <= nGrade; i++) {
+      const f = passoF * i;
+      c.fillText(i ? f.toLocaleString('pt-BR') : '0', W - pad.r + u * 1.3, Math.round(Y(i * passoG)) + 0.5);
+    }
+    c.fillText('g/s', W - pad.r + u * 1.3, pad.t - u * 1.9);
+    // legenda das duas linhas, no alto à direita
+    c.font = `600 ${Math.round(u * 1.35)}px ${FONTE}`; c.textAlign = 'right';
+    const yLeg = pad.t - u * 1.9;
+    let xLeg = W - pad.r - u * 0.4;
+    c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillText('Fluxo (g/s)', xLeg, yLeg);
+    xLeg -= c.measureText('Fluxo (g/s)').width + u * 0.8;
+    c.fillRect(xLeg - u * 2, yLeg - 1, u * 2, 2);
+    xLeg -= u * 2 + u * 2.2;
+    c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillText('Água (g)', xLeg, yLeg);
+    xLeg -= c.measureText('Água (g)').width + u * 0.8;
+    c.fillStyle = acento; c.fillRect(xLeg - u * 2, yLeg - u * 0.2, u * 2, u * 0.4);
+    c.font = `500 ${Math.round(u * 1.45)}px ${FONTE}`; c.fillStyle = 'rgba(255,255,255,0.5)';
     c.textAlign = 'center'; c.textBaseline = 'top';
     for (let s = passoT; s <= tFim; s += passoT) {
       const x = Math.round(X(s)) + 0.5;
@@ -776,6 +807,18 @@ export function criarEstudio(ctx) {
     c.globalCompositeOperation = 'source-over';
     c.globalAlpha = 1; c.lineWidth = Math.max(2.5, u * 0.5); c.stroke();
     c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = Math.max(1, u * 0.15); c.stroke();
+    // linha do fluxo (branca e fina, por baixo dos marcadores)
+    if (fluxos.length > 1) {
+      const pf = [];
+      let ux = -Infinity;
+      for (let i = 0; i < fluxos.length; i++) {
+        const x = X(fluxos[i][0]);
+        if (x - ux >= 2 || i === fluxos.length - 1) { pf.push([x, YF(fluxos[i][1])]); ux = x; }
+      }
+      c.beginPath(); pf.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
+      c.strokeStyle = 'rgba(255,255,255,0.14)'; c.lineWidth = u * 0.9; c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = Math.max(1.5, u * 0.2); c.stroke();
+    }
     // onde cada despejo terminou
     const marcos = metodo
       ? S.etapas.filter(e => e.tipo === 'despejo' && e.fim <= tempo()).map(e => ({ t: e.fim, g: e.ate }))
