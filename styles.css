@@ -1510,7 +1510,11 @@ body.com-estudio .toast button { color: var(--bl-fundo); text-decoration: underl
 .es-et.espera .es-et-barra i { background: linear-gradient(90deg, #8D8984, #F9F6F4); box-shadow: 0 0 calc(var(--u) * 1) rgba(255,255,255,.4); }
 
 /* celular e tela em pé: uma coluna com rolagem e os controles fixos embaixo */
-@media (max-aspect-ratio: 1/1) {
+/* quase quadrada (Z Fold aberto, tablet): o painel inteiro, com letras maiores que no 16:9 */
+@media (min-aspect-ratio: 4/5) and (max-aspect-ratio: 3/2) {
+  .es { --u: min(1vh, calc(100vw / 150)); }
+}
+@media (max-aspect-ratio: 4/5) {
   .es { --u: calc(100vw / 64); overflow-y: auto; gap: calc(var(--u) * 2); padding: calc(var(--u) * 3) calc(var(--u) * 3) calc(var(--u) * 19); }
   .es-topo { flex-wrap: wrap; }
   .es-id { order: 3; flex-basis: 100%; padding-left: 0; border-left: 0; }

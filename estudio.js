@@ -22,7 +22,12 @@ const prop = (agua, dose) => (dose > 0 ? `1:${(Math.max(0, agua) / dose).toLocal
 const mm = s => { s = Math.max(0, Math.round(s)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
 const notasEmFaixa = t => String(t || '').split(/[,;·]+/).map(x => x.trim()).filter(Boolean).join(' · ');
 // mesma unidade do CSS (--u)
-const unidade = () => (innerWidth <= innerHeight ? innerWidth / 64 : Math.max(4, Math.min(innerHeight / 100, innerWidth / 177.78)));
+// tela em pé e estreita (celular): uma coluna; quase quadrada (Z Fold aberto, tablet): o painel inteiro, com a unidade maior
+const unidade = () => {
+  const w = innerWidth, h = innerHeight, r = w / h;
+  if (r < 0.8) return w / 64;
+  return Math.max(4, Math.min(h / 100, w / (r < 1.5 ? 150 : 177.78)));
+};
 const FONTE = '"Archivo Marca", Archivo, system-ui, sans-serif';
 const SERIFA = 'Newsreader, Georgia, serif';
 const LIGADA = ['conectada', 'conectando', 'pareando', 'reconectando'];
