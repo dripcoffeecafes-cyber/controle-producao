@@ -1306,10 +1306,10 @@ body.com-estudio .toast button { color: var(--bl-fundo); text-decoration: underl
 .es-tr:disabled:active > i { transform: none; }
 .es-tr-forte > i { background: linear-gradient(180deg, #EFFF9A 0%, #8DF04C 50%, #32CF6A 100%); border-color: transparent; color: #0F1A0D; box-shadow: 0 0 calc(var(--u) * 2.6) rgba(141,240,76,.45); }
 .es-tr-forte > i svg, .es-tr-parar > i svg { fill: currentColor; stroke-width: 1.2; }
-.es-tr-forte[data-acao="salvar"] > i svg { fill: none; stroke-width: 2.2; }
+.es-tr-forte[data-eacao="salvar"] > i svg { fill: none; stroke-width: 2.2; }
 .es-tr-parar > i { background: linear-gradient(180deg, #FFB39A 0%, #FF6A5A 100%); border-color: transparent; color: #2A0D08; box-shadow: 0 0 calc(var(--u) * 2.6) rgba(255,106,90,.45); }
 .es-tr-bal { cursor: default; }
-.es-tr-bal[data-acao="conectar"] { cursor: pointer; }
+.es-tr-bal[data-eacao="conectar"] { cursor: pointer; }
 .es-tr-bal > i { color: var(--es-texto2); }
 .es-tr-bal[data-estado="conectada"] > i { color: var(--es-azul); background: rgba(77,163,255,.12); border-color: rgba(77,163,255,.3); box-shadow: 0 0 calc(var(--u) * 2) rgba(77,163,255,.25); }
 .es-tr-bal[data-estado="conectada"] span, .es-tr-bal[data-estado="conectada"] small { color: #7DBBFF; }

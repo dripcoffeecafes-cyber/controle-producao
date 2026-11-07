@@ -285,8 +285,8 @@ export function criarEstudio(ctx) {
       desconectada: 'Conectar', conectando: 'Conectando', pareando: 'Pareando', reconectando: 'Reconectando',
       conectada: sim ? 'Demonstração' : bat != null ? `Bateria ${bat}%` : 'Conectada',
     }[estado] || '';
-    const bt = (acao, icone, rotulo, o = {}) => `<button type="button" class="es-tr${o.forte ? ' es-tr-forte' : ''}${o.parar ? ' es-tr-parar' : ''}" data-acao="${acao}"${o.desab ? ' disabled' : ''}><i>${ICONES[icone]}</i><span>${rotulo}</span></button>`;
-    let html = `<button type="button" class="es-tr es-tr-bal" data-acao="${estado === 'desconectada' ? 'conectar' : 'nada'}" data-estado="${estado}"><i>${ICONES.bt}</i><span>Balança</span><small>${sub}</small></button><span class="es-trilho-sep"></span>`;
+    const bt = (acao, icone, rotulo, o = {}) => `<button type="button" class="es-tr${o.forte ? ' es-tr-forte' : ''}${o.parar ? ' es-tr-parar' : ''}" data-eacao="${acao}"${o.desab ? ' disabled' : ''}><i>${ICONES[icone]}</i><span>${rotulo}</span></button>`;
+    let html = `<button type="button" class="es-tr es-tr-bal" data-eacao="${estado === 'desconectada' ? 'conectar' : 'nada'}" data-estado="${estado}"><i>${ICONES.bt}</i><span>Balança</span><small>${sub}</small></button><span class="es-trilho-sep"></span>`;
     if (st === 'pronto') {
       html += bt('tara', 'tara', 'Tara', { desab: !conectada }) + bt('iniciar', 'play', 'Iniciar', { forte: true })
         + (temGuia ? bt('proxima', 'proxima', 'Próxima', { desab: true }) : '') + bt('zerar', 'zerar', 'Zerar');
@@ -344,7 +344,7 @@ export function criarEstudio(ctx) {
       return {
         rot: 'Antes de começar',
         lista: [
-          [conectada, 'Balança conectada', conectada ? '' : '<button type="button" class="es-chip es-chip-forte" data-acao="conectar">Conectar</button>'],
+          [conectada, 'Balança conectada', conectada ? '' : '<button type="button" class="es-chip es-chip-forte" data-eacao="conectar">Conectar</button>'],
           r ? [cafeOk, 'Café na balança', `${g1(S.taraEm ? S.pesoAntesTara : S.peso)} de ${g1(dose).replace(',0', '')} g`] : null,
           [S.armado, 'Tara feita', S.armado ? 'pronto' : 'toque em Tara'],
         ].filter(Boolean),
@@ -651,13 +651,14 @@ export function criarEstudio(ctx) {
   }
 
   // ---------------- Eventos ----------------
+  // os botões usam data-eacao (o app.js escuta data-acao no documento inteiro para os pedidos: "novo" abriria o Novo pedido)
   function ligar() {
     el.addEventListener('pointerdown', () => { S.ultimoToque = performance.now(); }, { passive: true });
     el.addEventListener('click', e => {
       if (e.target.closest('#esCafe')) { editarCafe(); return; }
-      const b = e.target.closest('[data-acao]');
+      const b = e.target.closest('[data-eacao]');
       if (b && !b.disabled) {
-        const a = b.dataset.acao;
+        const a = b.dataset.eacao;
         if (a === 'tara') tarar();
         else if (a === 'iniciar') iniciar();
         else if (a === 'parar') parar();
