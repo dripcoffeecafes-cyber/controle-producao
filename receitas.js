@@ -222,6 +222,8 @@ export function criarEditorReceitas(ctx) {
     $('#receitaTitulo').textContent = r.modelo ? 'Nova receita a partir do modelo' : r.id && !r.novo ? 'Editar receita' : 'Nova receita';
     f.nome.value = r.nome || '';
     f.cafe.value = r.cafe || '';
+    f.notas.value = r.notas || '';
+    f.pontuacao.value = r.pontuacao ? String(r.pontuacao).replace('.', ',') : '';
     f.dose.value = String(r.dose ?? '').replace('.', ',');
     f.proporcao.value = r.dose ? String(Math.round(proporcaoDe(r) * 10) / 10).replace('.', ',') : '';
     f.temperatura.value = r.temperatura || '';
@@ -262,6 +264,9 @@ export function criarEditorReceitas(ctx) {
   function lerCampos() {
     atual.nome = f.nome.value.trim();
     atual.cafe = f.cafe.value.trim();
+    atual.notas = f.notas.value.trim();
+    const pont = num(f.pontuacao.value);
+    atual.pontuacao = pont > 0 && pont <= 100 ? pont : null;
     atual.temperatura = num(f.temperatura.value);
     atual.moagem = f.moagem.value.trim();
     atual.tempoTotal = lerTempo(f.tempoTotal.value);

@@ -1,23 +1,31 @@
 // Estúdio de preparo: tela cheia para preparar café guiado pela receita e gravar vídeos.
-// Visual no conceito que o Adriano escolheu: painel escuro com números em degradê, gráfico com brilho,
-// cartões de fluxo, proporção, progresso e status à direita, etapas embaixo e os controles numa coluna à
-// esquerda, com a marca Blooming no topo.
-// Feita para o notebook do Adriano (1920×1080 com escala de 125% = 1536×864 em tela cheia; 1536×695 com o
-// Chrome à mostra) e para toque. Tudo é medido em "u" (--u), que acompanha a altura da tela.
-// Fluxo: Antes de começar (balança, café, tara) → o tempo começa sozinho com a água → etapas da receita
-// (despeje até X g / aguarde / drenagem) → Pronto (resumo, salvar).
+// Visual no conceito que o Adriano escolheu (painel escuro com brilho, números grandes, gráfico, cartões à direita,
+// etapas embaixo, controles numa coluna à esquerda), com o kit da marca Blooming: preto e branco, a cor vem do café
+// (tom claro da família de sabor), Newsreader nos títulos e no nome do café, Archivo larga nos rótulos, ficha do café
+// com a pontuação no círculo e a faixa de notas na cor do café.
+// Dois modos: "Com balança" (o peso guia as etapas) e "Só o método" (sem balança: o relógio guia, a tela mostra a água
+// que a receita pede a cada momento).
+// Feita para o notebook do Adriano (1920×1080 com escala de 125% = 1536×864 em tela cheia; 1536×695 com o Chrome à
+// mostra) e para toque. Tudo é medido em "u" (--u), que acompanha a altura da tela.
 
-import { etapasDaReceita, perfilAlvo, alvoNoTempo, criarGuia, corDaFamilia, METODOS, mmss } from './receitas.js';
+import {
+  etapasDaReceita, perfilAlvo, alvoNoTempo, criarGuia, FAMILIAS, FAMILIA_PADRAO, METODOS, mmss,
+} from './receitas.js';
 
 const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const g1 = v => { const r = Math.round(v * 10) / 10; return (Math.abs(r) < 0.05 ? 0 : r).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); };
 const g0 = v => Math.round(v).toLocaleString('pt-BR');
+const gs = v => g1(v).replace(/,0$/, '');
 const prop = (agua, dose) => (dose > 0 ? `1:${(Math.max(0, agua) / dose).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}` : '1:0');
 const mm = s => { s = Math.max(0, Math.round(s)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+const notasEmFaixa = t => String(t || '').split(/[,;·]+/).map(x => x.trim()).filter(Boolean).join(' · ');
 // mesma unidade do CSS (--u)
 const unidade = () => (innerWidth <= innerHeight ? innerWidth / 64 : Math.max(4, Math.min(innerHeight / 100, innerWidth / 177.78)));
 const FONTE = '"Archivo Marca", Archivo, system-ui, sans-serif';
+const SERIFA = 'Newsreader, Georgia, serif';
+const LIGADA = ['conectada', 'conectando', 'pareando', 'reconectando'];
 
 const SVG = d => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 const ICONES = {
@@ -26,6 +34,7 @@ const ICONES = {
   ok: SVG('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
   lapis: SVG('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"/><path d="M13.5 6.5l4 4"/>'),
   bt: SVG('<path d="M7 7l10 10-5 4V3l5 4L7 17"/>'),
+  relogio: SVG('<circle cx="12" cy="13" r="7.5"/><path d="M12 9v4.2l2.8 1.8"/><path d="M9.5 2.8h5"/>'),
   tara: SVG('<path d="M4 19.5h16l-2.2-11H6.2L4 19.5Z"/><rect x="9" y="12" width="6" height="3.6" rx=".8"/><path d="M9.5 5.5h5"/>'),
   play: SVG('<path d="M8.5 5.8v12.4L18.5 12 8.5 5.8Z"/>'),
   stop: SVG('<rect x="7" y="7" width="10" height="10" rx="1.8"/>'),
@@ -45,13 +54,16 @@ export function criarEstudio(ctx) {
   //   bateria: () => número|null, conectar: (simulado) => Promise, tarar: () => void, toast, aoTerminar: (dados) => void }
   const S = {
     montado: false, aberto: false,
-    receita: null, etapas: [], perfil: [], guia: null, cor: corDaFamilia(), cafe: '', editandoCafe: false,
+    receita: null, etapas: [], perfil: [], guia: null,
+    modo: 'balanca', modoEscolhido: false,
+    cafe: '', notas: '', pontuacao: null, familia: FAMILIA_PADRAO, familiaAntes: null,
     relogio: 'pronto', t0: 0, tFim: 0, amostras: [], vazaoMax: 0, picoAgua: 0,
     peso: 0, vazao: 0, taraEm: 0, armado: false, pesoAntesTara: 0,
     referencia: null, raf: 0, wakeLock: null, saidaPedida: 0, estavelDesde: 0, ultimoToque: 0, cache: {},
     marcos: [], faseAnt: '',
   };
   let el;
+  const ehMetodo = () => S.modo === 'metodo';
 
   // ---------------- Estrutura ----------------
   function montar() {
@@ -64,8 +76,19 @@ export function criarEstudio(ctx) {
     el.innerHTML = `
       <header class="es-topo">
         <img class="es-logo" src="marca/logo-blooming-horizontal-branco.png" alt="Blooming Club Cafés Especiais">
-        <div class="es-meta" id="esMeta"></div>
+        <div class="es-id">
+          <div class="es-id-cafe">
+            <button type="button" class="es-cafe" id="esCafe" aria-label="Café do preparo (toque para trocar)"></button>
+            <span class="es-nota" id="esNota" title="Pontuação SCA" hidden></span>
+            <span class="es-faixa" id="esFaixa" hidden></span>
+          </div>
+          <div class="es-meta" id="esMeta"></div>
+        </div>
         <div class="es-topo-acoes">
+          <div class="es-modo" id="esModo" role="group" aria-label="Como preparar">
+            <button type="button" data-emodo="balanca">Com balança</button>
+            <button type="button" data-emodo="metodo">Só o método</button>
+          </div>
           <span class="es-demo" id="esDemo" hidden>
             <button type="button" class="es-chip" data-demo="cafe">Simular café</button>
             <button type="button" class="es-chip" data-demo="agua">Simular água</button>
@@ -74,11 +97,24 @@ export function criarEstudio(ctx) {
           <button type="button" class="es-icone" id="esFechar" aria-label="Sair do estúdio">${ICONES.sair}</button>
         </div>
       </header>
+      <div class="es-cafe-painel" id="esCafePainel" role="dialog" aria-label="Café do preparo" hidden>
+        <div class="es-cp-campos">
+          <label><span class="es-rot">Café</span><input id="esCpNome" maxlength="60" autocomplete="off" placeholder="Ex.: Arara"></label>
+          <label><span class="es-rot">Notas</span><input id="esCpNotas" maxlength="80" autocomplete="off" placeholder="Ex.: tangerina, mel, chá preto"></label>
+          <label class="es-cp-curto"><span class="es-rot">Pontuação</span><input id="esCpPont" maxlength="5" inputmode="decimal" autocomplete="off" placeholder="Ex.: 87"></label>
+        </div>
+        <span class="es-rot">Cor do café: a família da nota que mais se destaca</span>
+        <div class="es-cp-familias" id="esCpFamilias"></div>
+        <div class="es-cp-acoes">
+          <button type="button" class="es-chip" data-eacao="cafe-cancelar">Cancelar</button>
+          <button type="button" class="es-chip es-chip-forte" data-eacao="cafe-ok">Pronto</button>
+        </div>
+      </div>
       <div class="es-aviso" id="esAviso" role="alert" hidden></div>
       <div class="es-palco">
         <nav class="es-trilho" id="esTrilho" aria-label="Controles do preparo"></nav>
         <section class="es-heroi" aria-label="Peso e tempo">
-          <div class="es-h"><span class="es-rot">Peso atual</span><strong class="es-grande es-peso"><span id="esPeso">0,0</span><small>g</small></strong></div>
+          <div class="es-h"><span class="es-rot" id="esPesoRot">Peso atual</span><strong class="es-grande es-peso"><span id="esPeso">0,0</span><small>g</small></strong></div>
           <div class="es-h es-h-tempo"><span class="es-rot">Tempo de extração</span><strong class="es-grande es-tempo" id="esTempo">00:00</strong></div>
           <div class="es-h es-guia" id="esGuia" aria-live="polite">
             <i class="es-guia-icone" data-g="icone"></i>
@@ -91,7 +127,7 @@ export function criarEstudio(ctx) {
           <div class="es-card es-c-prop"><div class="es-card-linha"><span class="es-rot" id="esPropRot">Proporção</span><small id="esPropAlvo"></small></div><strong id="esProp">1:0</strong><canvas class="es-mini" id="esPropLinha"></canvas></div>
           <div class="es-card es-c-prog">
             <div class="es-c-prog-txt"><span class="es-rot" id="esProgRot">Progresso</span><strong id="esProg">0%</strong><small id="esProgInfo"></small></div>
-            <svg class="es-anel" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="esAnelCor" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2FF9A"/><stop offset="1" stop-color="#2FCF6E"/></linearGradient></defs><circle class="es-anel-fundo" cx="50" cy="50" r="40"/><circle class="es-anel-valor" id="esAnel" cx="50" cy="50" r="40" pathLength="100"/></svg>
+            <svg class="es-anel" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="esAnelCor" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="var(--acento)" style="stop-color: var(--acento)"/></linearGradient></defs><circle class="es-anel-fundo" cx="50" cy="50" r="40"/><circle class="es-anel-valor" id="esAnel" cx="50" cy="50" r="40" pathLength="100"/></svg>
           </div>
           <div class="es-card es-c-status" id="esStatus"></div>
         </aside>
@@ -102,15 +138,23 @@ export function criarEstudio(ctx) {
   }
 
   // ---------------- Abrir e fechar ----------------
+  // opcoes: { referencia, cafe, notas, pontuacao, familia, modo: 'balanca'|'metodo', telaCheia }
   async function abrir(receita, opcoes = {}) {
     montar();
     S.receita = receita || null;
     S.etapas = receita ? etapasDaReceita(receita) : [];
     S.perfil = receita ? perfilAlvo(receita) : [];
-    S.cor = corDaFamilia(receita?.familia);
     S.referencia = opcoes.referencia || null;
-    S.cafe = opcoes.cafe || receita?.cafe || '';
+    S.cafe = opcoes.cafe ?? receita?.cafe ?? '';
+    S.notas = opcoes.notas ?? receita?.notas ?? '';
+    S.pontuacao = opcoes.pontuacao ?? receita?.pontuacao ?? null;
+    S.familia = FAMILIAS[opcoes.familia] ? opcoes.familia : FAMILIAS[receita?.familia] ? receita.familia : FAMILIA_PADRAO;
+    S.modoEscolhido = !!opcoes.modo;
+    S.modo = opcoes.modo || (LIGADA.includes(ctx.conexao()) ? 'balanca' : 'metodo');
+    $('#esCafePainel', el).hidden = true;
     el.classList.toggle('es-sem-receita', !receita);
+    aplicarModo();
+    aplicarCor();
     zerar(true);
     renderTopo();
     renderEtapasEstrutura();
@@ -148,11 +192,33 @@ export function criarEstudio(ctx) {
     } catch {}
   }
 
+  // A cor vem do café: o tom claro da família de sabor é o destaque no fundo escuro; a cor normal vai na faixa de notas
+  function aplicarCor() {
+    const f = FAMILIAS[S.familia] || FAMILIAS[FAMILIA_PADRAO];
+    el.style.setProperty('--acento', f.claro);
+    el.style.setProperty('--cafe', f.cor);
+    el.style.setProperty('--sobre-cafe', S.familia === 'fruta-amarela' ? '#1D1D1B' : '#FFFFFF');
+    S.cor = f.claro; S.corBase = f.cor;
+  }
+  function aplicarModo() {
+    el.classList.toggle('es-metodo', ehMetodo());
+    $$('#esModo button', el).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.emodo === S.modo)));
+  }
+  function definirModo(m, escolhido) {
+    if (S.relogio !== 'pronto' || (m !== 'balanca' && m !== 'metodo')) return;
+    if (escolhido) S.modoEscolhido = true;
+    if (S.modo === m) return;
+    S.modo = m;
+    zerar(true);
+    aplicarModo();
+    atualizarConexao();
+  }
+
   // ---------------- Balança ----------------
   // chamado pela Extração a cada peso recebido (já com a vazão calculada)
   function receberPeso(g, vazao) {
     S.peso = g; S.vazao = vazao;
-    if (!S.aberto) return;
+    if (!S.aberto || ehMetodo()) return; // no modo "só o método" o peso não guia nada
     const agora = performance.now();
     if (S.relogio === 'pronto' && !S.taraEm) S.pesoAntesTara = g;
     if (S.relogio === 'pronto' && S.armado && agora - S.taraEm > 700 && g >= 1) iniciar();
@@ -178,15 +244,18 @@ export function criarEstudio(ctx) {
     S.faseAnt = chave;
   }
   function tarar() {
-    if (ctx.conexao() !== 'conectada') return;
+    if (ehMetodo() || ctx.conexao() !== 'conectada') return;
     ctx.tarar();
     S.taraEm = performance.now();
     S.armado = S.relogio === 'pronto';
   }
   function atualizarConexao() {
     if (!S.montado) return;
+    const estado = ctx.conexao();
+    // abriu sem balança e ela conectou antes de começar: passa para "com balança", se a pessoa não escolheu o modo
+    if (S.aberto && S.relogio === 'pronto' && !S.modoEscolhido && ehMetodo() && estado === 'conectada') definirModo('balanca');
     const sim = ctx.balanca()?.tipo === 'simulador';
-    $('#esDemo', el).hidden = !(sim && ctx.conexao() === 'conectada');
+    $('#esDemo', el).hidden = !(sim && estado === 'conectada' && !ehMetodo());
     renderTrilho();
   }
   function aviso(texto) {
@@ -199,80 +268,126 @@ export function criarEstudio(ctx) {
   // ---------------- Relógio ----------------
   function iniciar() {
     if (S.relogio === 'rodando') return;
+    fecharPainelCafe(true);
     S.relogio = 'rodando';
     S.armado = false;
     S.t0 = performance.now();
-    S.amostras = [[0, Math.max(0, S.peso), 0]];
+    S.amostras = ehMetodo() ? [] : [[0, Math.max(0, S.peso), 0]];
     S.vazaoMax = 0; S.picoAgua = 0; S.estavelDesde = 0; S.marcos = []; S.faseAnt = '';
-    S.guia = S.etapas.length ? criarGuia(S.etapas) : null;
-    if (S.guia) S.faseAnt = `${S.guia.k}:${S.guia.fase}`;
+    S.guia = !S.etapas.length ? null : ehMetodo() ? { k: 0, fase: 'despejo' } : criarGuia(S.etapas);
+    if (S.guia && !ehMetodo()) S.faseAnt = `${S.guia.k}:${S.guia.fase}`;
+    renderTopo();
     renderTrilho();
   }
   function parar() {
     if (S.relogio !== 'rodando') return;
     S.tFim = (performance.now() - S.t0) / 1000;
     S.relogio = 'fim';
+    renderTopo();
     renderTrilho();
   }
   function zerar(silencioso) {
     S.relogio = 'pronto'; S.amostras = []; S.tFim = 0; S.vazaoMax = 0; S.picoAgua = 0; S.marcos = []; S.faseAnt = '';
     S.taraEm = 0; S.armado = false; S.guia = null; S.estavelDesde = 0; S.cache = {};
-    if (!silencioso) renderTrilho();
+    if (!silencioso) { renderTopo(); renderTrilho(); }
   }
   function pular() {
-    if (!S.guia || S.relogio !== 'rodando') return;
+    if (ehMetodo() || !S.guia || S.relogio !== 'rodando') return;
     const t = tempo();
     S.guia.pular(t);
     acompanharFase(t, S.peso);
     S.ultimoToque = performance.now();
   }
+  // "Só o método": a etapa sai do relógio
+  function faseNoTempo(t) {
+    for (let i = 0; i < S.etapas.length; i++) {
+      const e = S.etapas[i];
+      if (e.tipo === 'despejo') {
+        if (t < e.inicio) return { k: i, fase: 'antes' };
+        if (t < e.fim) return { k: i, fase: 'despejo' };
+        if (e.ateTempo != null && t < e.ateTempo) return { k: i, fase: 'espera' };
+      } else if (t < e.ateTempo) return { k: i, fase: 'drenagem' };
+    }
+    return { k: S.etapas.length, fase: 'fim' };
+  }
   const tempo = () => S.relogio === 'rodando' ? (performance.now() - S.t0) / 1000 : S.relogio === 'fim' ? S.tFim : 0;
   const aguaFinal = () => S.relogio === 'fim' ? (S.amostras.at(-1)?.[1] ?? S.peso) : S.peso;
-  const pesoMostrado = () => S.relogio === 'fim' ? aguaFinal() : S.peso;
+  const aguaReceita = t => (S.perfil.length ? alvoNoTempo(S.perfil, t) : 0);
+  // no "só o método", o número grande é a água que a receita pede até aquele momento
+  const pesoMostrado = () => {
+    if (!ehMetodo()) return S.relogio === 'fim' ? aguaFinal() : S.peso;
+    if (S.relogio === 'pronto') return 0;
+    return aguaReceita(tempo());
+  };
+  const ritmoDoDespejo = e => (e && e.tipo === 'despejo' ? (e.ate - e.de) / Math.max(1, e.fim - e.inicio) : 0);
 
-  // nome do café na tela: troca rápida para o vídeo, sem mexer na receita (vai junto para o Salvar preparo)
-  function editarCafe() {
-    if (S.relogio === 'rodando' || S.editandoCafe) return;
-    S.editandoCafe = true;
-    const bt = $('#esCafe', el), campo = $('#esCafeCampo', el);
-    campo.value = S.cafe;
-    bt.hidden = true; campo.hidden = false;
-    campo.closest('.es-m')?.classList.add('editando');
-    campo.focus(); campo.select();
+  // ---------------- Café do preparo (ficha: nome, notas, pontuação, cor) ----------------
+  // troca rápida para o vídeo, sem mexer na receita; vai junto para o Salvar preparo
+  function abrirPainelCafe() {
+    if (S.relogio === 'rodando') return;
+    const p = $('#esCafePainel', el);
+    if (!p.hidden) { fecharPainelCafe(true); return; }
+    S.familiaAntes = S.familia;
+    $('#esCpNome', el).value = S.cafe;
+    $('#esCpNotas', el).value = S.notas;
+    $('#esCpPont', el).value = S.pontuacao ? String(S.pontuacao).replace('.', ',') : '';
+    renderFamiliasPainel();
+    p.hidden = false;
+    $('#esCpNome', el).focus();
   }
-  function fimEditarCafe(salvar) {
-    if (!S.editandoCafe) return;
-    S.editandoCafe = false;
-    if (salvar) S.cafe = $('#esCafeCampo', el).value.trim();
+  function renderFamiliasPainel() {
+    $('#esCpFamilias', el).innerHTML = Object.entries(FAMILIAS).map(([k, f]) =>
+      `<button type="button" data-efam="${k}" aria-pressed="${k === S.familia}"><i style="background:${f.claro}"></i><span>${esc(f.nome)}</span></button>`).join('');
+  }
+  function fecharPainelCafe(salvar) {
+    const p = $('#esCafePainel', el);
+    if (!p || p.hidden) return;
+    if (salvar) {
+      S.cafe = $('#esCpNome', el).value.trim();
+      S.notas = $('#esCpNotas', el).value.trim();
+      const n = parseFloat($('#esCpPont', el).value.replace(',', '.'));
+      S.pontuacao = n > 0 && n <= 100 ? Math.round(n * 100) / 100 : null;
+    } else if (S.familiaAntes) { S.familia = S.familiaAntes; aplicarCor(); }
+    p.hidden = true;
     renderTopo();
   }
 
   function terminar() {
-    const final = aguaFinal();
+    const metodo = ehMetodo();
+    const final = metodo ? (S.receita?.agua || 0) : aguaFinal();
     ctx.aoTerminar?.({
-      receita: S.receita, cafe: S.cafe, tempo: S.tFim, aguaFinal: final, amostras: S.amostras,
-      vazaoMedia: S.tFim ? final / S.tFim : 0,
+      receita: S.receita, cafe: S.cafe, notas: S.notas, pontuacao: S.pontuacao, familia: S.familia, semBalanca: metodo,
+      tempo: S.tFim, aguaFinal: final, amostras: metodo ? [] : S.amostras, vazaoMedia: S.tFim ? final / S.tFim : 0,
     });
   }
 
-  // ---------------- Topo (dados da receita numa linha) ----------------
+  // ---------------- Topo: ficha do café e dados da receita ----------------
   function renderTopo() {
+    if (!S.montado) return;
     const r = S.receita;
+    const bt = $('#esCafe', el);
+    const vazio = !S.cafe;
+    const nome = !vazio ? esc(S.cafe.toUpperCase())
+      : S.relogio === 'rodando' ? esc(r ? r.nome : 'Preparo livre') : 'Toque para informar o café';
+    bt.innerHTML = `<span>${nome}</span><i class="es-lapis">${ICONES.lapis}</i>`;
+    bt.classList.toggle('vazio', vazio && S.relogio !== 'rodando');
+    bt.classList.toggle('receita', vazio && S.relogio === 'rodando');
+    const nota = $('#esNota', el);
+    nota.hidden = !S.pontuacao;
+    nota.textContent = S.pontuacao ? String(S.pontuacao).replace('.', ',') : '';
+    const faixa = $('#esFaixa', el);
+    const notas = notasEmFaixa(S.notas);
+    faixa.hidden = !notas;
+    faixa.textContent = notas;
     const item = (k, v, cls = '') => `<span class="es-m${cls}"><em>${esc(k)}</em><b>${esc(v)}</b></span>`;
     const metodo = METODOS[r?.metodo]?.nome || '';
     const nomeTemMetodo = r && metodo && String(r.nome).toLowerCase().includes(metodo.split(/[ /]/)[0].toLowerCase());
-    const cafe = `<span class="es-m es-m-cafe${S.cafe ? '' : ' es-m-vazio'}"><em>Café</em>`
-      + `<button type="button" class="es-cafe" id="esCafe" aria-label="Nome do café (toque para trocar)"><i class="es-grao"></i><span>${S.cafe ? esc(S.cafe) : 'toque para informar'}</span><i class="es-lapis">${ICONES.lapis}</i></button>`
-      + '<input class="es-cafe-campo" id="esCafeCampo" maxlength="60" placeholder="Nome do café" aria-label="Nome do café" hidden></span>';
-    const partes = r ? [
+    $('#esMeta', el).innerHTML = (r ? [
       item('Receita', r.nome, ' es-m-encolhe'),
       !nomeTemMetodo && metodo ? item('Método', metodo) : '',
-      cafe,
-      item('Proporção', prop(r.agua, r.dose)), item('Alvo', `${g0(r.agua)} g`), item('Pó', `${g1(r.dose).replace(',0', '')} g`),
+      item('Proporção', prop(r.agua, r.dose)), item('Alvo', `${g0(r.agua)} g`), item('Pó', `${gs(r.dose)} g`),
       r.moagem ? item('Moagem', r.moagem) : '', r.temperatura ? item('Temperatura', `${g0(r.temperatura)} °C`) : '',
-    ] : [item('Preparo', 'Livre'), cafe];
-    $('#esMeta', el).innerHTML = partes.join('');
-    el.style.setProperty('--grao', S.cor);
+    ] : [item('Preparo', 'Livre')]).join('');
   }
 
   // ---------------- Controles (coluna da esquerda) ----------------
@@ -281,45 +396,56 @@ export function criarEstudio(ctx) {
     const st = S.relogio, estado = ctx.conexao(), conectada = estado === 'conectada';
     const sim = ctx.balanca()?.tipo === 'simulador', bat = ctx.bateria();
     const temGuia = !!S.etapas.length;
-    const sub = {
-      desconectada: 'Conectar', conectando: 'Conectando', pareando: 'Pareando', reconectando: 'Reconectando',
-      conectada: sim ? 'Demonstração' : bat != null ? `Bateria ${bat}%` : 'Conectada',
-    }[estado] || '';
     const bt = (acao, icone, rotulo, o = {}) => `<button type="button" class="es-tr${o.forte ? ' es-tr-forte' : ''}${o.parar ? ' es-tr-parar' : ''}" data-eacao="${acao}"${o.desab ? ' disabled' : ''}><i>${ICONES[icone]}</i><span>${rotulo}</span></button>`;
-    let html = `<button type="button" class="es-tr es-tr-bal" data-eacao="${estado === 'desconectada' ? 'conectar' : 'nada'}" data-estado="${estado}"><i>${ICONES.bt}</i><span>Balança</span><small>${sub}</small></button><span class="es-trilho-sep"></span>`;
-    if (st === 'pronto') {
-      html += bt('tara', 'tara', 'Tara', { desab: !conectada }) + bt('iniciar', 'play', 'Iniciar', { forte: true })
-        + (temGuia ? bt('proxima', 'proxima', 'Próxima', { desab: true }) : '') + bt('zerar', 'zerar', 'Zerar');
-    } else if (st === 'rodando') {
-      html += bt('tara', 'tara', 'Tara', { desab: true }) + bt('parar', 'stop', S.guia?.fase === 'fim' ? 'Finalizar' : 'Parar', { parar: true })
-        + (temGuia ? bt('proxima', 'proxima', 'Próxima') : '') + bt('zerar', 'zerar', 'Zerar', { desab: true });
+    let html;
+    if (ehMetodo()) {
+      html = `<button type="button" class="es-tr es-tr-bal" data-eacao="nada" data-estado="metodo"><i>${ICONES.relogio}</i><span>Relógio</span><small>Sem balança</small></button><span class="es-trilho-sep"></span>`;
+      if (st === 'pronto') html += bt('iniciar', 'play', 'Iniciar', { forte: true }) + bt('zerar', 'zerar', 'Zerar');
+      else if (st === 'rodando') html += bt('parar', 'stop', 'Parar', { parar: true }) + bt('zerar', 'zerar', 'Zerar', { desab: true });
+      else html += bt('salvar', 'salvar', 'Salvar', { forte: true }) + bt('novo', 'novo', 'Novo') + bt('sair', 'sair', 'Sair');
     } else {
-      html += bt('salvar', 'salvar', 'Salvar', { forte: true }) + bt('novo', 'novo', 'Novo') + bt('sair', 'sair', 'Sair');
+      const sub = {
+        desconectada: 'Conectar', conectando: 'Conectando', pareando: 'Pareando', reconectando: 'Reconectando',
+        conectada: sim ? 'Demonstração' : bat != null ? `Bateria ${bat}%` : 'Conectada',
+      }[estado] || '';
+      html = `<button type="button" class="es-tr es-tr-bal" data-eacao="${estado === 'desconectada' ? 'conectar' : 'nada'}" data-estado="${estado}"><i>${ICONES.bt}</i><span>Balança</span><small>${sub}</small></button><span class="es-trilho-sep"></span>`;
+      if (st === 'pronto') {
+        html += bt('tara', 'tara', 'Tara', { desab: !conectada }) + bt('iniciar', 'play', 'Iniciar', { forte: true })
+          + (temGuia ? bt('proxima', 'proxima', 'Próxima', { desab: true }) : '') + bt('zerar', 'zerar', 'Zerar');
+      } else if (st === 'rodando') {
+        html += bt('tara', 'tara', 'Tara', { desab: true }) + bt('parar', 'stop', S.guia?.fase === 'fim' ? 'Finalizar' : 'Parar', { parar: true })
+          + (temGuia ? bt('proxima', 'proxima', 'Próxima') : '') + bt('zerar', 'zerar', 'Zerar', { desab: true });
+      } else {
+        html += bt('salvar', 'salvar', 'Salvar', { forte: true }) + bt('novo', 'novo', 'Novo') + bt('sair', 'sair', 'Sair');
+      }
     }
     if (S.cache.trilho !== html) { $('#esTrilho', el).innerHTML = html; S.cache.trilho = html; }
     el.dataset.relogio = st;
   }
 
-  // ---------------- Bloco da etapa (à direita do peso e do tempo) ----------------
+  // ---------------- Bloco do que fazer agora (ao lado do peso e do tempo) ----------------
   function guiaInfo() {
     const r = S.receita, t = tempo(), w = pesoMostrado();
+    const metodo = ehMetodo();
     if (S.relogio === 'pronto') {
       const p = S.etapas[0];
       return r && p
-        ? { icone: 'gota', rot: `${p.nome} até`, valor: `${g0(p.ate)} g`, info: 'O tempo começa sozinho com a água' }
-        : { icone: 'xicara', rot: 'Preparo livre', valor: 'Livre', info: 'O tempo começa sozinho com a água' };
+        ? { icone: 'gota', rot: `${p.nome} até`, valor: `${g0(p.ate)} g`, info: metodo ? 'Toque em Iniciar e comece a despejar' : 'O tempo começa sozinho com a água' }
+        : { icone: 'xicara', rot: 'Preparo livre', valor: 'Livre', info: 'O seu café, no seu ritmo.' };
     }
     if (S.relogio === 'fim') {
-      return { icone: 'ok', rot: 'Preparo concluído', valor: 'Pronto', info: r ? `Alvo: ${g0(r.agua)} g em ${mm(r.tempoTotal)}` : 'Salve para guardar no histórico', tipo: 'ok' };
+      return { icone: 'ok', rot: 'Preparo concluído', valor: 'Pronto', info: r ? `Receita: ${g0(r.agua)} g em ${mm(r.tempoTotal)}` : 'O seu café, no seu ritmo.', tipo: 'ok' };
     }
-    if (!S.guia) return { icone: 'gota', rot: 'Preparo livre', valor: 'Livre', info: 'Pare quando chegar na proporção que quer' };
+    if (!S.guia) return { icone: 'xicara', rot: 'Preparo livre', valor: 'Livre', info: 'O seu café, no seu ritmo.' };
     const k = S.guia.k, fase = S.guia.fase, e = S.etapas[k];
     if (fase === 'despejo') {
+      if (metodo) return { icone: 'gota', rot: `Despeje até ${g0(e.ate)} g`, valor: mm(e.fim - t), info: `${e.nome}: até ${mmss(e.fim)}` };
       const falta = e.ate - w;
       if (w - e.ate > Math.max(2, (e.ate - e.de) * 0.03)) return { icone: 'gota', rot: 'Passou do alvo', valor: `+${g0(w - e.ate)} g`, info: `${e.nome} até ${g0(e.ate)} g`, tipo: 'alerta' };
       if (falta <= 0.5) return { icone: 'gota', rot: 'Alvo atingido', valor: 'Pare', info: `${e.nome} até ${g0(e.ate)} g`, tipo: 'ok' };
       return { icone: 'gota', rot: 'Faltam', valor: `${g0(falta)} g`, info: `${e.nome} até ${g0(e.ate)} g` };
     }
+    if (fase === 'antes') return { icone: 'ampulheta', rot: 'Comece a despejar em', valor: mm(e.inicio - t), info: `${e.nome} até ${g0(e.ate)} g`, tipo: 'espera' };
     if (fase === 'espera') {
       const prox = S.etapas[k + 1];
       return { icone: 'ampulheta', rot: 'Próximo despejo em', valor: mm(e.ateTempo - t), info: prox ? `${prox.nome} até ${g0(prox.ate)} g` : '', tipo: 'espera' };
@@ -331,6 +457,7 @@ export function criarEstudio(ctx) {
     const g = guiaInfo(), box = $('#esGuia', el);
     const put = (k, v) => { const n = box.querySelector(`[data-g="${k}"]`); if (n.textContent !== v) n.textContent = v; };
     put('rot', g.rot); put('valor', g.valor); put('info', g.info || '');
+    box.querySelector('[data-g="valor"]').classList.toggle('es-palavra', !/\d/.test(g.valor));
     if (S.cache.icone !== g.icone) { box.querySelector('[data-g="icone"]').innerHTML = ICONES[g.icone] || ''; S.cache.icone = g.icone; }
     if ((box.dataset.tipo || '') !== (g.tipo || '')) box.dataset.tipo = g.tipo || '';
   }
@@ -338,31 +465,47 @@ export function criarEstudio(ctx) {
   // ---------------- Cartão de status ----------------
   function statusInfo() {
     const r = S.receita, t = tempo(), w = pesoMostrado();
+    const metodo = ehMetodo();
     if (S.relogio === 'pronto') {
+      if (metodo) {
+        return r ? {
+          rot: 'Antes de começar',
+          lista: [
+            [false, `Café moído: ${gs(r.dose)} g`, r.moagem || ''],
+            [false, 'Água quente', r.temperatura ? `${g0(r.temperatura)} °C` : ''],
+            [false, 'Toque em Iniciar', 'e siga o relógio'],
+          ],
+        } : { rot: 'Sem balança', icone: 'xicara', titulo: 'Só o cronômetro', info: 'O seu café, no seu ritmo.' };
+      }
       const conectada = ctx.conexao() === 'conectada', dose = r?.dose || 0;
       const cafeOk = S.armado || (dose && Math.abs(S.pesoAntesTara - dose) <= Math.max(0.5, dose * 0.05));
       return {
         rot: 'Antes de começar',
         lista: [
           [conectada, 'Balança conectada', conectada ? '' : '<button type="button" class="es-chip es-chip-forte" data-eacao="conectar">Conectar</button>'],
-          r ? [cafeOk, 'Café na balança', `${g1(S.taraEm ? S.pesoAntesTara : S.peso)} de ${g1(dose).replace(',0', '')} g`] : null,
+          r ? [cafeOk, 'Café na balança', `${g1(S.taraEm ? S.pesoAntesTara : S.peso)} de ${gs(dose)} g`] : null,
           [S.armado, 'Tara feita', S.armado ? 'pronto' : 'toque em Tara'],
         ].filter(Boolean),
       };
     }
-    if (S.relogio === 'fim') return { rot: 'Status', icone: 'ok', titulo: 'Preparo concluído', info: 'Salve para guardar a curva no histórico', tipo: 'ok' };
-    if (!S.guia) return { rot: 'Status', icone: 'gira', titulo: 'Preparo livre', info: S.vazao > 0.3 ? `Despejando a ${g1(S.vazao)} g/s` : 'Pare quando quiser' };
+    if (S.relogio === 'fim') return { rot: 'Status', icone: 'ok', titulo: 'Preparo concluído', info: 'Salve para guardar no histórico', tipo: 'ok' };
+    if (!S.guia) return { rot: 'Status', icone: 'gira', titulo: 'Preparo livre', info: !metodo && S.vazao > 0.3 ? `Despejando a ${g1(S.vazao)} g/s` : 'O seu café, no seu ritmo.' };
     const k = S.guia.k, fase = S.guia.fase, e = S.etapas[k];
     if (fase === 'despejo') {
+      if (metodo) return { rot: 'Status', icone: 'gira', titulo: `${e.nome} ativo`, info: `Ritmo da receita: ${g1(ritmoDoDespejo(e))} g/s`, tipo: 'ok' };
       if (w - e.ate > Math.max(2, (e.ate - e.de) * 0.03)) return { rot: 'Status', icone: 'gira', titulo: `${e.nome} ativo`, info: `Passou ${g0(w - e.ate)} g do alvo`, tipo: 'alerta' };
       if (t < e.inicio) return { rot: 'Status', icone: 'gira', titulo: `${e.nome} ativo`, info: `Começa às ${mmss(e.inicio)}` };
       const dif = w - alvoNoTempo(S.perfil, t), folga = Math.max(4, (e.ate - e.de) * 0.08);
       const ritmo = Math.abs(dif) <= folga ? ['No ritmo', 'ok'] : dif > 0 ? [`Adiantado ${g0(dif)} g`, 'aviso'] : [`Atrasado ${g0(-dif)} g`, 'aviso'];
       return { rot: 'Status', icone: 'gira', titulo: `${e.nome} ativo`, info: ritmo[0], tipo: ritmo[1] };
     }
+    if (fase === 'antes') return { rot: 'Status', icone: 'gira', titulo: 'Prepare a chaleira', info: `${e.nome} às ${mmss(e.inicio)}` };
     if (fase === 'espera') {
       const prox = S.etapas[k + 1];
-      return { rot: 'Status', icone: 'gira', titulo: e.blooming ? 'Blooming: aguarde' : 'Pausa: aguarde', info: prox ? `${prox.nome} às ${mmss(e.ateTempo)}` : '' };
+      // o nome da marca vem daqui: o blooming é o florescer do café fresco quando a água quente encontra o pó
+      return e.blooming
+        ? { rot: 'Status', icone: 'gira', titulo: 'Blooming: aguarde', info: 'As bolhinhas provam a torra recente' }
+        : { rot: 'Status', icone: 'gira', titulo: 'Pausa: aguarde', info: prox ? `${prox.nome} às ${mmss(e.ateTempo)}` : '' };
     }
     if (fase === 'drenagem') return { rot: 'Status', icone: 'gira', titulo: 'Drenagem', info: `Termina às ${mmss(e.ateTempo)}` };
     return { rot: 'Status', icone: 'gira', titulo: 'Quase pronto', info: 'Esperando a água parar' };
@@ -388,21 +531,28 @@ export function criarEstudio(ctx) {
 
   // ---------------- Números e cartões da direita ----------------
   function renderNumeros() {
-    const r = S.receita, w = pesoMostrado();
+    const r = S.receita, w = pesoMostrado(), metodo = ehMetodo(), t = tempo();
     const set = (id, v) => { const n = $('#' + id, el); if (n.textContent !== v) n.textContent = v; };
-    set('esPeso', g1(w));
-    set('esTempo', mm(tempo()));
     const fim = S.relogio === 'fim';
-    set('esFluxoRot', fim ? 'Fluxo médio' : 'Fluxo atual');
-    set('esVazao', g1(fim ? (S.tFim ? Math.max(0, w) / S.tFim : 0) : S.relogio === 'rodando' ? S.vazao : 0));
+    set('esPesoRot', metodo ? (r ? 'Água pela receita' : 'Água') : 'Peso atual');
+    set('esPeso', metodo ? (r ? g0(w) : '—') : g1(w)); // a água da receita vai em gramas inteiros
+    set('esTempo', mm(t));
+    if (metodo) {
+      const e = S.guia && S.guia.fase === 'despejo' ? S.etapas[S.guia.k] : null;
+      set('esFluxoRot', fim ? 'Fluxo médio' : 'Ritmo do despejo');
+      set('esVazao', r ? g1(fim ? (S.tFim ? w / S.tFim : 0) : S.relogio === 'rodando' ? ritmoDoDespejo(e) : 0) : '—');
+    } else {
+      set('esFluxoRot', fim ? 'Fluxo médio' : 'Fluxo atual');
+      set('esVazao', g1(fim ? (S.tFim ? Math.max(0, w) / S.tFim : 0) : S.relogio === 'rodando' ? S.vazao : 0));
+    }
     const agua = S.relogio === 'pronto' ? 0 : w;
-    set('esPropRot', r ? 'Proporção' : 'Vazão máxima');
-    set('esProp', r ? prop(agua, r.dose) : `${g1(S.vazaoMax)} g/s`);
-    set('esPropAlvo', r ? `alvo ${prop(r.agua, r.dose)}` : 'no preparo');
+    set('esPropRot', r ? 'Proporção' : metodo ? 'Proporção' : 'Vazão máxima');
+    set('esProp', r ? prop(agua, r.dose) : metodo ? '—' : `${g1(S.vazaoMax)} g/s`);
+    set('esPropAlvo', r ? `alvo ${prop(r.agua, r.dose)}` : metodo ? 'sem receita' : 'no preparo');
     const p = r ? Math.max(0, Math.min(1, agua / Math.max(1, r.agua))) : 0;
     set('esProgRot', r ? 'Progresso' : 'Água');
-    set('esProg', r ? `${Math.round(p * 100)}%` : `${g0(Math.max(0, agua))} g`);
-    set('esProgInfo', r ? `de ${g0(r.agua)} g de água` : 'na balança');
+    set('esProg', r ? `${Math.round(p * 100)}%` : metodo ? '—' : `${g0(Math.max(0, agua))} g`);
+    set('esProgInfo', r ? `de ${g0(r.agua)} g de água` : metodo ? 'sem balança' : 'na balança');
     const anel = $('#esAnel', el);
     const dash = `${(p * 100).toFixed(2)} 100`;
     if (anel.style.strokeDasharray !== dash) anel.style.strokeDasharray = dash;
@@ -421,16 +571,20 @@ export function criarEstudio(ctx) {
   }
   function renderEtapas() {
     if (!S.etapas.length) return;
-    const t = tempo(), w = pesoMostrado();
+    const t = tempo(), w = pesoMostrado(), metodo = ehMetodo();
     const k = S.guia ? S.guia.k : -1, fase = S.guia?.fase, fim = S.relogio === 'fim' || fase === 'fim';
-    el.querySelectorAll('.es-et').forEach((card, i) => {
+    $$('.es-et', el).forEach((card, i) => {
       const e = S.etapas[i];
       const feito = fim || i < k, atual = !fim && i === k && S.relogio === 'rodando';
       let p = feito ? 1 : 0, espera = false;
       if (atual) {
-        if (fase === 'despejo') p = (w - e.de) / Math.max(1, e.ate - e.de);
-        else if (fase === 'espera') { espera = true; p = (t - (S.marcos[i]?.t ?? e.fim)) / Math.max(1, e.ateTempo - (S.marcos[i]?.t ?? e.fim)); }
-        else if (fase === 'drenagem') { espera = true; p = (t - e.inicio) / Math.max(1, e.ateTempo - e.inicio); }
+        if (fase === 'despejo') p = metodo ? (t - e.inicio) / Math.max(1, e.fim - e.inicio) : (w - e.de) / Math.max(1, e.ate - e.de);
+        else if (fase === 'antes') { espera = true; p = 0; }
+        else if (fase === 'espera') {
+          espera = true;
+          const desde = metodo ? e.fim : (S.marcos[i]?.t ?? e.fim);
+          p = (t - desde) / Math.max(1, e.ateTempo - desde);
+        } else if (fase === 'drenagem') { espera = true; p = (t - e.inicio) / Math.max(1, e.ateTempo - e.inicio); }
       }
       card.classList.toggle('feito', feito); card.classList.toggle('atual', atual); card.classList.toggle('espera', espera);
       const largura = `${(Math.max(0, Math.min(1, p)) * 100).toFixed(1)}%`;
@@ -441,6 +595,7 @@ export function criarEstudio(ctx) {
 
   // ---------------- Gráfico principal ----------------
   function prepararCanvas(cv) {
+    if (!cv) return null;
     const rect = cv.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
     const dpr = window.devicePixelRatio || 1;
@@ -462,15 +617,30 @@ export function criarEstudio(ctx) {
     }
     c.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
   }
+  function hexA(hex, a) {
+    const h = String(hex).replace('#', '');
+    const n = parseInt(h.length === 3 ? h.split('').map(x => x + x).join('') : h, 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+  // série [tempo, gramas] da curva: a balança no modo com balança; a água da receita no "só o método"
+  function serieDoPreparo() {
+    if (!ehMetodo()) return S.amostras;
+    if (!S.perfil.length || S.relogio === 'pronto') return [];
+    const tAte = tempo(), passo = 0.25, out = [];
+    for (let s = 0; s < tAte; s += passo) out.push([s, aguaReceita(s)]);
+    out.push([tAte, aguaReceita(tAte)]);
+    return out;
+  }
   function desenhar() {
-    const cv = $('#esCanvas', el); if (!cv) return;
-    const pr = prepararCanvas(cv); if (!pr) return;
+    const pr = prepararCanvas($('#esCanvas', el)); if (!pr) return;
     const { c, W, H } = pr;
     const u = unidade();
     const pad = { l: u * 6.4, r: u * 2.8, t: u * 3.2, b: u * 4.4 };
     const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
-    const r = S.receita, t = tempo(), am = S.amostras;
+    const r = S.receita, t = tempo(), metodo = ehMetodo();
+    const am = serieDoPreparo();
     const ref = S.referencia?.pesos || [];
+    const acento = S.cor || '#CD9A50', base = S.corBase || '#8F6213';
     const tFim = Math.max(r ? r.tempoTotal * 1.04 : 0, t + 6, ref.length * 0.5, 60);
     const maior = Math.max(r ? r.agua : 0, S.picoAgua, ref.length ? Math.max(...ref) : 0, 50);
     const passoG = [10, 20, 25, 50, 100, 200, 250, 500].find(p => maior / p <= 7) || 1000;
@@ -509,22 +679,32 @@ export function criarEstudio(ctx) {
       c.strokeStyle = 'rgba(200,198,194,0.38)'; c.lineWidth = Math.max(1.5, u * 0.3);
       c.beginPath(); ref.forEach((g, i) => { const x = X(i * 0.5), y = Y(g); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke();
     }
-    // receita: linha pontilhada amarela
+    // receita: linha pontilhada clara
     if (S.perfil.length > 1) {
       c.save();
-      c.setLineDash([0.01, u * 1.15]); c.lineWidth = u * 0.45; c.strokeStyle = 'rgba(255,216,77,0.9)';
+      c.setLineDash([0.01, u * 1.15]); c.lineWidth = u * 0.45; c.strokeStyle = 'rgba(249,246,244,0.72)';
       caminhoSuave(c, S.perfil.map(([s, g]) => [X(s), Y(g)]), u * 3.5); c.stroke();
       c.restore();
     }
 
     if (am.length < 2) {
-      if (S.relogio === 'pronto') {
-        const txt = r ? 'A linha pontilhada é a receita. A sua curva aparece por cima.' : 'A curva aparece quando a água cair na balança.';
-        c.font = `500 ${Math.round(u * 1.8)}px ${FONTE}`; c.textAlign = 'center'; c.textBaseline = 'middle';
-        const tw = c.measureText(txt).width, tx = pad.l + pw / 2, ty = pad.t + ph * 0.42;
-        c.fillStyle = 'rgba(30,30,28,0.9)';
-        c.beginPath(); c.roundRect?.(tx - tw / 2 - u * 2, ty - u * 2.2, tw + u * 4, u * 4.4, u * 2.2); c.fill();
-        c.fillStyle = 'rgba(255,255,255,0.62)'; c.fillText(txt, tx, ty);
+      if (S.relogio === 'pronto' || (metodo && !r)) {
+        const l1 = 'Floresça seus sentidos.';
+        const l2 = metodo
+          ? (r ? 'A linha pontilhada é a receita. Toque em Iniciar e siga o relógio.' : 'Sem balança e sem receita: só o cronômetro.')
+          : (r ? 'A linha pontilhada é a receita. A sua curva aparece por cima.' : 'A curva aparece quando a água cair na balança.');
+        const tx = pad.l + pw / 2, ty = pad.t + ph * 0.4;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.font = `italic 500 ${Math.round(u * 3.4)}px ${SERIFA}`;
+        const w1 = c.measureText(l1).width;
+        c.font = `500 ${Math.round(u * 1.6)}px ${FONTE}`;
+        const w2 = c.measureText(l2).width, larg = Math.max(w1, w2) + u * 5;
+        c.fillStyle = 'rgba(29,29,27,0.9)';
+        c.beginPath(); c.roundRect?.(tx - larg / 2, ty - u * 4.4, larg, u * 8.6, u * 2); c.fill();
+        c.fillStyle = 'rgba(255,255,255,0.92)'; c.font = `italic 500 ${Math.round(u * 3.4)}px ${SERIFA}`;
+        c.fillText(l1, tx, ty - u * 1.3);
+        c.fillStyle = 'rgba(255,255,255,0.58)'; c.font = `500 ${Math.round(u * 1.6)}px ${FONTE}`;
+        c.fillText(l2, tx, ty + u * 2.3);
       }
       return;
     }
@@ -538,32 +718,35 @@ export function criarEstudio(ctx) {
     }
     const [xH, yH] = pts[pts.length - 1];
     const x0 = pts[0][0];
+    // a cor do café: do tom normal ao claro, com a ponta quase branca
     const cor = c.createLinearGradient(x0, 0, Math.max(x0 + 1, xH), 0);
-    cor.addColorStop(0, '#3BD9F6'); cor.addColorStop(0.32, '#45EFA0'); cor.addColorStop(0.7, '#EAF24C');
-    cor.addColorStop(0.9, '#C2F65A'); cor.addColorStop(1, '#5EF2E4');
+    cor.addColorStop(0, base); cor.addColorStop(0.55, acento); cor.addColorStop(0.92, acento); cor.addColorStop(1, '#FFFFFF');
     // área embaixo: cor da linha que escurece em direção ao zero
     c.save();
     c.beginPath(); c.moveTo(x0, Y(0)); pts.forEach(([x, y]) => c.lineTo(x, y)); c.lineTo(xH, Y(0)); c.closePath();
     c.globalAlpha = 0.4; c.fillStyle = cor; c.fill();
     c.globalAlpha = 1;
     const fundo = c.createLinearGradient(0, pad.t, 0, Y(0));
-    fundo.addColorStop(0, 'rgba(31,31,29,0)'); fundo.addColorStop(1, 'rgba(31,31,29,0.82)');
+    fundo.addColorStop(0, 'rgba(35,34,32,0)'); fundo.addColorStop(1, 'rgba(35,34,32,0.85)');
     c.fillStyle = fundo; c.fill();
     c.restore();
     // corte na ponta, com brilho
     const corte = c.createLinearGradient(0, yH, 0, Y(0));
-    corte.addColorStop(0, 'rgba(94,242,228,0.75)'); corte.addColorStop(1, 'rgba(94,242,228,0)');
+    corte.addColorStop(0, hexA(acento, 0.75)); corte.addColorStop(1, hexA(acento, 0));
     c.fillStyle = corte; c.fillRect(xH - 1, yH, 2, Y(0) - yH);
     // linha com brilho (duas passadas: halo largo e linha fina)
     c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
-    c.strokeStyle = cor; c.globalAlpha = 0.22; c.lineWidth = u * 1.7; c.stroke();
+    c.strokeStyle = cor; c.globalAlpha = 0.24; c.lineWidth = u * 1.7; c.stroke();
     c.globalAlpha = 1; c.lineWidth = Math.max(2.5, u * 0.42); c.stroke();
     // onde cada despejo terminou
+    const marcos = metodo
+      ? S.etapas.filter(e => e.tipo === 'despejo' && e.fim <= tempo()).map(e => ({ t: e.fim, g: e.ate }))
+      : S.marcos;
     c.font = `600 ${Math.round(u * 1.45)}px ${FONTE}`; c.textAlign = 'left'; c.textBaseline = 'top';
-    S.marcos.forEach(m => {
+    marcos.forEach(m => {
       if (!m) return;
       const x = X(m.t), y = Y(m.g);
-      c.fillStyle = '#1F1F1D'; c.strokeStyle = '#fff'; c.lineWidth = 2;
+      c.fillStyle = '#232220'; c.strokeStyle = '#fff'; c.lineWidth = 2;
       c.beginPath(); c.arc(x, y, u * 0.7, 0, Math.PI * 2); c.fill(); c.stroke();
       c.fillStyle = 'rgba(255,255,255,0.92)';
       c.fillText(`${Math.round(m.t)}s / ${g0(m.g)}g`, x + u * 1.2, y + u * 1.2);
@@ -572,39 +755,48 @@ export function criarEstudio(ctx) {
     if (S.relogio === 'rodando') {
       const raio = u * (2 + 0.6 * (0.5 + 0.5 * Math.sin(performance.now() / 260)));
       const halo = c.createRadialGradient(xH, yH, 0, xH, yH, raio);
-      halo.addColorStop(0, 'rgba(94,242,228,0.55)'); halo.addColorStop(1, 'rgba(94,242,228,0)');
+      halo.addColorStop(0, hexA(acento, 0.6)); halo.addColorStop(1, hexA(acento, 0));
       c.fillStyle = halo; c.beginPath(); c.arc(xH, yH, raio, 0, Math.PI * 2); c.fill();
     }
     c.fillStyle = '#fff'; c.beginPath(); c.arc(xH, yH, Math.max(3, u * 0.55), 0, Math.PI * 2); c.fill();
   }
 
   // ---------------- Mini gráficos dos cartões ----------------
+  // vazão por segundo: a medida da balança, ou o ritmo que a receita pede no "só o método"
+  function vazaoNoSegundo(s) { return Math.max(0, aguaReceita(s + 1) - aguaReceita(s)); }
   function desenharBarras() {
     const pr = prepararCanvas($('#esBarras', el)); if (!pr) return;
     const { c, W, H } = pr;
     const N = 26, vals = new Array(N).fill(0), cont = new Array(N).fill(0);
-    if (S.relogio === 'rodando' && S.amostras.length) {
-      // últimos N segundos, uma barra por segundo
+    const metodo = ehMetodo();
+    if (S.relogio === 'rodando') {
       const fim = Math.floor(tempo());
-      for (let i = S.amostras.length - 1; i >= 0; i--) {
-        const [s, , v] = S.amostras[i];
-        const b = N - 1 - (fim - Math.floor(s));
-        if (b < 0) break;
-        if (b < N) { vals[b] += v; cont[b]++; }
+      if (metodo) {
+        if (S.perfil.length) for (let i = 0; i < N; i++) { const s = fim - (N - 1 - i); if (s >= 0) { vals[i] = vazaoNoSegundo(s); cont[i] = 1; } }
+      } else {
+        // últimos N segundos, uma barra por segundo
+        for (let i = S.amostras.length - 1; i >= 0; i--) {
+          const [s, , v] = S.amostras[i];
+          const b = N - 1 - (fim - Math.floor(s));
+          if (b < 0) break;
+          if (b < N) { vals[b] += v; cont[b]++; }
+        }
       }
-    } else if (S.relogio === 'fim' && S.amostras.length && S.tFim > 0) {
+    } else if (S.relogio === 'fim' && S.tFim > 0) {
       // no fim, o preparo inteiro em N barras
-      S.amostras.forEach(([s, , v]) => { const b = Math.min(N - 1, Math.floor((s / S.tFim) * N)); vals[b] += v; cont[b]++; });
+      if (metodo) {
+        if (S.perfil.length) for (let i = 0; i < N; i++) { const a = (i / N) * S.tFim, b = ((i + 1) / N) * S.tFim; vals[i] = Math.max(0, aguaReceita(b) - aguaReceita(a)) / Math.max(0.1, b - a); cont[i] = 1; }
+      } else S.amostras.forEach(([s, , v]) => { const b = Math.min(N - 1, Math.floor((s / S.tFim) * N)); vals[b] += v; cont[b]++; });
     }
-    vals.forEach((_, i) => { if (cont[i]) vals[i] /= cont[i]; });
+    if (!metodo) vals.forEach((_, i) => { if (cont[i]) vals[i] /= cont[i]; });
     const vMax = Math.max(4, ...vals) * 1.08;
     const gap = Math.max(2, W * 0.014), bw = (W - gap * (N - 1)) / N;
     const cor = c.createLinearGradient(0, H, 0, 0);
-    cor.addColorStop(0, '#2CBF57'); cor.addColorStop(1, '#C8FF5C');
+    cor.addColorStop(0, S.corBase || '#8F6213'); cor.addColorStop(1, S.cor || '#CD9A50');
     vals.forEach((v, i) => {
       const h = Math.max(2, (v / vMax) * H);
       c.globalAlpha = 0.3 + 0.7 * (i / (N - 1));
-      c.fillStyle = i === N - 1 && v > 0.2 ? '#EFFFA6' : cor;
+      c.fillStyle = i === N - 1 && v > 0.2 && S.relogio === 'rodando' ? '#FFFFFF' : cor;
       c.fillRect(i * (bw + gap), H - h, bw, h);
     });
     c.globalAlpha = 1;
@@ -612,9 +804,10 @@ export function criarEstudio(ctx) {
   function desenharProp() {
     const pr = prepararCanvas($('#esPropLinha', el)); if (!pr) return;
     const { c, W, H } = pr;
-    const r = S.receita, am = S.amostras;
+    const r = S.receita;
+    const am = serieDoPreparo();
     const alvo = r?.dose ? r.agua / r.dose : 16;
-    const vMax = Math.max(alvo * 1.12, ...(r?.dose && am.length ? [S.picoAgua / r.dose * 1.05] : []));
+    const vMax = Math.max(alvo * 1.12, ...(r?.dose && S.picoAgua ? [S.picoAgua / r.dose * 1.05] : []));
     const tMax = Math.max(r ? r.tempoTotal : 60, tempo(), 1);
     const X = s => (s / tMax) * W, Y = v => H - 1 - (v / vMax) * (H - 3);
     // linha do alvo
@@ -624,14 +817,13 @@ export function criarEstudio(ctx) {
     const pts = [];
     let ultX = -Infinity;
     am.forEach(([s, g], i) => { const x = X(s); if (x - ultX >= 2 || i === am.length - 1) { pts.push([x, Y(Math.max(0, g) / r.dose)]); ultX = x; } });
-    const cor = c.createLinearGradient(0, 0, W, 0);
-    cor.addColorStop(0, '#FF5A4E'); cor.addColorStop(1, '#FFA43C');
+    const acento = S.cor || '#CD9A50';
     c.beginPath(); c.moveTo(pts[0][0], H); pts.forEach(([x, y]) => c.lineTo(x, y)); c.lineTo(pts[pts.length - 1][0], H); c.closePath();
     const area = c.createLinearGradient(0, 0, 0, H);
-    area.addColorStop(0, 'rgba(255,120,70,0.45)'); area.addColorStop(1, 'rgba(255,90,78,0.02)');
+    area.addColorStop(0, hexA(acento, 0.45)); area.addColorStop(1, hexA(acento, 0.02));
     c.fillStyle = area; c.fill();
     c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
-    c.strokeStyle = cor; c.lineWidth = 2; c.lineJoin = 'round'; c.stroke();
+    c.strokeStyle = acento; c.lineWidth = 2; c.lineJoin = 'round'; c.stroke();
   }
 
   // ---------------- Laço de desenho ----------------
@@ -639,7 +831,14 @@ export function criarEstudio(ctx) {
     cancelAnimationFrame(S.raf);
     const quadro = () => {
       if (!S.aberto) { S.raf = 0; return; }
-      if (S.relogio === 'rodando' && S.guia) { const t = tempo(); S.guia.atualizar(t, S.peso); acompanharFase(t, S.peso); }
+      if (S.relogio === 'rodando' && S.guia) {
+        const t = tempo();
+        if (ehMetodo()) {
+          const f = faseNoTempo(t);
+          S.guia.k = f.k; S.guia.fase = f.fase;
+          if (f.fase === 'fim') parar(); // a receita terminou: pronto
+        } else { S.guia.atualizar(t, S.peso); acompanharFase(t, S.peso); } // espera e drenagem andam pelo tempo
+      }
       // primeiro os desenhos (leem o tamanho da tela), depois os textos
       desenhar(); desenharBarras(); desenharProp();
       renderGuia(); renderNumeros(); renderStatus(); renderEtapas(); renderTrilho();
@@ -655,7 +854,15 @@ export function criarEstudio(ctx) {
   function ligar() {
     el.addEventListener('pointerdown', () => { S.ultimoToque = performance.now(); }, { passive: true });
     el.addEventListener('click', e => {
-      if (e.target.closest('#esCafe')) { editarCafe(); return; }
+      if (e.target.closest('#esCafe')) { abrirPainelCafe(); return; }
+      const fam = e.target.closest('[data-efam]');
+      if (fam) {
+        S.familia = fam.dataset.efam; aplicarCor();
+        $$('#esCpFamilias button', el).forEach(b => b.setAttribute('aria-pressed', String(b === fam)));
+        return;
+      }
+      const modo = e.target.closest('[data-emodo]');
+      if (modo) { definirModo(modo.dataset.emodo, true); return; }
       const b = e.target.closest('[data-eacao]');
       if (b && !b.disabled) {
         const a = b.dataset.eacao;
@@ -667,6 +874,8 @@ export function criarEstudio(ctx) {
         else if (a === 'salvar') terminar();
         else if (a === 'sair') fechar();
         else if (a === 'conectar') ctx.conectar(false);
+        else if (a === 'cafe-ok') fecharPainelCafe(true);
+        else if (a === 'cafe-cancelar') fecharPainelCafe(false);
         return;
       }
       const demo = e.target.closest('[data-demo]');
@@ -678,12 +887,11 @@ export function criarEstudio(ctx) {
       }
     });
     el.addEventListener('keydown', e => {
-      if (e.target.id !== 'esCafeCampo') return;
+      if (!e.target.closest?.('#esCafePainel')) return;
       e.stopPropagation();
-      if (e.key === 'Enter') { e.preventDefault(); fimEditarCafe(true); }
-      else if (e.key === 'Escape') { e.preventDefault(); fimEditarCafe(false); }
+      if (e.key === 'Enter') { e.preventDefault(); fecharPainelCafe(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); fecharPainelCafe(false); }
     });
-    el.addEventListener('focusout', e => { if (e.target.id === 'esCafeCampo') fimEditarCafe(true); });
     $('#esFechar', el).onclick = pedirSaida;
     $('#esTelaCheia', el).onclick = () => telaCheia(!document.fullscreenElement);
     document.addEventListener('fullscreenchange', () => { if (S.montado) el.classList.toggle('es-cheia', !!document.fullscreenElement); });

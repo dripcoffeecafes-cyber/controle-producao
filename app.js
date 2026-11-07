@@ -275,7 +275,7 @@ const TITULOS = {
   leads: ['Leads', 'Quem pediu contato e em que ponto está a conversa.'],
   custos: ['Custos', 'Quanto custa cada produto e por quanto vender em cada canal.'],
   notas: ['Notas', 'Pendências para não esquecer e anotações de como cada coisa foi feita.'],
-  extracao: ['Extração', 'Receitas guiadas e preparo ao vivo com a balança Timemore, em tela cheia para gravar.'],
+  extracao: ['Extração', 'Receitas guiadas em tela cheia para gravar: com a balança Timemore ou só pelo método.'],
 };
 function renderProdutos() { $('#areaProdutos').innerHTML = kits.html(); }
 function irPara(area) {

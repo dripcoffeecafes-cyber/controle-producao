@@ -7,7 +7,7 @@
 import { criarBalanca, criarSimulador, temBluetooth } from './balanca.js';
 import { criarEstudio } from './estudio.js';
 import {
-  METODOS, MODELOS, FAMILIAS, corDaFamilia, criarEditorReceitas, descricaoReceita, miniPerfil, etapasDaReceita, mmss,
+  METODOS, MODELOS, FAMILIAS, FAMILIA_PADRAO, corDaFamilia, criarEditorReceitas, descricaoReceita, miniPerfil, etapasDaReceita, mmss,
 } from './receitas.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -53,6 +53,12 @@ function sparkline(pesos, cor = 'currentColor', w = 120, h = 36) {
   return `<svg class="ex-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="M${pts.join(' L')}" style="stroke:${cor}"/></svg>`;
 }
 const estrelas = n => n ? '★'.repeat(n) + '☆'.repeat(5 - n) : '';
+// faixa de notas: "tangerina, mel" vira "tangerina · mel" (em maiúsculas pelo CSS), na cor normal do café
+const notasEmFaixa = t => String(t || '').split(/[,;·]+/).map(x => x.trim()).filter(Boolean).join(' · ');
+const estiloCor = f => {
+  const fa = FAMILIAS[f] || FAMILIAS[FAMILIA_PADRAO];
+  return `--cor:${fa.claro};--cor-base:${fa.cor};--sobre-cor:${f === 'fruta-amarela' ? '#1D1D1B' : '#FFFFFF'}`;
+};
 
 const ICONE_EDITAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"/><path d="M13.5 6.5l4 4"/></svg>';
 const ICONE_DUPLICAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="1"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>';
@@ -111,7 +117,7 @@ export function criarExtracao(ctx) {
 
         <section class="ex2-receitas" aria-label="Receitas">
           <div class="ex2-cab">
-            <div><h3>Receitas</h3><p>Toque em Preparar: a receita abre no estúdio, em tela cheia, pronta para gravar.</p></div>
+            <div><h3>Receitas</h3><p>Toque em Preparar: a receita abre no estúdio, em tela cheia. Com a balança, o peso guia as etapas; sem ela, o relógio guia.</p></div>
             <button type="button" class="btn btn-primary" id="exNovaReceita">Nova receita</button>
           </div>
           <div class="ex2-grade" id="exReceitas"></div>
@@ -144,16 +150,17 @@ export function criarExtracao(ctx) {
       <article class="rc rc-livre" style="--cor:#A9A6A2">
         <div class="rc-topo"><span class="rc-metodo">Sem receita</span></div>
         <h4>Preparo livre</h4>
-        <p class="rc-desc">Peso, tempo, vazão e a curva ao vivo, no seu ritmo.</p>
+        <p class="rc-desc">O seu café, no seu ritmo: peso, tempo, vazão e a curva ao vivo (ou só o cronômetro, sem balança).</p>
         <div class="rc-acoes"><button type="button" class="rc-preparar" data-racao="livre">Preparar</button></div>
       </article>`;
     $('#exReceitas').innerHTML = livre + todasReceitas().map(r => {
       const cor = corDaFamilia(r.familia);
       const et = etapasDaReceita(r).filter(e => e.tipo === 'despejo');
-      return `<article class="rc" data-id="${esc(r.id)}" style="--cor:${cor}">
+      return `<article class="rc" data-id="${esc(r.id)}" style="${estiloCor(r.familia)}">
         <div class="rc-topo"><span class="rc-metodo">${esc(METODOS[r.metodo]?.nome || 'Receita')}</span>${r.modelo ? '<span class="rc-tag">Modelo</span>' : ''}<span class="rc-familia" title="${esc(FAMILIAS[r.familia]?.nome || '')}"><i></i></span></div>
         <h4>${esc(r.nome)}</h4>
-        ${r.cafe ? `<p class="rc-cafe">${esc(r.cafe.toUpperCase())}</p>` : ''}
+        ${r.cafe || r.pontuacao ? `<p class="rc-cafe">${r.cafe ? `<span>${esc(r.cafe.toUpperCase())}</span>` : ''}${r.pontuacao ? `<i class="rc-nota">${esc(String(r.pontuacao).replace('.', ','))}</i>` : ''}</p>` : ''}
+        ${r.notas ? `<p class="rc-notas">${esc(notasEmFaixa(r.notas))}</p>` : ''}
         <p class="rc-desc">${esc(descricaoReceita(r))}</p>
         ${miniPerfil(r, 240, 48, cor)}
         <p class="rc-etapas">${et.length} ${et.length === 1 ? 'despejo' : 'despejos'}${et[0] ? ` · ${esc(et[0].nome)} até ${g0(et[0].ate)} g` : ''}</p>
@@ -250,7 +257,7 @@ export function criarExtracao(ctx) {
     if (!temBluetooth() && !ligada) {
       dica('Este navegador não tem Bluetooth. No computador, abra o app no Chrome ou no Edge. No celular, só no Chrome do Android (no iPhone não funciona).');
     } else if (E.conexao === 'desconectada') {
-      dica('Ligue a balança (segure o botão de baixo até a luz branca piscar) e toque em "Conectar balança".');
+      dica('Ligue a balança (segure o botão de baixo até a luz branca piscar) e toque em "Conectar balança". Sem balança? Toque em Preparar numa receita e siga só o método, pelo relógio.');
     } else if (E.conexao === 'pareando') {
       dica('Esperando o pareamento terminar…');
     } else if (conectada()) {
@@ -296,7 +303,7 @@ export function criarExtracao(ctx) {
     const r = dados.receita;
     const prop = r?.dose ? (dados.aguaFinal / r.dose).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : '';
     $('#extracaoResumo').innerHTML = `
-      <div><strong>${g1(dados.aguaFinal)} g</strong><span>água</span></div>
+      <div><strong>${g1(dados.aguaFinal)} g</strong><span>${dados.semBalanca ? 'água (receita)' : 'água'}</span></div>
       <div><strong>${mmss(dados.tempo)}</strong><span>tempo</span></div>
       <div><strong>${prop ? `1:${prop}` : g1(dados.vazaoMedia) + ' g/s'}</strong><span>${prop ? 'proporção' : 'vazão média'}</span></div>`;
     f.cafe.value = dados.cafe || r?.cafe || '';
@@ -311,15 +318,16 @@ export function criarExtracao(ctx) {
     const agora = new Date().toISOString();
     const doc = {
       id: novoId(),
-      cafe: f.cafe.value.trim(), receitaId: r?.id || '', receitaNome: r?.nome || '', familia: r?.familia || '',
+      cafe: f.cafe.value.trim(), receitaId: r?.id || '', receitaNome: r?.nome || '', familia: preparo.familia || r?.familia || '',
+      notas: preparo.notas || '', pontuacao: preparo.pontuacao || null,
       metodo: r?.metodo || 'outro', dose: r?.dose || 0, proporcao: r?.dose ? Math.round(r.agua / r.dose * 10) / 10 : 0,
       aguaAlvo: r?.agua || 0, tempoAlvo: r?.tempoTotal || 0, temperatura: r?.temperatura || 0, moagem: r?.moagem || '',
       aguaFinal: Math.round(preparo.aguaFinal * 10) / 10, tempo: Math.round(preparo.tempo),
       vazaoMedia: Math.round(preparo.vazaoMedia * 10) / 10,
       avaliacao: Number(f.querySelector('input[name=avaliacao]:checked')?.value || 0),
       obs: f.obs.value.trim(),
-      curva: { passo: PASSO, pesos: reamostrar(preparo.amostras) },
-      balanca: E.balanca?.tipo === 'simulador' ? 'Demonstração' : (E.nomeBalanca || 'Timemore'),
+      curva: { passo: PASSO, pesos: preparo.semBalanca ? [] : reamostrar(preparo.amostras) },
+      balanca: preparo.semBalanca ? 'Sem balança' : E.balanca?.tipo === 'simulador' ? 'Demonstração' : (E.nomeBalanca || 'Timemore'),
       criadoEm: agora, criadoPor: ctx.quem(), atualizadoEm: agora, atualizadoPor: ctx.quem(),
     };
     try {
@@ -348,8 +356,9 @@ export function criarExtracao(ctx) {
         <div class="ex-card-topo">
           <div><h4>${esc(x.cafe || x.receitaNome || METODOS[x.metodo]?.nome || 'Preparo')}</h4>
           <small>${esc([x.receitaNome && x.cafe ? x.receitaNome : '', METODOS[x.metodo]?.nome, x.moagem, x.temperatura ? `${g0(x.temperatura)}\u00a0°C` : ''].filter(Boolean).join(' · '))}</small></div>
-          ${sparkline(x.curva?.pesos, cor)}
+          ${x.curva?.pesos?.length ? sparkline(x.curva.pesos, cor) : x.balanca === 'Sem balança' ? '<span class="ex-sem-balanca">Sem balança</span>' : ''}
         </div>
+        ${x.notas ? `<p class="rc-notas ex-notas" style="${estiloCor(x.familia)}">${esc(notasEmFaixa(x.notas))}</p>` : ''}
         <div class="ex-card-nums">
           ${x.dose ? `<span><b>${g1(x.dose)} g</b> café</span>` : ''}<span><b>${g0(x.aguaFinal)} g</b> água</span>
           ${prop ? `<span><b>1:${prop}</b></span>` : ''}<span><b>${mmss(x.tempo)}</b></span>
@@ -369,7 +378,11 @@ export function criarExtracao(ctx) {
   // Repetir: abre o estúdio com a mesma receita e a curva desse preparo como referência
   function repetir(x) {
     const r = (x.receitaId && acharReceita(x.receitaId)) || null;
-    estudio.abrir(r, { cafe: x.cafe || '', referencia: { nome: `${x.cafe || x.receitaNome || 'Preparo'} · ${quando(x.criadoEm)}`, pesos: x.curva?.pesos || [] } });
+    estudio.abrir(r, {
+      cafe: x.cafe || '', notas: x.notas || '', pontuacao: x.pontuacao || null, familia: x.familia || undefined,
+      modo: x.balanca === 'Sem balança' ? 'metodo' : undefined,
+      referencia: { nome: `${x.cafe || x.receitaNome || 'Preparo'} · ${quando(x.criadoEm)}`, pesos: x.curva?.pesos || [] },
+    });
   }
   async function excluir(x) {
     await ctx.store().excluirDoc('extracoes', x.id);
