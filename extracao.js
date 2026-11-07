@@ -6,6 +6,7 @@
 
 import { criarBalanca, criarSimulador, temBluetooth } from './balanca.js';
 import { criarEstudio } from './estudio.js';
+import { criarMusica, tamanhoMB, ICONES_MUSICA as IM } from './musica.js';
 import {
   METODOS, MODELOS, FAMILIAS, FAMILIA_PADRAO, corDaFamilia, criarEditorReceitas, descricaoReceita, miniPerfil, etapasDaReceita, mmss,
 } from './receitas.js';
@@ -96,7 +97,10 @@ export function criarExtracao(ctx) {
   const ENDERECO_OPCAO = 'chrome://flags/#enable-web-bluetooth-confirm-pairing-support';
 
   // ---------------- Estúdio ----------------
+  // músicas guardadas neste aparelho, tocadas na área e no estúdio
+  const musica = criarMusica({ toast: (...a) => ctx.toast(...a) });
   const estudio = criarEstudio({
+    musica,
     balanca: () => E.balanca,
     conexao: () => E.conexao,
     nomeBalanca: () => (E.balanca?.tipo === 'simulador' ? 'Demonstração' : E.nomeBalanca),
@@ -132,6 +136,23 @@ export function criarExtracao(ctx) {
             <pre id="exBruto"></pre>
             <button type="button" class="ex-btn-claro" id="exCopiarBruto">Copiar</button>
           </details>
+        </section>
+
+        <section class="ex2-musicas" aria-label="Músicas">
+          <div class="ex2-mus-topo">
+            <div><h3>Músicas</h3><p>Para ouvir enquanto prepara e grava. Ficam guardadas só neste aparelho e tocam sem internet.</p></div>
+            <label class="ex-btn-claro ex-btn-forte ex-btn-arquivo">Adicionar músicas<input type="file" id="exMusicaArquivo" accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac" multiple hidden></label>
+          </div>
+          <div class="ex-tocador" id="exTocador" hidden>
+            <canvas class="ex-tocador-viz" id="exTocadorViz" aria-hidden="true"></canvas>
+            <div class="ex-tocador-info"><strong id="exTocadorNome"></strong><small id="exTocadorPos"></small></div>
+            <div class="ex-tocador-bts">
+              <button type="button" class="ex-btn-claro ex-ic" data-macao="anterior" aria-label="Anterior">${IM.anterior}</button>
+              <button type="button" class="ex-btn-claro ex-btn-forte ex-ic" data-macao="alternar" id="exTocadorPlay" aria-label="Tocar ou pausar">${IM.tocar}</button>
+              <button type="button" class="ex-btn-claro ex-ic" data-macao="proxima" aria-label="Próxima">${IM.proxima}</button>
+            </div>
+          </div>
+          <ol class="ex-musicas" id="exMusicas"></ol>
         </section>
 
         <section class="ex2-receitas" aria-label="Receitas">
@@ -310,6 +331,45 @@ export function criarExtracao(ctx) {
     el.dataset.pronto = '1';
   }
 
+  // ---------------- Músicas ----------------
+  function renderMusicas() {
+    const lista = $('#exMusicas'); if (!lista) return;
+    const fs = musica.lista, atual = musica.faixa;
+    lista.innerHTML = fs.length ? fs.map((f, i) => `<li data-mid="${esc(f.id)}" class="${atual?.id === f.id ? 'atual' : ''}">
+        <button type="button" class="ex-mus-tocar" data-macao="tocar" aria-label="Tocar ${esc(f.nome)}">${atual?.id === f.id && musica.tocando ? IM.pausar : IM.tocar}</button>
+        <span class="ex-mus-nome">${esc(f.nome)}</span><small>${tamanhoMB(f.tamanho || 0)}</small>
+        <button type="button" class="ex-mus-tirar" data-macao="remover" aria-label="Tirar ${esc(f.nome)}">✕</button>
+      </li>`).join('')
+      : '<li class="ex-mus-vazio">Nenhuma música ainda. Toque em "Adicionar músicas" e escolha arquivos de música do aparelho (mp3, m4a, wav).</li>';
+    const t = $('#exTocador');
+    t.hidden = !atual;
+    if (atual) {
+      $('#exTocadorNome').textContent = atual.nome;
+      $('#exTocadorPos').textContent = `${musica.atual + 1} de ${fs.length} · ${tamanhoMB(musica.espacoUsado())} neste aparelho`;
+      $('#exTocadorPlay').innerHTML = musica.tocando ? IM.pausar : IM.tocar;
+      if (musica.tocando) desenharTocador();
+    }
+  }
+  function desenharTocador() {
+    if (E.vizLigado) return;
+    E.vizLigado = true;
+    requestAnimationFrame(quadroTocador);
+  }
+  function quadroTocador() {
+    const cv = $('#exTocadorViz');
+    if (!cv || !musica.tocando || !E.visivel) { E.vizLigado = false; return; }
+    const r = cv.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+    if (r.width) {
+      if (cv.width !== Math.round(r.width * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+      const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, r.width, r.height);
+      const n = 32, v = musica.espectro(n), gap = 3, bw = (r.width - gap * (n - 1)) / n;
+      const g = c.createLinearGradient(0, r.height, 0, 0); g.addColorStop(0, '#1565D8'); g.addColorStop(1, '#8FD0FF');
+      c.fillStyle = g;
+      v.forEach((x, i) => { const h = Math.max(2, x * r.height); c.fillRect(i * (bw + gap), r.height - h, bw, h); });
+    }
+    requestAnimationFrame(quadroTocador);
+  }
+
   // Dica: orientação do momento. Alerta: aviso importante (pareamento, erro), fica até a próxima conexão ou até chegar o peso.
   function dica(texto) { const el = $('#exDica'); if (el) el.textContent = texto; }
   function alerta(texto, acao = null) {
@@ -441,6 +501,22 @@ export function criarExtracao(ctx) {
       if (ligada) { E.balanca?.desconectar(); E.balanca = null; } else conectar(false);
     };
     $('#exDemo').onclick = () => conectar(true);
+    // músicas
+    $('#exMusicaArquivo').onchange = async e => { const f = e.target.files; if (f?.length) await musica.adicionar(f); e.target.value = ''; };
+    $('.ex2-musicas').addEventListener('click', e => {
+      const b = e.target.closest('[data-macao]'); if (!b) return;
+      const a = b.dataset.macao, id = b.closest('[data-mid]')?.dataset.mid;
+      if (a === 'alternar') musica.alternar();
+      else if (a === 'proxima') musica.proxima();
+      else if (a === 'anterior') musica.anterior();
+      else if (a === 'tocar') { const i = musica.lista.findIndex(f => f.id === id); i === musica.atual ? musica.alternar() : musica.tocar(i); }
+      else if (a === 'remover') {
+        const f = musica.lista.find(x => x.id === id);
+        if (f && confirm(`Tirar "${f.nome}" deste aparelho?`)) musica.remover(id);
+      }
+    });
+    musica.ouvir(renderMusicas);
+    renderMusicas();
     $('#exTara').onclick = () => E.balanca?.tara();
     $('#exNovaReceita').onclick = () => editor.abrir(null);
     $('#exReceitas').addEventListener('click', e => {
@@ -470,7 +546,7 @@ export function criarExtracao(ctx) {
   function render() {
     montar();
     E.visivel = true;
-    renderReceitas(); renderLista(); atualizarConexao();
+    renderReceitas(); renderLista(); atualizarConexao(); renderMusicas();
     $('#exPeso').textContent = g1(E.peso);
   }
   function esconder() { E.visivel = false; }

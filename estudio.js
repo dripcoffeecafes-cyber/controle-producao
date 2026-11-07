@@ -8,6 +8,7 @@
 // Feita para o notebook do Adriano (1920×1080 com escala de 125% = 1536×864 em tela cheia; 1536×695 com o Chrome à
 // mostra) e para toque. Tudo é medido em "u" (--u), que acompanha a altura da tela.
 
+import { ICONES_MUSICA as IM } from './musica.js';
 import {
   etapasDaReceita, perfilAlvo, alvoNoTempo, criarGuia, FAMILIAS, FAMILIA_PADRAO, METODOS, mmss,
 } from './receitas.js';
@@ -123,6 +124,12 @@ export function criarEstudio(ctx) {
           </div>
           <div class="es-meta" id="esMeta"></div>
         </div>
+        <div class="es-musica" id="esMusica" hidden>
+          <button type="button" class="es-mus-bt es-mus-play" data-eacao="musica-alternar" aria-label="Tocar ou pausar a música"></button>
+          <canvas class="es-mus-viz" id="esMusicaViz" aria-hidden="true"></canvas>
+          <span class="es-mus-nome" id="esMusicaNome"></span>
+          <button type="button" class="es-mus-bt" data-eacao="musica-proxima" aria-label="Próxima música">${IM.proxima}</button>
+        </div>
         <div class="es-topo-acoes">
           <div class="es-modo" id="esModo" role="group" aria-label="Como preparar">
             <button type="button" data-emodo="balanca">Com balança</button>
@@ -180,6 +187,8 @@ export function criarEstudio(ctx) {
   // opcoes: { referencia, cafe, notas, pontuacao, familia, modo: 'balanca'|'metodo', telaCheia }
   async function abrir(receita, opcoes = {}) {
     montar();
+    if (ctx.musica && !S.musicaOuvindo) { S.musicaOuvindo = true; ctx.musica.ouvir(renderMusica); }
+    renderMusica();
     S.receita = receita || null;
     S.etapas = receita ? etapasDaReceita(receita) : [];
     S.perfil = receita ? perfilAlvo(receita) : [];
@@ -920,6 +929,26 @@ export function criarEstudio(ctx) {
     c.shadowBlur = 0;
   }
 
+  // ---------------- Música (mini-tocador no topo) ----------------
+  function renderMusica() {
+    const m = ctx.musica, caixa = $('#esMusica', el);
+    if (!m || !caixa) return;
+    caixa.hidden = !m.lista.length;
+    caixa.classList.toggle('tocando', m.tocando);
+    const f = m.faixa;
+    $('#esMusicaNome', el).textContent = f ? f.nome : 'Suas músicas';
+    $('.es-mus-play', caixa).innerHTML = m.tocando ? IM.pausar : IM.tocar;
+  }
+  function desenharMusica() {
+    const m = ctx.musica;
+    if (!m?.tocando) return;
+    const pr = prepararCanvas($('#esMusicaViz', el)); if (!pr) return;
+    const { c, W, H } = pr, n = 16, v = m.espectro(n), gap = Math.max(1.5, W * 0.025), bw = (W - gap * (n - 1)) / n;
+    const g = c.createLinearGradient(0, H, 0, 0); g.addColorStop(0, '#1565D8'); g.addColorStop(1, '#8FD0FF');
+    c.fillStyle = g; c.shadowColor = 'rgba(77,178,255,0.7)'; c.shadowBlur = 6;
+    v.forEach((x, i) => { const h = Math.max(2, x * H); c.fillRect(i * (bw + gap), (H - h) / 2, bw, h); });
+  }
+
   // ---------------- Laço de desenho ----------------
   function iniciarLoop() {
     cancelAnimationFrame(S.raf);
@@ -934,7 +963,7 @@ export function criarEstudio(ctx) {
         } else { S.guia.atualizar(t, S.peso); acompanharFase(t, S.peso); } // espera e drenagem andam pelo tempo
       }
       // primeiro os desenhos (leem o tamanho da tela), depois os textos
-      desenhar(); desenharBarras(); desenharProp();
+      desenhar(); desenharBarras(); desenharProp(); desenharMusica();
       renderGuia(); renderNumeros(); renderStatus(); renderEtapas(); renderTrilho();
       // controles discretos durante o preparo (voltam ao tocar)
       el.classList.toggle('es-quieto', S.relogio === 'rodando' && performance.now() - S.ultimoToque > 4500);
@@ -968,6 +997,8 @@ export function criarEstudio(ctx) {
         else if (a === 'salvar') terminar();
         else if (a === 'sair') fechar();
         else if (a === 'conectar') ctx.conectar(false);
+        else if (a === 'musica-alternar') ctx.musica?.alternar();
+        else if (a === 'musica-proxima') ctx.musica?.proxima();
         else if (a === 'cafe-ok') fecharPainelCafe(true);
         else if (a === 'cafe-cancelar') fecharPainelCafe(false);
         return;

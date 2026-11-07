@@ -1088,6 +1088,31 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 .ex-detalhes summary { cursor: pointer; width: fit-content; }
 .ex-detalhes pre { max-height: 200px; overflow: auto; background: rgba(255,255,255,.05); padding: 10px 12px; font-size: 11.5px; color: #C7C7CC; white-space: pre-wrap; }
 
+/* Músicas (guardadas no aparelho) */
+.ex2-musicas { background: var(--bl-fundo); color: #fff; padding: 16px 18px; font-family: var(--bl-sans); }
+.ex2-mus-topo { display: flex; align-items: flex-start; gap: 10px 16px; flex-wrap: wrap; }
+.ex2-mus-topo > div { flex: 1 1 240px; }
+.ex2-mus-topo h3 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.03em; }
+.ex2-mus-topo p { margin: 4px 0 0; font-size: 14px; color: #C9C6C2; }
+.ex-btn-arquivo { display: inline-flex; align-items: center; }
+.ex-tocador { display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-items: center; margin-top: 14px; padding: 12px 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); }
+.ex-tocador-viz { grid-column: 1 / -1; width: 100%; height: 56px; display: block; }
+.ex-tocador-info { min-width: 0; display: grid; }
+.ex-tocador-info strong { font-family: var(--bl-serif); font-size: 18px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-tocador-info small { color: #A9A6A2; font-size: 12.5px; }
+.ex-tocador-bts { display: flex; gap: 6px; }
+.ex-ic { width: 44px; padding: 0; display: grid; place-items: center; }
+.ex-ic svg, .ex-mus-tocar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ex-ic svg path:first-child, .ex-mus-tocar svg path { fill: currentColor; }
+.ex-musicas { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 2px; }
+.ex-musicas li { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,.07); font-size: 14px; }
+.ex-musicas li.atual .ex-mus-nome { color: #8FD0FF; }
+.ex-mus-nome { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-musicas small { color: #8D8984; font-size: 12px; font-variant-numeric: tabular-nums; }
+.ex-mus-tocar, .ex-mus-tirar { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); background: transparent; color: #fff; display: grid; place-items: center; cursor: pointer; font: inherit; }
+.ex-mus-tirar { border-color: transparent; color: #8D8984; }
+.ex-mus-vazio { color: #A9A6A2; border: 0 !important; }
+
 /* Receitas */
 .ex2-receitas, .ex-historico {
   background: var(--surface); border: 1px solid var(--line-suave); border-radius: 24px;
@@ -1288,6 +1313,19 @@ body.com-estudio .toast button { color: var(--bl-fundo); text-decoration: underl
 .es-m-encolhe { flex: 0 1 auto; min-width: calc(var(--u) * 12); }
 .es-topo-acoes { flex: none; margin-left: auto; display: flex; align-items: center; gap: calc(var(--u) * 1); transition: opacity .6s; }
 .es-demo { display: inline-flex; gap: calc(var(--u) * .6); }
+/* mini-tocador de música no topo (fica aceso mesmo com os controles apagados) */
+.es-musica {
+  flex: none; width: calc(var(--u) * 34); margin-left: auto; display: flex; align-items: center; gap: calc(var(--u) * .9);
+  padding: calc(var(--u) * .45) calc(var(--u) * .6); border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04);
+}
+.es-musica + .es-topo-acoes { margin-left: calc(var(--u) * 1.2); }
+.es-mus-bt { flex: none; width: calc(var(--u) * 4); height: calc(var(--u) * 4); border-radius: 50%; border: 0; background: rgba(255,255,255,.1); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.es-mus-play { background: #fff; color: #1D1D1B; }
+.es-mus-bt svg { width: 52%; height: 52%; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.es-mus-bt svg path:first-child { fill: currentColor; }
+.es-mus-viz { flex: none; width: calc(var(--u) * 7); height: calc(var(--u) * 3); display: none; }
+.es-musica.tocando .es-mus-viz { display: block; }
+.es-mus-nome { flex: 1; min-width: 0; font-family: var(--bl-serif); font-size: calc(var(--u) * 1.6); color: #E9E4DE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
 /* botões da marca: pílula, Archivo larga em maiúsculas */
 .es-chip {
   font-size: calc(var(--u) * 1.2); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; font-stretch: 112%; font-variation-settings: 'wdth' 112;
