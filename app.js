@@ -4,6 +4,7 @@ import { criarKits } from './kits.js';
 import { criarLeads } from './leads.js';
 import { criarCustos } from './custos.js';
 import { criarNotas } from './notas.js';
+import { criarExtracao } from './extracao.js';
 
 // ---------------- Utilidades ----------------
 const $ = (s, el = document) => el.querySelector(s);
@@ -251,13 +252,21 @@ const notas = criarNotas({
   quem: () => quem(),
 });
 
+// ---------------- Extração (balança Timemore por Bluetooth) ----------------
+const extracao = criarExtracao({
+  store: () => estado.store,
+  toast: (...a) => toast(...a),
+  quem: () => quem(),
+});
+
 // Catálogo e pedidos da página do cliente ficam fora da equipe no Firebase: só quem entrou
 // com a conta pode gravar ali (no modo de teste, tudo fica no aparelho).
 function podePublicar() { return estado.modo === 'conta' || estado.store?.modo === 'local'; }
 const linkCliente = () => new URL('kit/', location.href.split('#')[0]).href;
 
 // ---------------- Áreas do app (cabeçalho): Produção, Orçar kit, Produtos, Leads, Custos, Notas ----------------
-const AREAS = ['producao', 'orcar', 'produtos', 'leads', 'custos', 'notas'];
+// Extração fica no menu lateral do computador; no celular, entra por Ajustes (a barra de baixo comporta 6)
+const AREAS = ['producao', 'orcar', 'produtos', 'leads', 'custos', 'notas', 'extracao'];
 // Título e frase de cada área (aparecem no computador, acima do conteúdo)
 const TITULOS = {
   producao: ['Produção', 'Os pedidos da equipe, do pedido à entrega.'],
@@ -266,6 +275,7 @@ const TITULOS = {
   leads: ['Leads', 'Quem pediu contato e em que ponto está a conversa.'],
   custos: ['Custos', 'Quanto custa cada produto e por quanto vender em cada canal.'],
   notas: ['Notas', 'Pendências para não esquecer e anotações de como cada coisa foi feita.'],
+  extracao: ['Extração', 'Peso, tempo e vazão do preparo ao vivo, com a balança Timemore.'],
 };
 function renderProdutos() { $('#areaProdutos').innerHTML = kits.html(); }
 function irPara(area) {
@@ -291,11 +301,13 @@ function irPara(area) {
   $('#areaLeads').hidden = area !== 'leads';
   $('#areaCustos').hidden = area !== 'custos';
   $('#areaNotas').hidden = area !== 'notas';
+  $('#areaExtracao').hidden = area !== 'extracao';
   if (area === 'orcar') kits.renderOrcar();
   if (area === 'produtos') renderProdutos();
   if (area === 'leads') leads.render();
   if (area === 'custos') custos.render();
   if (area === 'notas') notas.render();
+  if (area === 'extracao') extracao.render(); else extracao.esconder();
   if (mudou) window.scrollTo({ top: 0 });
 }
 $$('.areas button').forEach(b => b.addEventListener('click', () => irPara(b.dataset.area)));
@@ -709,6 +721,7 @@ $('#copiarLinkCliente').addEventListener('click', async () => {
   }
 });
 $('#abrirPaginaCliente').addEventListener('click', () => window.open(linkCliente(), '_blank', 'noopener'));
+$('#abrirExtracao').addEventListener('click', () => { $('#dlgAjustes').close(); irPara('extracao'); });
 
 // ---------------- Instalação (PWA) ----------------
 // Funciona no celular e no computador (Chrome e Edge mostram o pedido de instalação).
@@ -771,6 +784,7 @@ function conectarDados() {
     ...leads.conectar(),
     ...custos.conectar(),
     ...notas.conectar(),
+    ...extracao.conectar(),
   ];
 }
 

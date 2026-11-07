@@ -81,6 +81,7 @@
           <button data-area="leads"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="8.5" r="3.5"/><path d="M3.5 19.5c.7-3.2 3.1-5 6-5s5.3 1.8 6 5M16 5.5a3 3 0 0 1 0 6M18 14.8c1.4.7 2.3 2.2 2.6 4.2"/></svg><span>Leads</span></button>
           <button data-area="custos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h14v15H5z"/><path d="M8 8.5h8M8 12h3M13 12h3M8 15.5h3M13 15.5h3"/></svg><span>Custos</span></button>
           <button data-area="notas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z"/><path d="M8.5 9l1.5 1.5 2.5-3M14.5 9H16M8.5 15h7.5"/></svg><span>Notas</span></button>
+          <button data-area="extracao" class="area-lateral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17.5h16"/><path d="M6 17.5a6 6 0 0 1 12 0"/><path d="M12 17.5l3.2-4.2"/><path d="M9.5 5.5c-.7.9.7 1.8-.1 2.8M13 4.5c-.8 1 .8 2-.1 3"/></svg><span>Extração</span></button>
         </nav>
         <button id="instalarApp" class="lateral-btn" type="button" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 7.5v6M9.5 11l2.5 2.5 2.5-2.5"/></svg>
@@ -211,6 +212,9 @@
       </div>
     </main>
 
+    <!-- Extração: balança Timemore por Bluetooth (a tela é montada pelo extracao.js) -->
+    <main id="areaExtracao" class="pagina" hidden></main>
+
     <button id="novoPedido" class="fab" aria-label="Novo pedido">
       <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M11 5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5Z"/></svg>
       <span id="fabTexto">Novo pedido</span>
@@ -230,6 +234,35 @@
   </div>
 
   <!-- Notas: anotação ou pendência -->
+  <dialog id="dlgExtracao" class="sheet">
+    <form id="formExtracao" method="dialog" novalidate>
+      <div class="sheet-topo">
+        <h2>Salvar extração</h2>
+        <button type="button" class="icon-btn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6.7 5.3a1 1 0 0 0-1.4 1.4L10.6 12l-5.3 5.3a1 1 0 1 0 1.4 1.4l5.3-5.3 5.3 5.3a1 1 0 0 0 1.4-1.4L13.4 12l5.3-5.3a1 1 0 0 0-1.4-1.4L12 10.6 6.7 5.3Z"/></svg></button>
+      </div>
+      <div class="sheet-corpo">
+        <div id="extracaoResumo" class="resumo ex-resumo"></div>
+        <label>Café<input name="cafe" autocomplete="off" maxlength="80" placeholder="Ex.: Mantiqueira, lote 12"></label>
+        <fieldset class="campo-categoria">
+          <legend>Como ficou na xícara</legend>
+          <div class="segmentado ex-nota" role="radiogroup" aria-label="Nota de 1 a 5">
+            <label><input type="radio" name="avaliacao" value="1"><span>1</span></label>
+            <label><input type="radio" name="avaliacao" value="2"><span>2</span></label>
+            <label><input type="radio" name="avaliacao" value="3"><span>3</span></label>
+            <label><input type="radio" name="avaliacao" value="4"><span>4</span></label>
+            <label><input type="radio" name="avaliacao" value="5"><span>5</span></label>
+          </div>
+        </fieldset>
+        <label>Observações<textarea name="obs" rows="3" placeholder="Ex.: doce, acidez cítrica, moer um pouco mais fino"></textarea></label>
+      </div>
+      <div class="sheet-rodape">
+        <span class="espaco"></span>
+        <button type="button" class="btn" data-fechar>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="dlgNota" class="sheet">
     <form id="formNota" method="dialog" novalidate>
       <div class="sheet-topo">
@@ -552,6 +585,11 @@
           <p id="pessoaErro" class="erro" role="alert"></p>
           <button class="btn btn-primary" type="submit">Adicionar e enviar e-mail</button>
         </form>
+      </section>
+      <section class="bloco so-celular" id="blocoExtracao">
+        <h3>Extração com balança</h3>
+        <p class="muted">Acompanhe peso, tempo e vazão do preparo com a balança Timemore por Bluetooth (Chrome do Android ou do computador).</p>
+        <button id="abrirExtracao" class="btn" type="button">Abrir Extração</button>
       </section>
       <section class="bloco" id="blocoCliente">
         <h3>Página do cliente</h3>
