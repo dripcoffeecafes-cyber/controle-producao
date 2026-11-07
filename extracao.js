@@ -238,6 +238,9 @@ export function criarExtracao(ctx) {
     } catch (e) {
       E.balanca = null;
       if (e?.name === 'NotFoundError') dica('Nenhuma balança escolhida. Ligue a balança (luz branca piscando) e tente de novo.');
+      else if (e?.name === 'PareamentoError') {
+        dica('A balança pede pareamento com o computador antes de mandar o peso. No Windows: Configurações → Bluetooth e dispositivos → Adicionar dispositivo → Bluetooth, com a luz da balança piscando rápido, e escolha TIMEMORE_Dot. No Mac: aceite o aviso de "Conectar"/"Emparelhar" se aparecer. Depois volte aqui e clique em Conectar balança.', true);
+      }
       else if (e?.name === 'SecurityError') dica('O navegador bloqueou o Bluetooth. Abra o app pelo endereço https e tente de novo.', true);
       else {
         dica(`Não deu para conectar (${e?.name || 'erro'}: ${e?.message || ''}). Confira se a balança não está conectada no app da Timemore do celular e tente de novo. Se continuar, abra "Detalhes da conexão", copie e me mande.`, true);

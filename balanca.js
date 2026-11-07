@@ -120,13 +120,14 @@ export function criarBalanca(ev) {
     }
     try {
       const cs = await servico.getCharacteristics();
-      log('características: ' + cs.map(c => `${c.uuid.slice(4, 8)} [${Object.entries(c.properties).filter(([, v]) => v === true).map(([k]) => k).join(',')}]`).join(' · '));
+      const props = p => ['read', 'write', 'writeWithoutResponse', 'notify', 'indicate'].filter(k => p[k]).join(',');
+      log('características: ' + cs.map(c => `${c.uuid.slice(4, 8)} [${props(c.properties)}]`).join(' · '));
     } catch {}
     const notif = await servico.getCharacteristic(NOTIFICA);
     cmdChar = await servico.getCharacteristic(COMANDO);
     notif.removeEventListener('characteristicvaluechanged', aoNotificar);
     notif.addEventListener('characteristicvaluechanged', aoNotificar);
-    await tentar('notificações', () => notif.startNotifications());
+    await tentar('notificações', () => notif.startNotifications(), 1);
     log('notificações ligadas; mandando unidade, modo e bateria');
     // sequência de início: sem ela a Dot não manda peso
     await espera(500); await escrever(CMD.unidade());
@@ -165,13 +166,20 @@ export function criarBalanca(ev) {
       device.removeEventListener('gattserverdisconnected', aoDesconectar);
       device.addEventListener('gattserverdisconnected', aoDesconectar);
       querConectada = true;
-      try { await abrir(); }
-      catch (e) {
-        log(`erro: ${e.name}: ${e.message}`);
-        querConectada = false;
-        try { device.gatt.disconnect(); } catch {}
-        ev.estado?.('desconectada');
-        throw e;
+      // a Dot pede pareamento: na 1ª vez o sistema pode abrir o aviso de parear; tenta a sequência inteira de novo
+      let pediuPareamento = false;
+      for (let i = 1; ; i++) {
+        try { await abrir(); return; }
+        catch (e) {
+          log(`erro (rodada ${i}): ${e.name}: ${e.message}`);
+          if (/authenticat|pair|insufficient/i.test(e.message || '')) pediuPareamento = true;
+          try { device.gatt.disconnect(); } catch {}
+          if (i < 3 && querConectada) { await espera(1500); continue; }
+          querConectada = false;
+          ev.estado?.('desconectada');
+          if (pediuPareamento) { const err = new Error('A balança pede pareamento'); err.name = 'PareamentoError'; throw err; }
+          throw e;
+        }
       }
     },
     async desconectar() {
