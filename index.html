@@ -78,10 +78,10 @@
           <button data-area="producao" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8 9h8M8 12.5h8M8 16h5"/></svg><span>Produção</span></button>
           <button data-area="orcar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 10h15v9.5a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1V10Z"/><path d="M3.5 6.5h17V10h-17zM12 6.5v14M12 6.5C10.5 3.5 7 3.5 7 5.3c0 1.2 2.4 1.2 5 1.2Zm0 0c1.5-3 5-3 5-1.2 0 1.2-2.4 1.2-5 1.2Z"/></svg><span>Orçar kit</span></button>
           <button data-area="produtos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9.5h12v5.5a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V9.5Z"/><path d="M17 11h1.3a2.3 2.3 0 0 1 0 4.6H16.6M9 3.5c-.8 1 .8 2-.1 3M12.5 3.5c-.8 1 .8 2-.1 3"/></svg><span>Produtos</span></button>
-          <button data-area="leads"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="8.5" r="3.5"/><path d="M3.5 19.5c.7-3.2 3.1-5 6-5s5.3 1.8 6 5M16 5.5a3 3 0 0 1 0 6M18 14.8c1.4.7 2.3 2.2 2.6 4.2"/></svg><span>Leads</span></button>
+          <button data-area="leads" class="area-lateral"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="8.5" r="3.5"/><path d="M3.5 19.5c.7-3.2 3.1-5 6-5s5.3 1.8 6 5M16 5.5a3 3 0 0 1 0 6M18 14.8c1.4.7 2.3 2.2 2.6 4.2"/></svg><span>Leads</span></button>
           <button data-area="custos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h14v15H5z"/><path d="M8 8.5h8M8 12h3M13 12h3M8 15.5h3M13 15.5h3"/></svg><span>Custos</span></button>
           <button data-area="notas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z"/><path d="M8.5 9l1.5 1.5 2.5-3M14.5 9H16M8.5 15h7.5"/></svg><span>Notas</span></button>
-          <button data-area="extracao" class="area-lateral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17.5h16"/><path d="M6 17.5a6 6 0 0 1 12 0"/><path d="M12 17.5l3.2-4.2"/><path d="M9.5 5.5c-.7.9.7 1.8-.1 2.8M13 4.5c-.8 1 .8 2-.1 3"/></svg><span>Extração</span></button>
+          <button data-area="extracao"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17.5h16"/><path d="M6 17.5a6 6 0 0 1 12 0"/><path d="M12 17.5l3.2-4.2"/><path d="M9.5 5.5c-.7.9.7 1.8-.1 2.8M13 4.5c-.8 1 .8 2-.1 3"/></svg><span>Extração</span></button>
         </nav>
         <button id="instalarApp" class="lateral-btn" type="button" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 7.5v6M9.5 11l2.5 2.5 2.5-2.5"/></svg>
@@ -636,10 +636,10 @@
           <button class="btn btn-primary" type="submit">Adicionar e enviar e-mail</button>
         </form>
       </section>
-      <section class="bloco so-celular" id="blocoExtracao">
-        <h3>Extração</h3>
-        <p class="muted">Receitas guiadas em tela cheia. Funciona sem balança, só pelo método (o relógio guia), em qualquer celular. Com a balança Timemore por Bluetooth: no computador, Chrome ou Edge; no Android, Chrome ou Samsung Internet; no iPhone, o app Bluefy (grátis).</p>
-        <button id="abrirExtracao" class="btn" type="button">Abrir Extração</button>
+      <section class="bloco so-celular" id="blocoLeads">
+        <h3>Leads</h3>
+        <p class="muted">Os contatos e os pedidos que chegam pela página do cliente. No celular, a barra de baixo mostra a Extração no lugar dos Leads.</p>
+        <button id="abrirLeads" class="btn" type="button">Abrir Leads</button>
       </section>
       <section class="bloco" id="blocoCliente">
         <h3>Página do cliente</h3>

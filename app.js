@@ -721,7 +721,7 @@ $('#copiarLinkCliente').addEventListener('click', async () => {
   }
 });
 $('#abrirPaginaCliente').addEventListener('click', () => window.open(linkCliente(), '_blank', 'noopener'));
-$('#abrirExtracao').addEventListener('click', () => { $('#dlgAjustes').close(); irPara('extracao'); });
+$('#abrirLeads').addEventListener('click', () => { $('#dlgAjustes').close(); irPara('leads'); });
 
 // ---------------- Instalação (PWA) ----------------
 // Funciona no celular e no computador (Chrome e Edge mostram o pedido de instalação).
