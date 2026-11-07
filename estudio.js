@@ -688,7 +688,8 @@ export function criarEstudio(ctx) {
     const r = S.receita, t = tempo(), metodo = ehMetodo();
     const am = serieDoPreparo();
     const ref = S.referencia?.pesos || [];
-    const acento = S.cor || '#CD9A50', base = S.corBase || '#8F6213';
+    // a linha da água é sempre azul-água (a cor do café fica nos números, nos cartões e nas etapas)
+    const acento = '#4DB2FF', base = '#1565D8';
     const tFim = Math.max(r ? r.tempoTotal * 1.04 : 0, t + 6, ref.length * 0.5, 60);
     const maior = Math.max(r ? r.agua : 0, S.picoAgua, ref.length ? Math.max(...ref) : 0, 50);
     const passoG = [10, 20, 25, 50, 100, 200, 250, 500].find(p => maior / p <= 7) || 1000;
