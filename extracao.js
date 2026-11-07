@@ -60,6 +60,24 @@ const estiloCor = f => {
   return `--cor:${fa.claro};--cor-base:${fa.cor};--sobre-cor:${f === 'fruta-amarela' ? '#1D1D1B' : '#FFFFFF'}`;
 };
 
+// Sem Bluetooth no navegador: cada aparelho tem um caminho para usar a balança (e o Só o método funciona em todos).
+const BLUEFY = 'https://apps.apple.com/app/id1492822055'; // navegador grátis do iPhone com Bluetooth para sites
+function aparelho() {
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ios';
+  if (/Android/i.test(ua)) return 'android';
+  return 'computador';
+}
+function textoSemBluetooth() {
+  const metodo = 'Sem balança, toque em Preparar numa receita e siga o relógio.';
+  const a = aparelho();
+  if (a === 'ios') return `No iPhone, nenhum navegador comum tem Bluetooth para sites. Para usar a balança, baixe o Bluefy (grátis), abra o app nele e entre com a sua conta. ${metodo}`;
+  if (a === 'android') return `Este navegador não tem Bluetooth. Para usar a balança, abra o app no Chrome ou no Samsung Internet. ${metodo}`;
+  return `Este navegador não tem Bluetooth. Para usar a balança, abra o app no Chrome ou no Edge. ${metodo}`;
+}
+// endereço do app sem o que vem depois do # (o link da equipe nunca é copiado)
+const enderecoDoApp = () => location.origin + location.pathname;
+
 const ICONE_EDITAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"/><path d="M13.5 6.5l4 4"/></svg>';
 const ICONE_DUPLICAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="1"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>';
 
@@ -108,6 +126,7 @@ export function criarExtracao(ctx) {
             <p class="ex-dica" id="exDica"></p>
             <button type="button" class="ex-btn-claro" id="exTara">Tara</button>
           </div>
+          <div class="ex-caminho" id="exCaminho" hidden></div>
           <details class="ex-detalhes" id="exDetalhes">
             <summary>Detalhes da conexão</summary>
             <pre id="exBruto"></pre>
@@ -199,7 +218,15 @@ export function criarExtracao(ctx) {
   async function conectar(simulado) {
     soltarAlerta();
     if (E.balanca) { await E.balanca.desconectar(); E.balanca = null; }
-    if (!simulado && !temBluetooth()) { atualizarConexao(); return; }
+    if (!simulado && !temBluetooth()) {
+      atualizarConexao();
+      if (estudio.aberto) { // tocou em Conectar no estúdio: explica ali mesmo e some sozinho, para não ficar no vídeo
+        const texto = textoSemBluetooth();
+        estudio.aviso(texto);
+        setTimeout(() => { if ($('#esAviso')?.textContent === texto) estudio.aviso(''); }, 10000);
+      }
+      return;
+    }
     E.balanca = simulado ? criarSimulador(eventos) : criarBalanca(eventos);
     try {
       await E.balanca.conectar();
@@ -254,8 +281,9 @@ export function criarExtracao(ctx) {
     $('#exDemo').hidden = ligada;
     $('#exTara').disabled = !conectada();
     $('.ex2-balanca').dataset.estado = E.conexao;
+    caminho(!temBluetooth() && !ligada);
     if (!temBluetooth() && !ligada) {
-      dica('Este navegador não tem Bluetooth, mas dá para preparar só pelo método: toque em Preparar numa receita e siga o relógio. Para usar a balança, abra o app no Chrome ou no Edge do computador, ou no Chrome do Android.');
+      dica(textoSemBluetooth());
     } else if (E.conexao === 'desconectada') {
       dica('Ligue a balança (segure o botão de baixo até a luz branca piscar) e toque em "Conectar balança". Sem balança? Toque em Preparar numa receita e siga só o método, pelo relógio.');
     } else if (E.conexao === 'pareando') {
@@ -263,6 +291,23 @@ export function criarExtracao(ctx) {
     } else if (conectada()) {
       dica('Balança pronta. Escolha uma receita e toque em Preparar.');
     }
+  }
+
+  // Botões do caminho para usar a balança quando este navegador não tem Bluetooth.
+  function caminho(mostrar) {
+    const el = $('#exCaminho'); if (!el) return;
+    el.hidden = !mostrar;
+    if (!mostrar || el.dataset.pronto) return;
+    const a = aparelho();
+    const chrome = `intent://${location.host}${location.pathname}#Intent;scheme=https;package=com.android.chrome;end`;
+    el.innerHTML = (a === 'ios' ? `<a class="ex-btn-claro ex-btn-forte" href="${BLUEFY}" target="_blank" rel="noopener">Baixar o Bluefy</a>`
+      : a === 'android' ? `<a class="ex-btn-claro ex-btn-forte" href="${esc(chrome)}">Abrir no Chrome</a>` : '')
+      + '<button type="button" class="ex-btn-claro" data-copiar>Copiar endereço</button>';
+    el.querySelector('[data-copiar]').onclick = async () => {
+      const url = enderecoDoApp();
+      try { await navigator.clipboard.writeText(url); ctx.toast('Endereço copiado'); } catch { ctx.toast(url); }
+    };
+    el.dataset.pronto = '1';
   }
 
   // Dica: orientação do momento. Alerta: aviso importante (pareamento, erro), fica até a próxima conexão ou até chegar o peso.
