@@ -109,6 +109,7 @@ export function criarExtracao(ctx) {
             <button type="button" class="ex-btn-claro" id="exDemo">Testar sem balança</button>
             <button type="button" class="ex-btn-claro ex-btn-forte" id="exConectar">Conectar balança</button>
           </div>
+          <div class="ex-aviso" id="exAviso" role="alert" hidden></div>
           <div class="ex-numeros">
             <div class="ex-num ex-num-peso"><span>Peso</span><strong id="exPeso">0,0</strong><small>g</small></div>
             <div class="ex-num"><span>Tempo</span><strong id="exTempo">0:00</strong><em id="exTempoAlvo"></em></div>
@@ -216,19 +217,29 @@ export function criarExtracao(ctx) {
   const eventos = {
     peso: g => receberPeso(g),
     bateria: n => { E.bateria = n; atualizarConexao(); },
-    estado: (st, nome) => { E.conexao = st; if (nome) E.nomeBalanca = nome; if (st === 'conectada') aguardarPeso(); atualizarConexao(); },
-    bruto: linha => { E.bruto.push(linha); if (E.bruto.length > 40) E.bruto.shift(); if ($('#exDetalhes')?.open) $('#exBruto').textContent = E.bruto.join('\n'); },
+    estado: (st, nome) => {
+      const antes = E.conexao;
+      E.conexao = st; if (nome) E.nomeBalanca = nome;
+      if (st === 'pareando' && antes !== 'pareando') alerta(TEXTO_PAREANDO);
+      if (st === 'conectada') { soltarDica(); aguardarPeso(); }
+      atualizarConexao();
+    },
+    bruto: linha => { E.bruto.push(linha); if (E.bruto.length > 150) E.bruto.shift(); if ($('#exDetalhes')?.open) $('#exBruto').textContent = E.bruto.join('\n'); },
   };
+  const TEXTO_PAREANDO = 'A balança pediu pareamento (só acontece na primeira vez). Aceite o pedido que aparecer: uma janela do Chrome perto da barra de endereço (clique em Parear) ou um aviso do sistema (no Windows, uma notificação no canto de baixo da tela; no Android, uma janela de pareamento). O app continua conectado esperando, por até 90 segundos.';
+  const ENDERECO_OPCAO = 'chrome://flags/#enable-web-bluetooth-confirm-pairing-support';
+  const abrirDetalhes = () => { const det = $('#exDetalhes'); if (det) { det.open = true; $('#exBruto').textContent = E.bruto.join('\n'); } };
   let timerSemPeso;
   function aguardarPeso() {
     E.recebeuPeso = false;
     clearTimeout(timerSemPeso);
     timerSemPeso = setTimeout(() => {
-      if (conectada() && !E.recebeuPeso) dica('A balança conectou, mas não mandou o peso. Toque no botão de baixo dela, ou desconecte e conecte de novo. Se continuar, abra "Detalhes da conexão" e me mande o texto.', true);
+      if (conectada() && !E.recebeuPeso) alerta('A balança conectou, mas não mandou o peso. Toque no botão de baixo dela, ou desconecte e conecte de novo. Se continuar, abra "Detalhes da conexão" e me mande o texto.');
     }, 5000);
   }
 
   async function conectar(simulado) {
+    soltarDica();
     if (E.balanca) { await E.balanca.desconectar(); E.balanca = null; }
     if (!simulado && !temBluetooth()) { atualizarConexao(); return; }
     E.balanca = simulado ? criarSimulador(eventos) : criarBalanca(eventos);
@@ -237,14 +248,30 @@ export function criarExtracao(ctx) {
       iniciarLoop();
     } catch (e) {
       E.balanca = null;
-      if (e?.name === 'NotFoundError') dica('Nenhuma balança escolhida. Ligue a balança (luz branca piscando) e tente de novo.');
-      else if (e?.name === 'PareamentoError') {
-        dica('A balança pede pareamento com o computador antes de mandar o peso. No Windows: Configurações → Bluetooth e dispositivos → Adicionar dispositivo → Bluetooth, com a luz da balança piscando rápido, e escolha TIMEMORE_Dot. No Mac: aceite o aviso de "Conectar"/"Emparelhar" se aparecer. Depois volte aqui e clique em Conectar balança.', true);
+      const n = e?.name;
+      if (n === 'CanceladoError') { /* a pessoa clicou em Desconectar */ }
+      else if (n === 'NotFoundError') dica('Nenhuma balança escolhida. Ligue a balança (luz branca piscando) e tente de novo.');
+      else if (n === 'PareamentoRecusadoError') {
+        alerta('O Chrome recusou o pareamento da balança. Ligue a opção "Web Bluetooth confirm pairing support": copie o endereço, cole na barra do Chrome, escolha Enabled e clique em Relaunch. Depois conecte de novo.',
+          { texto: 'Copiar endereço da opção', fn: async () => { try { await navigator.clipboard.writeText(ENDERECO_OPCAO); ctx.toast('Endereço copiado: cole na barra do Chrome'); } catch { ctx.toast(ENDERECO_OPCAO); } } });
+        abrirDetalhes();
       }
-      else if (e?.name === 'SecurityError') dica('O navegador bloqueou o Bluetooth. Abra o app pelo endereço https e tente de novo.', true);
+      else if (n === 'PareamentoRejeitadoError') {
+        alerta('A balança recusou o pareamento. Segure o botão de baixo dela até a luz piscar rápido (modo de pareamento) e conecte de novo logo em seguida. Deixe o Bluetooth do celular desligado, para ela não se prender a ele.');
+        abrirDetalhes();
+      }
+      else if (n === 'PareamentoPendenteError') {
+        alerta('O pareamento ficou pendente e não terminou. Feche o Chrome inteiro, pareie a balança em Configurações do Windows → Bluetooth e dispositivos → Adicionar dispositivo (com a luz piscando rápido) e depois conecte por aqui. Se não der, copie os "Detalhes da conexão" e me mande.');
+        abrirDetalhes();
+      }
+      else if (n === 'PareamentoError') {
+        alerta('A balança pediu pareamento e ele não terminou em 90 segundos. Tente de novo e aceite o pedido de pareamento (janela do Chrome ou notificação do Windows). Se continuar, copie os "Detalhes da conexão" e me mande.');
+        abrirDetalhes();
+      }
+      else if (n === 'SecurityError') alerta('O navegador bloqueou o Bluetooth. Abra o app pelo endereço https e tente de novo.');
       else {
-        dica(`Não deu para conectar (${e?.name || 'erro'}: ${e?.message || ''}). Confira se a balança não está conectada no app da Timemore do celular e tente de novo. Se continuar, abra "Detalhes da conexão", copie e me mande.`, true);
-        const det = $('#exDetalhes'); if (det) { det.open = true; $('#exBruto').textContent = E.bruto.join('\n'); }
+        alerta(`Não deu para conectar (${n || 'erro'}: ${e?.message || ''}). Confira se a balança não está conectada no app da Timemore do celular e tente de novo. Se continuar, copie os "Detalhes da conexão" e me mande.`);
+        abrirDetalhes();
       }
       E.conexao = 'desconectada'; atualizarConexao();
     }
@@ -260,9 +287,10 @@ export function criarExtracao(ctx) {
       desconectada: 'Balança desconectada',
       conectando: 'Conectando…',
       reconectando: 'A conexão caiu, reconectando…',
+      pareando: 'Esperando o pareamento…',
       conectada: `${sim ? 'Demonstração' : (E.nomeBalanca || 'Timemore')} conectada${sim ? '' : bat}`,
     }[E.conexao];
-    const ligada = conectada() || E.conexao === 'conectando' || E.conexao === 'reconectando';
+    const ligada = ['conectada', 'conectando', 'reconectando', 'pareando'].includes(E.conexao);
     btn.textContent = ligada ? 'Desconectar' : 'Conectar balança';
     btn.disabled = !ligada && !temBluetooth();
     $('#exDemo').hidden = ligada;
@@ -271,24 +299,31 @@ export function criarExtracao(ctx) {
     $('#exUsarPeso').disabled = !conectada();
     if (!temBluetooth() && !ligada) {
       dica('Este navegador não tem Bluetooth. No computador, abra o app no Chrome ou no Edge. No celular, só no Chrome do Android (no iPhone não funciona).');
-    } else if (E.conexao === 'desconectada' && !$('#exDica').dataset.fixa) {
+    } else if (E.conexao === 'desconectada') {
       dica('Ligue a balança: segure o botão de baixo até a luz branca piscar rápido. Depois toque em "Conectar balança".');
-    } else if (conectada() && !$('#exDica').dataset.fixa) {
+    } else if (E.conexao === 'pareando') {
+      dica('Esperando o pareamento terminar…');
+    } else if (conectada()) {
       dica(E.relogio === 'pronto' ? 'Coloque o filtro e o café, toque em Tara e comece a despejar.' : '');
     }
     renderControles();
   }
 
-  function dica(texto, fixa = false) {
-    const el = $('#exDica'); if (!el) return;
-    el.textContent = texto;
-    el.classList.toggle('ex-dica-alerta', fixa);
-    if (fixa) { el.dataset.fixa = '1'; setTimeout(() => { delete el.dataset.fixa; }, 12000); }
+  // Dica: orientação do momento, embaixo dos botões.
+  function dica(texto) { const el = $('#exDica'); if (el) el.textContent = texto; }
+  // Alerta: aviso importante (pareamento, erro) no topo do painel; fica até a próxima conexão ou até chegar o peso.
+  function alerta(texto, acao = null) {
+    const el = $('#exAviso'); if (!el) return;
+    el.innerHTML = `<p>${esc(texto)}</p>` + (acao ? `<button type="button" class="ex-btn-claro ex-btn-forte">${esc(acao.texto)}</button>` : '');
+    if (acao) el.querySelector('button').onclick = acao.fn;
+    el.hidden = false;
   }
+  const temAlerta = () => !!$('#exAviso') && !$('#exAviso').hidden;
+  function soltarDica() { const el = $('#exAviso'); if (el) { el.hidden = true; el.innerHTML = ''; } }
 
   function receberPeso(g) {
     E.recebeuPeso = true;
-    if ($('#exDica')?.classList.contains('ex-dica-alerta') && conectada()) { delete $('#exDica').dataset.fixa; atualizarConexao(); }
+    if (temAlerta() && conectada()) { soltarDica(); atualizarConexao(); }
     E.peso = g;
     const agora = performance.now();
     E.vivo.push([agora, g]);
@@ -596,7 +631,7 @@ export function criarExtracao(ctx) {
   // ---------------- Eventos ----------------
   function ligar() {
     $('#exConectar').onclick = () => {
-      const ligada = conectada() || E.conexao === 'conectando' || E.conexao === 'reconectando';
+      const ligada = ['conectada', 'conectando', 'reconectando', 'pareando'].includes(E.conexao);
       if (ligada) { E.balanca?.desconectar(); E.balanca = null; } else conectar(false);
     };
     $('#exDemo').onclick = () => conectar(true);

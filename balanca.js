@@ -64,9 +64,18 @@ export function criarLeitor() {
 
 export const temBluetooth = () => !!(navigator.bluetooth && window.isSecureContext);
 
-// Balança de verdade. ev: { peso(g), bateria(n), estado('conectando'|'conectada'|'desconectada'|'reconectando'), bruto(texto) }
-export function criarBalanca(ev) {
-  let device = null, cmdChar = null, querConectada = false, abrindo = false, jaConectou = false;
+// Balança de verdade.
+// ev: { peso(g), bateria(n), estado('conectando'|'pareando'|'conectada'|'reconectando'|'desconectada', nome), bruto(texto) }
+// opcoes: { esperaPareamento (ms, padrão 90 s) }
+//
+// Pareamento (descoberto no teste de 07/11 no Windows): a Dot só liga as notificações do peso com o link pareado.
+// Quando o app liga as notificações, o Windows e/ou o Chrome começam a parear. Enquanto isso, ligar as notificações
+// falha com "Connection already in progress." / "Authentication failed." / "GATT operation not authorized.".
+// Desconectar no meio mata o pareamento: por isso, nesses erros o app MANTÉM a conexão e tenta de novo a cada 3 s
+// até o pareamento terminar (a pessoa aceita o aviso do Windows ou a janela do Chrome) ou acabar o tempo.
+export function criarBalanca(ev, opcoes = {}) {
+  const ESPERA_PAREAMENTO = opcoes.esperaPareamento ?? 90000;
+  let device = null, cmdChar = null, querConectada = false, abrindo = false, jaConectou = false, inicioLog = 0;
   const leitor = criarLeitor();
 
   async function escrever(bytes) {
@@ -89,25 +98,30 @@ export function criarBalanca(ev) {
     }
   }
 
-  const log = t => ev.bruto?.('· ' + t);
+  const log = t => ev.bruto?.(`· [${((performance.now() - inicioLog) / 1000).toFixed(1).replace('.', ',')} s] ${t}`);
+  const descreve = e => `${e?.name}: ${e?.message}`;
+  const caiu = e => /disconnected|no longer|not connected/i.test(e?.message || '');
 
   // Tenta algumas vezes: no Windows a primeira conexão costuma falhar ("unknown reason")
   async function tentar(nome, fn, vezes = 3) {
     for (let i = 1; ; i++) {
       try { return await fn(); }
       catch (e) {
-        log(`${nome} falhou (tentativa ${i}): ${e.name}: ${e.message}`);
+        log(`${nome} falhou (tentativa ${i}): ${descreve(e)}`);
         if (i >= vezes) throw e;
         await espera(600 * i);
       }
     }
   }
 
+  // Conecta (ou aproveita a conexão que já está aberta), acha os canais e liga as notificações do peso
   async function abrir() {
-    ev.estado?.('conectando');
-    log(`conectando em "${device.name || 'sem nome'}" (id ${device.id})`);
-    const server = await tentar('conexão', () => device.gatt.connect());
-    log('conectado; procurando o serviço FFF0');
+    let server = device.gatt;
+    if (!server.connected) {
+      log(`conectando em "${device.name || 'sem nome'}"`);
+      server = await tentar('conexão', () => device.gatt.connect());
+      log('conectado; procurando o serviço FFF0');
+    }
     let servico;
     try {
       servico = await tentar('serviço FFF0', () => server.getPrimaryService(SERVICO), 2);
@@ -115,19 +129,24 @@ export function criarBalanca(ev) {
       try {
         const lista = await server.getPrimaryServices();
         log('serviços disponíveis: ' + (lista.map(x => x.uuid).join(', ') || 'nenhum'));
-      } catch (e2) { log(`não deu para listar os serviços: ${e2.name}: ${e2.message}`); }
+      } catch (e2) { log(`não deu para listar os serviços: ${descreve(e2)}`); }
       throw e;
     }
-    try {
-      const cs = await servico.getCharacteristics();
-      const props = p => ['read', 'write', 'writeWithoutResponse', 'notify', 'indicate'].filter(k => p[k]).join(',');
-      log('características: ' + cs.map(c => `${c.uuid.slice(4, 8)} [${props(c.properties)}]`).join(' · '));
-    } catch {}
     const notif = await servico.getCharacteristic(NOTIFICA);
     cmdChar = await servico.getCharacteristic(COMANDO);
     notif.removeEventListener('characteristicvaluechanged', aoNotificar);
     notif.addEventListener('characteristicvaluechanged', aoNotificar);
-    await tentar('notificações', () => notif.startNotifications(), 1);
+    // se ligar as notificações demorar, é porque o Chrome/Windows está esperando a pessoa aceitar o pareamento
+    const avisoDemora = setTimeout(() => {
+      log('ligar as notificações está demorando: provavelmente esperando aceitar o pareamento');
+      ev.estado?.('pareando');
+    }, 2500);
+    try {
+      await notif.startNotifications();
+    } catch (e) {
+      e.etapa = 'notificacoes';
+      throw e;
+    } finally { clearTimeout(avisoDemora); }
     log('notificações ligadas; mandando unidade, modo e bateria');
     // sequência de início: sem ela a Dot não manda peso
     await espera(500); await escrever(CMD.unidade());
@@ -138,19 +157,34 @@ export function criarBalanca(ev) {
 
   async function aoDesconectar() {
     cmdChar = null;
+    log('a balança desconectou');
     // durante a conexão inicial quem tenta de novo é o conectar(); aqui só reconecta se já estava funcionando
     if (abrindo) return;
     if (!querConectada || !jaConectou) { ev.estado?.('desconectada'); return; }
-    log('a conexão caiu; tentando voltar');
-    // caiu sozinha: tenta voltar algumas vezes
+    // caiu sozinha depois de funcionar: tenta voltar algumas vezes
     for (let i = 1; i <= 4 && querConectada; i++) {
       ev.estado?.('reconectando');
       await espera(800 * i);
       abrindo = true;
-      try { await abrir(); return; } catch {} finally { abrindo = false; }
+      try { await abrir(); return; } catch (e) { log(`reconectar falhou: ${descreve(e)}`); } finally { abrindo = false; }
     }
     querConectada = false;
     ev.estado?.('desconectada');
+  }
+
+  function erroFinal(e, pareando) {
+    let nome = '';
+    if (pareando || e.etapa === 'notificacoes' || e.name === 'SecurityError') {
+      const m = e.message || '';
+      nome = /authentication failed/i.test(m) ? 'PareamentoRecusadoError'
+        : /rejected/i.test(m) ? 'PareamentoRejeitadoError'
+        : /in progress/i.test(m) ? 'PareamentoPendenteError'
+        : 'PareamentoError';
+    }
+    if (!nome) return e;
+    const err = new Error(e.message);
+    err.name = nome;
+    return err;
   }
 
   return {
@@ -166,25 +200,50 @@ export function criarBalanca(ev) {
         // outros serviços comuns, só para conseguir listar o que a balança tem se o FFF0 não aparecer
         optionalServices: [SERVICO, 0xffe0, 0xffb0, 0xfee7, 0x180f, 0x180a],
       });
+      inicioLog = performance.now();
       log(`escolhida: "${device.name || 'sem nome'}"`);
       device.removeEventListener('gattserverdisconnected', aoDesconectar);
       device.addEventListener('gattserverdisconnected', aoDesconectar);
-      querConectada = true;
-      // a Dot pede pareamento: na 1ª vez o sistema pode abrir o aviso de parear; tenta a sequência inteira de novo
-      let pediuPareamento = false;
-      abrindo = true; jaConectou = false;
-      for (let i = 1; ; i++) {
-        try { await abrir(); jaConectou = true; abrindo = false; return; }
-        catch (e) {
-          log(`erro (rodada ${i}): ${e.name}: ${e.message}`);
-          if (/authenticat|authoriz|pair|insufficient/i.test(e.message || '')) pediuPareamento = true;
+      querConectada = true; abrindo = true; jaConectou = false;
+      ev.estado?.('conectando');
+      let falhas = 0, pareando = false, limite = 0, ultimoErro = '', repetidos = 0, semJeito = 0;
+      const cancelado = () => { abrindo = false; const err = new Error('cancelado'); err.name = 'CanceladoError'; return err; };
+      while (true) {
+        if (!querConectada) throw cancelado();
+        try {
+          await abrir();
+          if (pareando) log('pareamento concluído');
+          jaConectou = true; abrindo = false;
+          return;
+        } catch (e) {
+          // no pareamento o mesmo erro se repete a cada 3 s: registra só quando muda (ou a cada 10)
+          const txt = `erro: ${descreve(e)} (ligada: ${device.gatt.connected ? 'sim' : 'não'})`;
+          if (txt === ultimoErro) { if (++repetidos % 10 === 0) log(`${txt} (repetido ${repetidos}x)`); }
+          else { ultimoErro = txt; repetidos = 1; log(txt); }
+          if (!querConectada) throw cancelado();
+          // erro de pareamento: não desconectar; esperar o pareamento terminar e tentar de novo
+          const ehPareamento = (e.etapa === 'notificacoes' && !caiu(e)) || e.name === 'SecurityError';
+          if (ehPareamento && !pareando) {
+            pareando = true;
+            limite = performance.now() + ESPERA_PAREAMENTO;
+            log(`a balança pediu pareamento; esperando até ${Math.round(ESPERA_PAREAMENTO / 1000)} s, sem desconectar`);
+            ev.estado?.('pareando');
+          }
+          // "Authentication failed" = o Chrome recusou o tipo de pareamento (opção desligada);
+          // "rejected" = a balança recusou (fora do modo de pareamento). Esperar não resolve: desiste na 2ª vez.
+          if (pareando && /authentication failed|rejected/i.test(e.message || '')) semJeito++;
+          if (pareando && semJeito < 2 && performance.now() < limite) { await espera(3000); continue; }
+          if (repetidos > 1) log(`(o último erro se repetiu ${repetidos}x)`);
+          // outros erros (conexão, serviço): até 3 rodadas, desconectando entre elas
+          if (!pareando && ++falhas < 3) {
+            try { device.gatt.disconnect(); } catch {}
+            await espera(2000);
+            continue;
+          }
+          abrindo = false; querConectada = false;
           try { device.gatt.disconnect(); } catch {}
-          if (i < 3 && querConectada) { await espera(2000); continue; }
-          abrindo = false;
-          querConectada = false;
           ev.estado?.('desconectada');
-          if (pediuPareamento) { const err = new Error('A balança pede pareamento'); err.name = 'PareamentoError'; throw err; }
-          throw e;
+          throw erroFinal(e, pareando);
         }
       }
     },
