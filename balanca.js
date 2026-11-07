@@ -66,7 +66,7 @@ export const temBluetooth = () => !!(navigator.bluetooth && window.isSecureConte
 
 // Balança de verdade. ev: { peso(g), bateria(n), estado('conectando'|'conectada'|'desconectada'|'reconectando'), bruto(texto) }
 export function criarBalanca(ev) {
-  let device = null, cmdChar = null, querConectada = false;
+  let device = null, cmdChar = null, querConectada = false, abrindo = false, jaConectou = false;
   const leitor = criarLeitor();
 
   async function escrever(bytes) {
@@ -138,12 +138,16 @@ export function criarBalanca(ev) {
 
   async function aoDesconectar() {
     cmdChar = null;
-    if (!querConectada) { ev.estado?.('desconectada'); return; }
+    // durante a conexão inicial quem tenta de novo é o conectar(); aqui só reconecta se já estava funcionando
+    if (abrindo) return;
+    if (!querConectada || !jaConectou) { ev.estado?.('desconectada'); return; }
+    log('a conexão caiu; tentando voltar');
     // caiu sozinha: tenta voltar algumas vezes
     for (let i = 1; i <= 4 && querConectada; i++) {
       ev.estado?.('reconectando');
       await espera(800 * i);
-      try { await abrir(); return; } catch {}
+      abrindo = true;
+      try { await abrir(); return; } catch {} finally { abrindo = false; }
     }
     querConectada = false;
     ev.estado?.('desconectada');
@@ -168,13 +172,15 @@ export function criarBalanca(ev) {
       querConectada = true;
       // a Dot pede pareamento: na 1ª vez o sistema pode abrir o aviso de parear; tenta a sequência inteira de novo
       let pediuPareamento = false;
+      abrindo = true; jaConectou = false;
       for (let i = 1; ; i++) {
-        try { await abrir(); return; }
+        try { await abrir(); jaConectou = true; abrindo = false; return; }
         catch (e) {
           log(`erro (rodada ${i}): ${e.name}: ${e.message}`);
-          if (/authenticat|pair|insufficient/i.test(e.message || '')) pediuPareamento = true;
+          if (/authenticat|authoriz|pair|insufficient/i.test(e.message || '')) pediuPareamento = true;
           try { device.gatt.disconnect(); } catch {}
-          if (i < 3 && querConectada) { await espera(1500); continue; }
+          if (i < 3 && querConectada) { await espera(2000); continue; }
+          abrindo = false;
           querConectada = false;
           ev.estado?.('desconectada');
           if (pediuPareamento) { const err = new Error('A balança pede pareamento'); err.name = 'PareamentoError'; throw err; }
