@@ -239,7 +239,10 @@ export function criarExtracao(ctx) {
       E.balanca = null;
       if (e?.name === 'NotFoundError') dica('Nenhuma balança escolhida. Ligue a balança (luz branca piscando) e tente de novo.');
       else if (e?.name === 'SecurityError') dica('O navegador bloqueou o Bluetooth. Abra o app pelo endereço https e tente de novo.', true);
-      else dica('Não deu para conectar. Confira se a balança está ligada e perto, e se não está conectada no app da Timemore do celular.', true);
+      else {
+        dica(`Não deu para conectar (${e?.name || 'erro'}: ${e?.message || ''}). Confira se a balança não está conectada no app da Timemore do celular e tente de novo. Se continuar, abra "Detalhes da conexão", copie e me mande.`, true);
+        const det = $('#exDetalhes'); if (det) { det.open = true; $('#exBruto').textContent = E.bruto.join('\n'); }
+      }
       E.conexao = 'desconectada'; atualizarConexao();
     }
   }

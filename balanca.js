@@ -89,15 +89,45 @@ export function criarBalanca(ev) {
     }
   }
 
+  const log = t => ev.bruto?.('· ' + t);
+
+  // Tenta algumas vezes: no Windows a primeira conexão costuma falhar ("unknown reason")
+  async function tentar(nome, fn, vezes = 3) {
+    for (let i = 1; ; i++) {
+      try { return await fn(); }
+      catch (e) {
+        log(`${nome} falhou (tentativa ${i}): ${e.name}: ${e.message}`);
+        if (i >= vezes) throw e;
+        await espera(600 * i);
+      }
+    }
+  }
+
   async function abrir() {
     ev.estado?.('conectando');
-    const server = await device.gatt.connect();
-    const servico = await server.getPrimaryService(SERVICO);
+    log(`conectando em "${device.name || 'sem nome'}" (id ${device.id})`);
+    const server = await tentar('conexão', () => device.gatt.connect());
+    log('conectado; procurando o serviço FFF0');
+    let servico;
+    try {
+      servico = await tentar('serviço FFF0', () => server.getPrimaryService(SERVICO), 2);
+    } catch (e) {
+      try {
+        const lista = await server.getPrimaryServices();
+        log('serviços disponíveis: ' + (lista.map(x => x.uuid).join(', ') || 'nenhum'));
+      } catch (e2) { log(`não deu para listar os serviços: ${e2.name}: ${e2.message}`); }
+      throw e;
+    }
+    try {
+      const cs = await servico.getCharacteristics();
+      log('características: ' + cs.map(c => `${c.uuid.slice(4, 8)} [${Object.entries(c.properties).filter(([, v]) => v === true).map(([k]) => k).join(',')}]`).join(' · '));
+    } catch {}
     const notif = await servico.getCharacteristic(NOTIFICA);
     cmdChar = await servico.getCharacteristic(COMANDO);
     notif.removeEventListener('characteristicvaluechanged', aoNotificar);
     notif.addEventListener('characteristicvaluechanged', aoNotificar);
-    await notif.startNotifications();
+    await tentar('notificações', () => notif.startNotifications());
+    log('notificações ligadas; mandando unidade, modo e bateria');
     // sequência de início: sem ela a Dot não manda peso
     await espera(500); await escrever(CMD.unidade());
     await espera(200); await escrever(CMD.modo());
@@ -128,12 +158,21 @@ export function criarBalanca(ev) {
           { namePrefix: 'TIMEMORE' }, { namePrefix: 'Timemore' }, { namePrefix: 'timemore' },
           { namePrefix: 'Dot' }, { namePrefix: 'DOT' }, { namePrefix: 'TES' },
         ],
-        optionalServices: [SERVICO],
+        // outros serviços comuns, só para conseguir listar o que a balança tem se o FFF0 não aparecer
+        optionalServices: [SERVICO, 0xffe0, 0xffb0, 0xfee7, 0x180f, 0x180a],
       });
+      log(`escolhida: "${device.name || 'sem nome'}"`);
       device.removeEventListener('gattserverdisconnected', aoDesconectar);
       device.addEventListener('gattserverdisconnected', aoDesconectar);
       querConectada = true;
-      try { await abrir(); } catch (e) { querConectada = false; ev.estado?.('desconectada'); throw e; }
+      try { await abrir(); }
+      catch (e) {
+        log(`erro: ${e.name}: ${e.message}`);
+        querConectada = false;
+        try { device.gatt.disconnect(); } catch {}
+        ev.estado?.('desconectada');
+        throw e;
+      }
     },
     async desconectar() {
       querConectada = false;
