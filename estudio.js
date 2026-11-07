@@ -27,6 +27,40 @@ const FONTE = '"Archivo Marca", Archivo, system-ui, sans-serif';
 const SERIFA = 'Newsreader, Georgia, serif';
 const LIGADA = ['conectada', 'conectando', 'pareando', 'reconectando'];
 
+// Brilho para a tela e o vídeo: a mesma cor do café, mais viva (mais luz e mais croma no OKLCH, dentro do sRGB).
+// O tom oficial continua na faixa de notas.
+function vivo(hex, dl = 0.06, fc = 1.45, cmin = 0.045) {
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  const lin = c => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const R = lin(((n >> 16) & 255) / 255), G = lin(((n >> 8) & 255) / 255), B = lin((n & 255) / 255);
+  const l_ = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B);
+  const m_ = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B);
+  const s_ = Math.cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B);
+  const L = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_;
+  const a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_;
+  const b = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_;
+  const C = Math.hypot(a, b), h = Math.atan2(b, a);
+  const L2 = Math.min(0.93, L + dl);
+  let C2 = Math.max(C * fc, C + cmin);
+  const gama = v => { v = Math.min(1, Math.max(0, v)); return v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055; };
+  for (let i = 0; i < 60; i++) {
+    const A = C2 * Math.cos(h), Bv = C2 * Math.sin(h);
+    const l3 = (L2 + 0.3963377774 * A + 0.2158037573 * Bv) ** 3;
+    const m3 = (L2 - 0.1055613458 * A - 0.0638541728 * Bv) ** 3;
+    const s3 = (L2 - 0.0894841775 * A - 1.2914855480 * Bv) ** 3;
+    const r = 4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3;
+    const g = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3;
+    const bl = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3;
+    if ([r, g, bl].every(v => v >= -0.001 && v <= 1.001)) {
+      return '#' + [r, g, bl].map(v => Math.round(gama(v) * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+    C2 *= 0.96;
+  }
+  return hex;
+}
+const corViva = h => vivo(h, 0.03, 1.75, 0.07); // o acento da tela: bem mais croma, um pouco mais de luz
+
+
 const SVG = d => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 const ICONES = {
   cheia: SVG('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
@@ -195,10 +229,12 @@ export function criarEstudio(ctx) {
   // A cor vem do café: o tom claro da família de sabor é o destaque no fundo escuro; a cor normal vai na faixa de notas
   function aplicarCor() {
     const f = FAMILIAS[S.familia] || FAMILIAS[FAMILIA_PADRAO];
-    el.style.setProperty('--acento', f.claro);
+    const luz = corViva(f.claro), fundo = vivo(f.claro, -0.12, 1.6, 0.05);
+    el.style.setProperty('--acento', luz);
+    el.style.setProperty('--acento-fundo', fundo);
     el.style.setProperty('--cafe', f.cor);
     el.style.setProperty('--sobre-cafe', S.familia === 'fruta-amarela' ? '#1D1D1B' : '#FFFFFF');
-    S.cor = f.claro; S.corBase = f.cor;
+    S.cor = luz; S.corBase = fundo;
   }
   function aplicarModo() {
     el.classList.toggle('es-metodo', ehMetodo());
@@ -337,7 +373,7 @@ export function criarEstudio(ctx) {
   }
   function renderFamiliasPainel() {
     $('#esCpFamilias', el).innerHTML = Object.entries(FAMILIAS).map(([k, f]) =>
-      `<button type="button" data-efam="${k}" aria-pressed="${k === S.familia}"><i style="background:${f.claro}"></i><span>${esc(f.nome)}</span></button>`).join('');
+      `<button type="button" data-efam="${k}" aria-pressed="${k === S.familia}"><i style="background:${corViva(f.claro)}"></i><span>${esc(f.nome)}</span></button>`).join('');
   }
   function fecharPainelCafe(salvar) {
     const p = $('#esCafePainel', el);
@@ -603,6 +639,7 @@ export function criarEstudio(ctx) {
     if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
     const c = cv.getContext('2d');
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.shadowBlur = 0; c.shadowColor = 'rgba(0,0,0,0)';
     c.clearRect(0, 0, rect.width, rect.height);
     return { c, W: rect.width, H: rect.height };
   }
@@ -718,26 +755,27 @@ export function criarEstudio(ctx) {
     }
     const [xH, yH] = pts[pts.length - 1];
     const x0 = pts[0][0];
-    // a cor do café: do tom normal ao claro, com a ponta quase branca
+    // a cor do café, viva: começa no tom fundo, logo acende e termina quase branca na ponta
     const cor = c.createLinearGradient(x0, 0, Math.max(x0 + 1, xH), 0);
-    cor.addColorStop(0, base); cor.addColorStop(0.55, acento); cor.addColorStop(0.92, acento); cor.addColorStop(1, '#FFFFFF');
-    // área embaixo: cor da linha que escurece em direção ao zero
-    c.save();
+    cor.addColorStop(0, base); cor.addColorStop(0.22, acento); cor.addColorStop(0.9, acento); cor.addColorStop(1, '#FFFFFF');
+    // área embaixo: a mesma cor acesa perto da linha, sumindo em direção ao zero (sem escurecer para o marrom)
+    const yTopo = Math.min(...pts.map(p => p[1]));
+    const area = c.createLinearGradient(0, yTopo, 0, Y(0));
+    area.addColorStop(0, hexA(acento, 0.5)); area.addColorStop(0.45, hexA(acento, 0.24)); area.addColorStop(1, hexA(acento, 0.05));
     c.beginPath(); c.moveTo(x0, Y(0)); pts.forEach(([x, y]) => c.lineTo(x, y)); c.lineTo(xH, Y(0)); c.closePath();
-    c.globalAlpha = 0.4; c.fillStyle = cor; c.fill();
-    c.globalAlpha = 1;
-    const fundo = c.createLinearGradient(0, pad.t, 0, Y(0));
-    fundo.addColorStop(0, 'rgba(35,34,32,0)'); fundo.addColorStop(1, 'rgba(35,34,32,0.85)');
-    c.fillStyle = fundo; c.fill();
-    c.restore();
+    c.fillStyle = area; c.fill();
     // corte na ponta, com brilho
     const corte = c.createLinearGradient(0, yH, 0, Y(0));
-    corte.addColorStop(0, hexA(acento, 0.75)); corte.addColorStop(1, hexA(acento, 0));
+    corte.addColorStop(0, hexA(acento, 0.95)); corte.addColorStop(1, hexA(acento, 0));
     c.fillStyle = corte; c.fillRect(xH - 1, yH, 2, Y(0) - yH);
-    // linha com brilho (duas passadas: halo largo e linha fina)
+    // linha de luz: halos que somam brilho (modo "lighter"), a linha na cor e um fio branco no meio
     c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
-    c.strokeStyle = cor; c.globalAlpha = 0.24; c.lineWidth = u * 1.7; c.stroke();
-    c.globalAlpha = 1; c.lineWidth = Math.max(2.5, u * 0.42); c.stroke();
+    c.globalCompositeOperation = 'lighter';
+    c.strokeStyle = cor; c.globalAlpha = 0.13; c.lineWidth = u * 4.4; c.stroke();
+    c.globalAlpha = 0.34; c.lineWidth = u * 2.1; c.stroke();
+    c.globalCompositeOperation = 'source-over';
+    c.globalAlpha = 1; c.lineWidth = Math.max(2.5, u * 0.5); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = Math.max(1, u * 0.15); c.stroke();
     // onde cada despejo terminou
     const marcos = metodo
       ? S.etapas.filter(e => e.tipo === 'despejo' && e.fim <= tempo()).map(e => ({ t: e.fim, g: e.ate }))
@@ -753,10 +791,12 @@ export function criarEstudio(ctx) {
     });
     // ponto atual
     if (S.relogio === 'rodando') {
-      const raio = u * (2 + 0.6 * (0.5 + 0.5 * Math.sin(performance.now() / 260)));
+      const raio = u * (2.6 + 0.8 * (0.5 + 0.5 * Math.sin(performance.now() / 260)));
       const halo = c.createRadialGradient(xH, yH, 0, xH, yH, raio);
-      halo.addColorStop(0, hexA(acento, 0.6)); halo.addColorStop(1, hexA(acento, 0));
+      halo.addColorStop(0, hexA(acento, 0.9)); halo.addColorStop(0.4, hexA(acento, 0.38)); halo.addColorStop(1, hexA(acento, 0));
+      c.globalCompositeOperation = 'lighter';
       c.fillStyle = halo; c.beginPath(); c.arc(xH, yH, raio, 0, Math.PI * 2); c.fill();
+      c.globalCompositeOperation = 'source-over';
     }
     c.fillStyle = '#fff'; c.beginPath(); c.arc(xH, yH, Math.max(3, u * 0.55), 0, Math.PI * 2); c.fill();
   }
@@ -791,11 +831,13 @@ export function criarEstudio(ctx) {
     if (!metodo) vals.forEach((_, i) => { if (cont[i]) vals[i] /= cont[i]; });
     const vMax = Math.max(4, ...vals) * 1.08;
     const gap = Math.max(2, W * 0.014), bw = (W - gap * (N - 1)) / N;
+    const acento = S.cor || '#CD9A50';
     const cor = c.createLinearGradient(0, H, 0, 0);
-    cor.addColorStop(0, S.corBase || '#8F6213'); cor.addColorStop(1, S.cor || '#CD9A50');
+    cor.addColorStop(0, hexA(acento, 0.6)); cor.addColorStop(1, acento);
+    c.shadowColor = hexA(acento, 0.75); c.shadowBlur = 9;
     vals.forEach((v, i) => {
       const h = Math.max(2, (v / vMax) * H);
-      c.globalAlpha = 0.3 + 0.7 * (i / (N - 1));
+      c.globalAlpha = 0.4 + 0.6 * (i / (N - 1));
       c.fillStyle = i === N - 1 && v > 0.2 && S.relogio === 'rodando' ? '#FFFFFF' : cor;
       c.fillRect(i * (bw + gap), H - h, bw, h);
     });
@@ -823,7 +865,9 @@ export function criarEstudio(ctx) {
     area.addColorStop(0, hexA(acento, 0.45)); area.addColorStop(1, hexA(acento, 0.02));
     c.fillStyle = area; c.fill();
     c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
-    c.strokeStyle = acento; c.lineWidth = 2; c.lineJoin = 'round'; c.stroke();
+    c.shadowColor = hexA(acento, 0.8); c.shadowBlur = 8;
+    c.strokeStyle = acento; c.lineWidth = 2.2; c.lineJoin = 'round'; c.stroke();
+    c.shadowBlur = 0;
   }
 
   // ---------------- Laço de desenho ----------------
