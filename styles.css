@@ -1494,6 +1494,17 @@ body.com-estudio .toast button { color: var(--bl-fundo); text-decoration: underl
   box-shadow: 0 0 calc(var(--u) * 1.6) color-mix(in srgb, var(--acento) 85%, transparent);
 }
 .es-et-ok svg { width: 62%; height: 62%; fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; }
+/* o cartão inteiro vai enchendo com a cor do café, da esquerda para a direita, com a ponta acesa */
+.es-et > :not(.es-et-enche):not(.es-et-barra):not(.es-et-ok) { position: relative; z-index: 1; }
+.es-et-ok { z-index: 1; }
+.es-et-enche { position: absolute; inset: 0; pointer-events: none; }
+.es-et-enche i {
+  position: absolute; inset: 0 auto 0 0; width: 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--acento-fundo) 30%, transparent), color-mix(in srgb, var(--acento) 42%, transparent));
+  box-shadow: inset calc(var(--u) * -.3) 0 0 color-mix(in srgb, var(--acento) 90%, transparent), calc(var(--u) * .8) 0 calc(var(--u) * 2.4) color-mix(in srgb, var(--acento) 35%, transparent);
+}
+.es-et.feito .es-et-enche i { background: linear-gradient(180deg, color-mix(in srgb, var(--acento) 26%, transparent), color-mix(in srgb, var(--acento) 10%, transparent)); box-shadow: none; }
+.es-et.espera .es-et-enche i { background: linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.14)); box-shadow: inset calc(var(--u) * -.3) 0 0 rgba(255,255,255,.7); }
 .es-et-barra { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--u) * .45); background: rgba(255,255,255,.05); }
 .es-et-barra i { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, var(--acento-fundo), var(--acento), #FFFFFF); box-shadow: 0 0 calc(var(--u) * 1.4) color-mix(in srgb, var(--acento) 80%, transparent); }
 .es-et.feito { color: #fff; background: linear-gradient(180deg, color-mix(in srgb, var(--acento) 22%, transparent), color-mix(in srgb, var(--acento) 7%, transparent)); border-color: color-mix(in srgb, var(--acento) 55%, transparent); box-shadow: 0 0 calc(var(--u) * 2) color-mix(in srgb, var(--acento) 14%, transparent); }

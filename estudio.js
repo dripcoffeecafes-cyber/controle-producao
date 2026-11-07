@@ -604,6 +604,7 @@ export function criarEstudio(ctx) {
   function renderEtapasEstrutura() {
     const box = $('#esEtapas', el);
     box.innerHTML = S.etapas.map((e, i) => `<div class="es-et" data-i="${i}">
+        <span class="es-et-enche"><i></i></span>
         <b class="es-et-n">${String(i + 1).padStart(2, '0')}.</b><i class="es-et-ok">${ICONES.ok}</i>
         <span class="es-et-nome">${esc(e.nome)}</span>
         <small class="es-et-info">(${Math.round(e.inicio)}–${Math.round(e.fim)}s) [${g0(e.ate)} g]</small>
@@ -629,8 +630,8 @@ export function criarEstudio(ctx) {
       }
       card.classList.toggle('feito', feito); card.classList.toggle('atual', atual); card.classList.toggle('espera', espera);
       const largura = `${(Math.max(0, Math.min(1, p)) * 100).toFixed(1)}%`;
-      const barra = card.querySelector('.es-et-barra i');
-      if (barra.style.width !== largura) barra.style.width = largura;
+      const barra = card.querySelector('.es-et-barra i'), enche = card.querySelector('.es-et-enche i');
+      if (barra.style.width !== largura) { barra.style.width = largura; enche.style.width = largura; }
     });
   }
 
