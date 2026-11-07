@@ -255,7 +255,7 @@ export function criarExtracao(ctx) {
     $('#exTara').disabled = !conectada();
     $('.ex2-balanca').dataset.estado = E.conexao;
     if (!temBluetooth() && !ligada) {
-      dica('Este navegador não tem Bluetooth. No computador, abra o app no Chrome ou no Edge. No celular, só no Chrome do Android (no iPhone não funciona).');
+      dica('Este navegador não tem Bluetooth, mas dá para preparar só pelo método: toque em Preparar numa receita e siga o relógio. Para usar a balança, abra o app no Chrome ou no Edge do computador, ou no Chrome do Android.');
     } else if (E.conexao === 'desconectada') {
       dica('Ligue a balança (segure o botão de baixo até a luz branca piscar) e toque em "Conectar balança". Sem balança? Toque em Preparar numa receita e siga só o método, pelo relógio.');
     } else if (E.conexao === 'pareando') {
