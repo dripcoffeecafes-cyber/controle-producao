@@ -880,25 +880,21 @@ export function criarEstudio(ctx) {
     const x0 = pts[0][0];
     // a cor do café, viva: começa no tom fundo, logo acende e termina quase branca na ponta
     const cor = c.createLinearGradient(x0, 0, Math.max(x0 + 1, xH), 0);
-    cor.addColorStop(0, base); cor.addColorStop(0.22, acento); cor.addColorStop(0.9, acento); cor.addColorStop(1, '#FFFFFF');
+    cor.addColorStop(0, base); cor.addColorStop(0.22, acento); cor.addColorStop(0.92, acento); cor.addColorStop(1, '#BFE3FF');
     // área embaixo: a mesma cor acesa perto da linha, sumindo em direção ao zero (sem escurecer para o marrom)
     const yTopo = Math.min(...pts.map(p => p[1]));
     const area = c.createLinearGradient(0, yTopo, 0, Y(0));
-    area.addColorStop(0, hexA(acento, 0.5)); area.addColorStop(0.45, hexA(acento, 0.24)); area.addColorStop(1, hexA(acento, 0.05));
+    area.addColorStop(0, hexA(acento, 0.26)); area.addColorStop(0.5, hexA(acento, 0.1)); area.addColorStop(1, hexA(acento, 0.02));
     c.beginPath(); c.moveTo(x0, Y(0)); pts.forEach(([x, y]) => c.lineTo(x, y)); c.lineTo(xH, Y(0)); c.closePath();
     c.fillStyle = area; c.fill();
     // corte na ponta, com brilho
     const corte = c.createLinearGradient(0, yH, 0, Y(0));
-    corte.addColorStop(0, hexA(acento, 0.95)); corte.addColorStop(1, hexA(acento, 0));
-    c.fillStyle = corte; c.fillRect(xH - 1, yH, 2, Y(0) - yH);
-    // linha de luz: halos que somam brilho (modo "lighter"), a linha na cor e um fio branco no meio
+    corte.addColorStop(0, hexA(acento, 0.5)); corte.addColorStop(1, hexA(acento, 0));
+    c.fillStyle = corte; c.fillRect(xH - 0.5, yH, 1, Y(0) - yH);
+    // linha delicada: um brilho suave e baixo, e a linha fina na cor
     c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
-    c.globalCompositeOperation = 'lighter';
-    c.strokeStyle = cor; c.globalAlpha = 0.13; c.lineWidth = u * 4.4; c.stroke();
-    c.globalAlpha = 0.34; c.lineWidth = u * 2.1; c.stroke();
-    c.globalCompositeOperation = 'source-over';
-    c.globalAlpha = 1; c.lineWidth = Math.max(2.5, u * 0.5); c.stroke();
-    c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = Math.max(1, u * 0.15); c.stroke();
+    c.strokeStyle = cor; c.globalAlpha = 0.16; c.lineWidth = u * 1.3; c.stroke();
+    c.globalAlpha = 1; c.lineWidth = Math.max(2, u * 0.3); c.stroke();
     // linha do fluxo (branca e fina, por baixo dos marcadores)
     if (fluxos.length > 1) {
       const pf = [];
@@ -908,8 +904,7 @@ export function criarEstudio(ctx) {
         if (x - ux >= 2 || i === fluxos.length - 1) { pf.push([x, YF(fluxos[i][1])]); ux = x; }
       }
       c.beginPath(); pf.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
-      c.strokeStyle = 'rgba(255,255,255,0.14)'; c.lineWidth = u * 0.9; c.stroke();
-      c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = Math.max(1.5, u * 0.2); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = Math.max(1.2, u * 0.16); c.stroke();
     }
     // onde cada despejo terminou
     const marcos = metodo
@@ -926,14 +921,14 @@ export function criarEstudio(ctx) {
     });
     // ponto atual
     if (S.relogio === 'rodando') {
-      const raio = u * (2.6 + 0.8 * (0.5 + 0.5 * Math.sin(performance.now() / 260)));
+      const raio = u * (1.5 + 0.5 * (0.5 + 0.5 * Math.sin(performance.now() / 260)));
       const halo = c.createRadialGradient(xH, yH, 0, xH, yH, raio);
-      halo.addColorStop(0, hexA(acento, 0.9)); halo.addColorStop(0.4, hexA(acento, 0.38)); halo.addColorStop(1, hexA(acento, 0));
-      c.globalCompositeOperation = 'lighter';
+      halo.addColorStop(0, hexA(acento, 0.55)); halo.addColorStop(0.45, hexA(acento, 0.18)); halo.addColorStop(1, hexA(acento, 0));
+      c.globalCompositeOperation = 'source-over';
       c.fillStyle = halo; c.beginPath(); c.arc(xH, yH, raio, 0, Math.PI * 2); c.fill();
       c.globalCompositeOperation = 'source-over';
     }
-    c.fillStyle = '#fff'; c.beginPath(); c.arc(xH, yH, Math.max(3, u * 0.55), 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(xH, yH, Math.max(2.5, u * 0.42), 0, Math.PI * 2); c.fill();
   }
 
   // ---------------- Mini gráficos dos cartões ----------------

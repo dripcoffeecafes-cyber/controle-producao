@@ -1594,8 +1594,8 @@ body.com-estudio .toast button { color: var(--bl-fundo); text-decoration: underl
 /* animação da conexão: a Dot no centro da tela, para o vídeo */
 .es-cx {
   position: fixed; inset: 0; z-index: 6; display: grid; place-content: center; justify-items: center; gap: calc(var(--u) * 2.4);
-  background: radial-gradient(circle at 50% 44%, rgba(30, 29, 27, .55), rgba(14, 14, 13, .94) 68%);
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  background: radial-gradient(circle at 50% 44%, rgba(26, 26, 24, .5), rgba(14, 14, 13, .8) 70%);
+  -webkit-backdrop-filter: blur(2.5px); backdrop-filter: blur(2.5px);
   opacity: 0; transition: opacity .55s ease; pointer-events: none;
 }
 .es-cx.on { opacity: 1; pointer-events: auto; }
