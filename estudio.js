@@ -11,7 +11,6 @@
 import { ICONES_MUSICA as IM } from './musica.js';
 import {
   etapasDaReceita, perfilAlvo, alvoNoTempo, criarGuia, FAMILIAS, FAMILIA_PADRAO, METODOS, mmss,
-  janelaDaEtapa,
 } from './receitas.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -125,6 +124,12 @@ export function criarEstudio(ctx) {
           </div>
           <div class="es-meta" id="esMeta"></div>
         </div>
+        <div class="es-musica" id="esMusica" hidden>
+          <button type="button" class="es-mus-bt es-mus-play" data-eacao="musica-alternar" aria-label="Tocar ou pausar a música"></button>
+          <canvas class="es-mus-viz" id="esMusicaViz" aria-hidden="true"></canvas>
+          <span class="es-mus-nome" id="esMusicaNome"></span>
+          <button type="button" class="es-mus-bt" data-eacao="musica-proxima" aria-label="Próxima música">${IM.proxima}</button>
+        </div>
         <div class="es-topo-acoes">
           <div class="es-modo" id="esModo" role="group" aria-label="Como preparar">
             <button type="button" data-emodo="balanca">Com balança</button>
@@ -173,15 +178,6 @@ export function criarEstudio(ctx) {
           <div class="es-card es-c-status" id="esStatus"></div>
         </aside>
         <section class="es-etapas" id="esEtapas" aria-label="Etapas da receita"></section>
-        <section class="es-musica" id="esMusica" aria-label="Música" hidden>
-          <div class="es-mus-botoes">
-            <button type="button" class="es-mus-bt" data-eacao="musica-anterior" aria-label="Música anterior">${IM.anterior}</button>
-            <button type="button" class="es-mus-bt es-mus-play" data-eacao="musica-alternar" aria-label="Tocar ou pausar a música"></button>
-            <button type="button" class="es-mus-bt" data-eacao="musica-proxima" aria-label="Próxima música">${IM.proxima}</button>
-          </div>
-          <div class="es-mus-txt"><span class="es-rot" id="esMusicaRot">Música</span><strong class="es-mus-nome" id="esMusicaNome"></strong><small id="esMusicaInfo"></small></div>
-          <canvas class="es-mus-viz" id="esMusicaViz" aria-hidden="true"></canvas>
-        </section>
       </div>`;
     document.body.appendChild(el);
     ligar();
@@ -624,26 +620,6 @@ export function criarEstudio(ctx) {
         <span class="es-et-barra"><i></i></span>
       </div>`).join('');
   }
-  // quanto cada etapa já andou (usado nos cartões e nas barras do gráfico)
-  function estadoEtapa(i, t = tempo(), w = pesoMostrado()) {
-    const e = S.etapas[i], metodo = ehMetodo();
-    const k = S.guia ? S.guia.k : -1, fase = S.guia?.fase, fim = S.relogio === 'fim' || fase === 'fim';
-    const feito = fim || i < k, atual = !fim && i === k && S.relogio === 'rodando';
-    let p = feito ? 1 : 0, espera = false, nivel = feito ? e.ate : 0, tempoP = feito ? 1 : 0;
-    if (atual) {
-      if (fase === 'despejo') {
-        p = metodo ? (t - e.inicio) / Math.max(1, e.fim - e.inicio) : (w - e.de) / Math.max(1, e.ate - e.de);
-        p = Math.max(0, Math.min(1, p));
-        nivel = metodo ? e.de + p * (e.ate - e.de) : Math.max(e.de, Math.min(w, e.ate * 1.15));
-      } else if (fase === 'antes') { espera = true; p = 0; nivel = e.de; }
-      else if (fase === 'espera') {
-        espera = true; nivel = metodo ? e.ate : Math.max(e.de, Math.min(w, e.ate * 1.15));
-        const desde = metodo ? e.fim : (S.marcos[i]?.t ?? e.fim);
-        p = (t - desde) / Math.max(1, e.ateTempo - desde); tempoP = p;
-      } else if (fase === 'drenagem') { espera = true; nivel = e.ate; p = (t - e.inicio) / Math.max(1, e.ateTempo - e.inicio); tempoP = p; }
-    }
-    return { feito, atual, espera, p: Math.max(0, Math.min(1, p)), nivel, tempoP: Math.max(0, Math.min(1, tempoP)) };
-  }
   function renderEtapas() {
     if (!S.etapas.length) return;
     const t = tempo(), w = pesoMostrado(), metodo = ehMetodo();
@@ -774,63 +750,13 @@ export function criarEstudio(ctx) {
       c.fillText(`${s}s`, x, pad.t + ph + u * 1.3);
     }
 
-    // etapas como barras dentro do gráfico: cada uma vai do 0 ao alvo de água e enche com a cor do café
-    if (S.etapas.length) {
-      const cafe = S.cor || '#CD9A50', y0 = pad.t + ph, folga = Math.max(2, u * 0.35);
-      S.etapas.forEach((e, i) => {
-        const [a, b] = janelaDaEtapa(S.etapas, i);
-        const x0 = X(a) + folga, x1 = X(Math.min(b, tFim)) - folga, bw = x1 - x0;
-        if (bw < 4) return;
-        const yT = Y(e.ate), alt = y0 - yT, raio = Math.min(u * 1.1, bw / 3);
-        const st = estadoEtapa(i, t);
-        const caixa = () => { c.beginPath(); c.roundRect ? c.roundRect(x0, yT, bw, alt, [raio, raio, 0, 0]) : c.rect(x0, yT, bw, alt); };
-        // molde da barra: até onde a água tem que chegar
-        caixa();
-        c.fillStyle = st.atual ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)'; c.fill();
-        c.lineWidth = st.atual ? Math.max(1.5, u * 0.22) : 1;
-        c.strokeStyle = st.atual ? 'rgba(255,255,255,0.75)' : st.feito ? hexA(cafe, 0.55) : 'rgba(255,255,255,0.12)';
-        c.stroke();
-        // água dentro da barra
-        if (st.nivel > 0.2) {
-          const yN = Math.max(Y(st.nivel), yT - u * 2);
-          c.save(); caixa(); c.clip();
-          const gr = c.createLinearGradient(0, yN, 0, y0);
-          gr.addColorStop(0, hexA(cafe, st.feito ? 0.42 : 0.62)); gr.addColorStop(1, hexA(cafe, st.feito ? 0.1 : 0.16));
-          c.fillStyle = gr; c.fillRect(x0, yN, bw, y0 - yN);
-          // nível aceso
-          c.fillStyle = hexA(cafe, st.feito ? 0.7 : 1);
-          if (st.atual) { c.shadowColor = hexA(cafe, 0.9); c.shadowBlur = u * 1.6; }
-          c.fillRect(x0, yN, bw, Math.max(2, u * 0.3)); c.shadowBlur = 0;
-          c.restore();
-        }
-        // espera e drenagem: o tempo corre na base da barra
-        if (st.espera && st.tempoP > 0) {
-          c.fillStyle = 'rgba(255,255,255,0.85)'; c.shadowColor = 'rgba(255,255,255,0.6)'; c.shadowBlur = u * 0.8;
-          c.fillRect(x0, y0 - Math.max(3, u * 0.45), bw * st.tempoP, Math.max(3, u * 0.45)); c.shadowBlur = 0;
-        }
-        // nome e alvo, embaixo dentro da barra
-        const cabe = bw > u * 7.5;
-        c.textAlign = 'left'; c.textBaseline = 'alphabetic';
-        const lx = x0 + u * 0.9, ly = y0 - u * 1.3;
-        const corTxt = st.atual || st.feito ? '#FFFFFF' : 'rgba(255,255,255,0.55)';
-        c.font = `600 ${Math.round(u * 1.25)}px ${FONTE}`; c.fillStyle = st.atual || st.feito ? cafe : 'rgba(255,255,255,0.45)';
-        const num = String(i + 1).padStart(2, '0');
-        if (alt > u * 6) {
-          if (cabe) {
-            c.fillText(`${g0(e.ate)} g`, lx, ly);
-            c.font = `500 ${Math.round(u * 1.7)}px ${SERIFA}`; c.fillStyle = corTxt;
-            let nome = e.nome; const max = bw - u * 1.8;
-            while (nome.length > 3 && c.measureText(`${num} ${nome}`).width > max) nome = nome.slice(0, -2) + '…';
-            c.fillText(`${num} ${nome}`, lx, ly - u * 2);
-          } else c.fillText(num, lx, ly);
-        }
-        if (st.feito && bw > u * 3.5 && alt > u * 4) {
-          const cx = x1 - u * 1.6, cy = yT + u * 1.6, rr = u * 0.95;
-          c.fillStyle = cafe; c.beginPath(); c.arc(cx, cy, rr, 0, Math.PI * 2); c.fill();
-          c.strokeStyle = '#1D1D1B'; c.lineWidth = Math.max(1.5, u * 0.22);
-          c.beginPath(); c.moveTo(cx - rr * 0.45, cy); c.lineTo(cx - rr * 0.1, cy + rr * 0.35); c.lineTo(cx + rr * 0.45, cy - rr * 0.35); c.stroke();
-        }
-      });
+    // etapa atual: coluna clara bem suave
+    if (S.relogio === 'rodando' && S.guia && S.etapas[S.guia.k]) {
+      const e = S.etapas[S.guia.k];
+      const a = e.inicio, b = e.tipo === 'despejo' ? (e.ateTempo ?? e.fim) : e.fim;
+      const col = c.createLinearGradient(0, pad.t, 0, pad.t + ph);
+      col.addColorStop(0, 'rgba(255,255,255,0)'); col.addColorStop(1, 'rgba(255,255,255,0.06)');
+      c.fillStyle = col; c.fillRect(X(a), pad.t, Math.max(2, X(b) - X(a)), ph);
     }
     // preparo anterior (quando repete um preparo salvo)
     if (ref.length > 1) {
@@ -1007,34 +933,20 @@ export function criarEstudio(ctx) {
   function renderMusica() {
     const m = ctx.musica, caixa = $('#esMusica', el);
     if (!m || !caixa) return;
-    const tem = !!m.lista.length;
-    caixa.hidden = !tem; el.classList.toggle('es-sem-musica', !tem);
+    caixa.hidden = !m.lista.length;
     caixa.classList.toggle('tocando', m.tocando);
-    const f = m.faixa, i = m.atual;
-    $('#esMusicaRot', el).textContent = m.tocando ? 'Tocando agora' : 'Música pausada';
+    const f = m.faixa;
     $('#esMusicaNome', el).textContent = f ? f.nome : 'Suas músicas';
-    $('#esMusicaInfo', el).textContent = tem ? `${f && i >= 0 ? i + 1 : 1} de ${m.lista.length} ${m.lista.length === 1 ? 'música' : 'músicas'}` : '';
     $('.es-mus-play', caixa).innerHTML = m.tocando ? IM.pausar : IM.tocar;
   }
-  // visualizador largo no rodapé: barras espelhadas a partir do meio, azul da água
   function desenharMusica() {
     const m = ctx.musica;
-    if (!m?.lista?.length) return;
+    if (!m?.tocando) return;
     const pr = prepararCanvas($('#esMusicaViz', el)); if (!pr) return;
-    const { c, W, H } = pr;
-    const n = Math.max(24, Math.min(96, Math.round(W / 9)));
-    const v = m.tocando ? m.espectro(n) : new Array(n).fill(0);
-    const gap = Math.max(2, (W / n) * 0.35), bw = (W - gap * (n - 1)) / n, meio = H / 2;
-    const g = c.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#8FD0FF'); g.addColorStop(0.5, '#4DB2FF'); g.addColorStop(1, '#8FD0FF');
-    c.fillStyle = m.tocando ? g : 'rgba(255,255,255,0.16)';
-    if (m.tocando) { c.shadowColor = 'rgba(77,178,255,0.75)'; c.shadowBlur = 10; }
-    const raio = Math.min(bw / 2, 3);
-    v.forEach((x, k) => {
-      const h = Math.max(bw, x * (H - 4));
-      const px = k * (bw + gap), py = meio - h / 2;
-      if (c.roundRect) { c.beginPath(); c.roundRect(px, py, bw, h, raio); c.fill(); } else c.fillRect(px, py, bw, h);
-    });
+    const { c, W, H } = pr, n = 16, v = m.espectro(n), gap = Math.max(1.5, W * 0.025), bw = (W - gap * (n - 1)) / n;
+    const g = c.createLinearGradient(0, H, 0, 0); g.addColorStop(0, '#1565D8'); g.addColorStop(1, '#8FD0FF');
+    c.fillStyle = g; c.shadowColor = 'rgba(77,178,255,0.7)'; c.shadowBlur = 6;
+    v.forEach((x, i) => { const h = Math.max(2, x * H); c.fillRect(i * (bw + gap), (H - h) / 2, bw, h); });
   }
 
   // ---------------- Laço de desenho ----------------
@@ -1087,7 +999,6 @@ export function criarEstudio(ctx) {
         else if (a === 'conectar') ctx.conectar(false);
         else if (a === 'musica-alternar') ctx.musica?.alternar();
         else if (a === 'musica-proxima') ctx.musica?.proxima();
-        else if (a === 'musica-anterior') ctx.musica?.anterior();
         else if (a === 'cafe-ok') fecharPainelCafe(true);
         else if (a === 'cafe-cancelar') fecharPainelCafe(false);
         return;
