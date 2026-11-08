@@ -18,6 +18,35 @@ export const chaveNivel = txt => {
 };
 const tab = arr => Object.fromEntries(NIVEIS.map((n, i) => [n, arr[i]]));
 
+// Granulometria alvo de cada nível (µm, tamanho médio da partícula), pelo meio das faixas por método do
+// Honest Coffee Guide: espresso 180–380, moka 360–660, V60 400–700, coado 410–930, prensa 690–1300.
+export const MICRONS = tab([280, 450, 600, 700, 850, 1000]);
+export const USO = tab(['espresso', 'moka, AeroPress fino', 'V60, drip', 'Kalita, Origami, AeroPress', 'Chemex', 'prensa francesa']);
+
+// Calcula a tabela a partir dos níveis que a pessoa informou (âncoras):
+// 2 âncoras → reta pelos dois pontos (cliques × µm), as outras saem dela; 1 âncora → a tabela de fábrica deslocada;
+// nenhuma → a de fábrica. As âncoras ficam exatamente como foram informadas.
+export function calcularTabela(modelo, ancoras = []) {
+  const mo = MODELOS_MOEDOR[modelo] || MODELOS_MOEDOR.outro;
+  const lim = v => Math.max(0, Math.min(mo.max, Math.round(v)));
+  const a = ancoras.filter(x => NIVEIS.includes(x.nivel) && Number.isFinite(x.cliques));
+  let t;
+  if (a.length >= 2) {
+    const [p, q] = a.slice(-2);
+    const dm = MICRONS[q.nivel] - MICRONS[p.nivel], dc = q.cliques - p.cliques;
+    if (!dm || dc * dm <= 0) return { tabela: null, erro: `${q.nivel} precisa ter ${dm > 0 ? 'mais' : 'menos'} cliques que ${p.nivel} (moagem ${dm > 0 ? 'mais grossa' : 'mais fina'}).` };
+    const porClique = dm / dc; // µm por clique deste moedor
+    t = tab(NIVEIS.map(n => lim(p.cliques + (MICRONS[n] - MICRONS[p.nivel]) / porClique)));
+    t.porClique = porClique;
+  } else if (a.length === 1) {
+    const d = a[0].cliques - mo.tabela[a[0].nivel];
+    t = tab(NIVEIS.map(n => lim(mo.tabela[n] + d)));
+  } else t = { ...mo.tabela };
+  a.forEach(x => { t[x.nivel] = lim(x.cliques); });
+  const porClique = t.porClique; delete t.porClique;
+  return { tabela: t, porClique: porClique ? Math.round(porClique) : null, erro: '' };
+}
+
 // Tabelas de fábrica (pontos de partida; cada moedor e cada café pedem ajuste).
 // faixas: referência por método, para mostrar na regulagem.
 export const MODELOS_MOEDOR = {
@@ -98,15 +127,16 @@ export function criarMoedores(ctx) {
           <div class="md-reg-cab">
             <h3>Regulagem</h3>
             <p class="muted" id="moedorFaixas"></p>
+            <p class="md-passo" id="moedorPasso"></p>
           </div>
           <div class="md-tabela" id="moedorTabela"></div>
           <div class="md-calibrar">
-            <span>Calibrar a tabela inteira</span>
+            <span>Mover a tabela inteira (calibração do zero)</span>
             <button type="button" class="btn btn-sm" data-mcal="-1">− 1</button>
             <button type="button" class="btn btn-sm" data-mcal="1">+ 1</button>
-            <button type="button" class="btn-link" data-mcal="fabrica">Voltar à de fábrica</button>
+            <button type="button" class="btn-link" data-mcal="fabrica">Voltar à sugestão do fabricante</button>
           </div>
-          <p class="muted md-dica">O zero é com as mós fechadas: sem café, gire o regulador no sentido de apertar até travar e conte os cliques a partir daí. Se o café sai mais grosso que o esperado no mesmo número, calibre com − 1; se sai mais fino, + 1.</p>
+          <p class="muted md-dica">Como usar: acerte duas moagens que você já conhece no seu moedor (ex.: a do seu V60 e a da sua prensa) e o app calcula as outras pela granulometria de cada uma; ao salvar, vira a tabela padrão deste moedor. O zero é com as mós fechadas: sem café, gire o regulador no sentido de apertar até travar e conte os cliques a partir daí. Se o café sai mais grosso que o esperado no mesmo número, calibre com − 1; se sai mais fino, + 1.</p>
         </div>
         <label class="md-check"><input type="checkbox" name="padrao"> Usar este moedor por padrão nas receitas e no estúdio</label>
         <label>Observações<textarea name="obs" rows="2" placeholder="Ex.: troquei as mós em 11/2026"></textarea></label>
@@ -126,6 +156,8 @@ export function criarMoedores(ctx) {
     const novo = !m;
     M.editando = m ? JSON.parse(JSON.stringify(m)) : { novo: true, modelo: 'comandante-c40', nome: '', tabela: { ...MODELOS_MOEDOR['comandante-c40'].tabela }, padrao: !M.lista.length, obs: '' };
     if (!M.editando.tabela) M.editando.tabela = { ...modeloDe(M.editando).tabela };
+    M.editando.ancoras = [...(M.editando.ancoras || [])];
+    M.erro = '';
     $('#moedorTitulo', dlg).textContent = novo ? 'Novo moedor' : 'Regular moedor';
     f.nome.value = M.editando.nome || '';
     f.padrao.checked = !!M.editando.padrao;
@@ -138,15 +170,21 @@ export function criarMoedores(ctx) {
   function renderModelos() {
     $('#moedorModelos', dlg).innerHTML = Object.entries(MODELOS_MOEDOR).map(([k, mo]) =>
       `<button type="button" data-mmodelo="${k}" aria-pressed="${k === M.editando.modelo}">${esc(mo.nome)}</button>`).join('');
-    $('#moedorFaixas', dlg).textContent = modeloDe(M.editando).faixas;
+    $('#moedorFaixas', dlg).textContent = `Sugestão do fabricante: ${modeloDe(M.editando).faixas}`;
   }
   function renderTabela() {
-    const m = M.editando, mo = modeloDe(m);
+    const m = M.editando, mo = modeloDe(m), anc = m.ancoras.map(x => x.nivel);
+    const calc = anc.length >= 2 ? 'calculado' : anc.length === 1 ? 'ajustado' : 'fábrica';
+    const r = calcularTabela(m.modelo, m.ancoras);
+    $('#moedorPasso', dlg).textContent = M.erro || (anc.length >= 2 && r.porClique
+      ? `Com ${anc.join(' e ')} informados: cerca de ${r.porClique} µm por clique neste moedor. As outras moagens foram calculadas.`
+      : anc.length === 1 ? `Informe mais uma moagem para o app calcular as outras pela granulometria.` : 'Tabela sugerida pelo fabricante. Informe duas moagens que você já conhece e o app calcula o resto.');
+    $('#moedorPasso', dlg).classList.toggle('erro', !!M.erro);
     $('#moedorTabela', dlg).innerHTML = NIVEIS.map(n => {
-      const v = m.tabela[n], fab = mo.tabela[n];
-      return `<div class="md-linha" data-nivel="${esc(n)}">
-        <span class="md-nivel">${esc(n)}</span>
-        <small class="md-fab">${v !== fab ? `fábrica ${fab}` : ''}</small>
+      const v = m.tabela[n], fab = mo.tabela[n], eh = anc.includes(n);
+      return `<div class="md-linha${eh ? ' md-ancora' : ''}" data-nivel="${esc(n)}">
+        <div class="md-nivel"><b>${esc(n)}</b><small>${esc(USO[n])} · ≈${MICRONS[n]} µm</small></div>
+        <span class="md-selo">${eh ? 'você informou' : esc(calc)}${!eh && v !== fab ? ` · fábrica ${fab}` : ''}</span>
         <div class="md-stepper">
           <button type="button" data-mpasso="-1" aria-label="Menos um em ${esc(n)}">−</button>
           <input inputmode="numeric" value="${v}" aria-label="${esc(mo.unidade)} para ${esc(n)}">
@@ -154,6 +192,15 @@ export function criarMoedores(ctx) {
         </div>
       </div>`;
     }).join('');
+  }
+  // a pessoa informou os cliques de um nível: vira âncora (ficam as duas últimas) e o resto é recalculado
+  function informar(nivel, cliques) {
+    const m = M.editando;
+    m.ancoras = [...m.ancoras.filter(x => x.nivel !== nivel), { nivel, cliques: limitar(cliques) }].slice(-2);
+    const r = calcularTabela(m.modelo, m.ancoras);
+    if (r.erro) { M.erro = r.erro; m.tabela[nivel] = limitar(cliques); }
+    else { M.erro = ''; m.tabela = r.tabela; }
+    renderTabela();
   }
   const limitar = v => Math.max(0, Math.min(modeloDe(M.editando).max, Math.round(v)));
 
@@ -163,20 +210,24 @@ export function criarMoedores(ctx) {
     if (mod) {
       const mudou = mod.dataset.mmodelo !== M.editando.modelo;
       M.editando.modelo = mod.dataset.mmodelo;
-      if (mudou) M.editando.tabela = { ...modeloDe(M.editando).tabela };
+      if (mudou) { M.editando.tabela = { ...modeloDe(M.editando).tabela }; M.editando.ancoras = []; M.erro = ''; }
       if (!f.nome.value.trim() || Object.values(MODELOS_MOEDOR).some(x => x.nome === f.nome.value.trim())) f.nome.value = modeloDe(M.editando).nome;
       renderModelos(); renderTabela(); return;
     }
     const passo = e.target.closest('[data-mpasso]');
     if (passo) {
       const n = passo.closest('.md-linha').dataset.nivel;
-      M.editando.tabela[n] = limitar((M.editando.tabela[n] || 0) + Number(passo.dataset.mpasso));
-      renderTabela(); return;
+      informar(n, (M.editando.tabela[n] || 0) + Number(passo.dataset.mpasso));
+      return;
     }
     const cal = e.target.closest('[data-mcal]');
     if (cal) {
-      if (cal.dataset.mcal === 'fabrica') M.editando.tabela = { ...modeloDe(M.editando).tabela };
-      else NIVEIS.forEach(n => { M.editando.tabela[n] = limitar(M.editando.tabela[n] + Number(cal.dataset.mcal)); });
+      if (cal.dataset.mcal === 'fabrica') { M.editando.tabela = { ...modeloDe(M.editando).tabela }; M.editando.ancoras = []; M.erro = ''; }
+      else {
+        const d = Number(cal.dataset.mcal);
+        NIVEIS.forEach(n => { M.editando.tabela[n] = limitar(M.editando.tabela[n] + d); });
+        M.editando.ancoras = M.editando.ancoras.map(x => ({ ...x, cliques: limitar(x.cliques + d) }));
+      }
       renderTabela();
     }
   });
@@ -184,8 +235,7 @@ export function criarMoedores(ctx) {
     const l = e.target.closest('.md-linha');
     if (!l) return;
     const v = parseFloat(String(e.target.value).replace(',', '.'));
-    if (Number.isFinite(v)) M.editando.tabela[l.dataset.nivel] = limitar(v);
-    renderTabela();
+    if (Number.isFinite(v)) informar(l.dataset.nivel, v); else renderTabela();
   });
   $('#excluirMoedor', dlg).onclick = async () => {
     const m = M.editando;
@@ -197,6 +247,7 @@ export function criarMoedores(ctx) {
   f.addEventListener('submit', async e => {
     e.preventDefault();
     const m = M.editando;
+    if (M.erro) { $('#moedorErro', dlg).textContent = M.erro; return; }
     m.nome = f.nome.value.trim() || modeloDe(m).nome;
     m.padrao = f.padrao.checked;
     m.obs = f.obs.value.trim();
