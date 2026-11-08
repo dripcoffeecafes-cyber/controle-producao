@@ -1,6 +1,6 @@
 // Service worker: guarda o app no aparelho para abrir rápido e funcionar sem internet.
 // Ao publicar uma nova versão, aumente o número abaixo.
-const VERSAO = 'producao-v50';
+const VERSAO = 'producao-v51';
 const ARQUIVOS = [
   './',
   'index.html',
@@ -22,6 +22,7 @@ const ARQUIVOS = [
   'manifest.webmanifest',
   'marca/logo-blooming-club.svg',
   'marca/logo-blooming-horizontal-branco.png',
+  'marca/balanca-dot.webp',
   'fontes/newsreader-latin-500-normal.woff2',
   'fontes/newsreader-latin-600-normal.woff2',
   'fontes/newsreader-latin-500-italic.woff2',

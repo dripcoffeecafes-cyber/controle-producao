@@ -157,6 +157,18 @@ export function criarEstudio(ctx) {
         </div>
       </div>
       <div class="es-aviso" id="esAviso" role="alert" hidden></div>
+      <div class="es-cx" id="esConexao" data-fase="buscando" aria-live="polite" hidden>
+        <div class="es-cx-palco">
+          <span class="es-cx-varre"></span>
+          <span class="es-cx-onda"></span><span class="es-cx-onda"></span><span class="es-cx-onda"></span>
+          <span class="es-cx-orbita">${[0, 1, 2, 3, 4, 5].map(k => `<i style="--k:${k}"></i>`).join('')}</span>
+          <span class="es-cx-sombra"></span>
+          <div class="es-cx-dot"><img src="marca/balanca-dot.webp" alt="Timemore Black Mirror Dot" draggable="false"><span class="es-cx-brilho"></span></div>
+          <span class="es-cx-ok">${ICONES.ok}</span>
+          <span class="es-cx-faiscas">${Array.from({ length: 14 }, (_, k) => `<i style="--a:${(k * 360 / 14).toFixed(1)}deg;--d:${(k % 3) * 0.06}s"></i>`).join('')}</span>
+        </div>
+        <div class="es-cx-txt"><span class="es-rot" data-cx="rot"></span><strong data-cx="titulo"></strong><small data-cx="info"></small></div>
+      </div>
       <div class="es-palco">
         <nav class="es-trilho" id="esTrilho" aria-label="Controles do preparo"></nav>
         <section class="es-heroi" aria-label="Peso e tempo">
@@ -216,6 +228,7 @@ export function criarEstudio(ctx) {
   }
   function fechar() {
     S.aberto = false;
+    clearTimeout(CX.timer); CX.fase = 'oculto'; CX.ultimo = ''; const cxo = $('#esConexao', el); if (cxo) cxo.hidden = true;
     el.hidden = true;
     document.body.classList.remove('com-estudio');
     cancelAnimationFrame(S.raf); S.raf = 0;
@@ -307,6 +320,69 @@ export function criarEstudio(ctx) {
     const sim = ctx.balanca()?.tipo === 'simulador';
     $('#esDemo', el).hidden = !(sim && estado === 'conectada' && !ehMetodo());
     renderTrilho();
+    animacaoConexao(estado);
+  }
+
+  // ---------------- Animação da conexão (a Dot no centro da tela, para o vídeo) ----------------
+  const BUSCANDO = ['conectando', 'pareando', 'reconectando'];
+  const CX = { fase: 'oculto', desde: 0, timer: 0, ultimo: '' };
+  const TEXTO_CX = {
+    conectando: ['Conectando', 'Black Mirror Dot', 'Procurando a balança'],
+    pareando: ['Pareando', 'Black Mirror Dot', 'Aceite o pedido de pareamento'],
+    reconectando: ['Reconectando', 'Black Mirror Dot', 'Buscando o sinal de novo'],
+  };
+  function textoCx([rot, titulo, info]) {
+    const o = $('#esConexao', el);
+    $('[data-cx="rot"]', o).textContent = rot;
+    $('[data-cx="titulo"]', o).textContent = titulo;
+    $('[data-cx="info"]', o).textContent = info;
+  }
+  function mostrarCx() {
+    const o = $('#esConexao', el);
+    clearTimeout(CX.timer);
+    o.dataset.fase = 'buscando';
+    if (CX.fase === 'oculto') {
+      o.hidden = false;
+      o.classList.remove('on');
+      void o.offsetWidth; // reinicia as animações de entrada
+      o.classList.add('on');
+      CX.desde = performance.now();
+    }
+    CX.fase = 'buscando';
+  }
+  function sucessoCx() {
+    const o = $('#esConexao', el);
+    clearTimeout(CX.timer);
+    const sim = ctx.balanca()?.tipo === 'simulador', bat = ctx.bateria?.();
+    textoCx(['Conectada', 'Balança pronta', sim ? 'Black Mirror Dot · demonstração' : bat != null ? `Black Mirror Dot · bateria ${bat}%` : 'Black Mirror Dot']);
+    o.dataset.fase = 'ok';
+    CX.fase = 'ok';
+    CX.timer = setTimeout(esconderCx, 3200);
+  }
+  function esconderCx() {
+    const o = $('#esConexao', el);
+    clearTimeout(CX.timer);
+    o.classList.remove('on');
+    CX.fase = 'oculto';
+    CX.timer = setTimeout(() => { if (CX.fase === 'oculto') o.hidden = true; }, 650);
+  }
+  function animacaoConexao(estado) {
+    if (!S.aberto) return;
+    const antes = CX.ultimo; CX.ultimo = estado;
+    if (BUSCANDO.includes(estado)) { mostrarCx(); textoCx(TEXTO_CX[estado]); return; }
+    if (estado === 'conectada' && CX.fase === 'buscando' && antes !== 'conectada') {
+      // fica pelo menos 2,4 s procurando, para a animação aparecer no vídeo mesmo quando conecta na hora
+      clearTimeout(CX.timer);
+      CX.timer = setTimeout(sucessoCx, Math.max(0, 2400 - (performance.now() - CX.desde)));
+      return;
+    }
+    if (estado === 'desconectada' && CX.fase !== 'oculto') esconderCx();
+  }
+  // tocar na Balança já conectada repete a animação (para gravar de novo)
+  function repetirCx() {
+    if (ctx.conexao() !== 'conectada') return;
+    mostrarCx(); textoCx(TEXTO_CX.conectando);
+    CX.timer = setTimeout(sucessoCx, 2600);
   }
   function aviso(texto) {
     if (!S.montado) return;
@@ -458,7 +534,7 @@ export function criarEstudio(ctx) {
         desconectada: 'Conectar', conectando: 'Conectando', pareando: 'Pareando', reconectando: 'Reconectando',
         conectada: sim ? 'Demonstração' : bat != null ? `Bateria ${bat}%` : 'Conectada',
       }[estado] || '';
-      html = `<button type="button" class="es-tr es-tr-bal" data-eacao="${estado === 'desconectada' ? 'conectar' : 'nada'}" data-estado="${estado}"><i>${ICONES.bt}</i><span>Balança</span><small>${sub}</small></button><span class="es-trilho-sep"></span>`;
+      html = `<button type="button" class="es-tr es-tr-bal" data-eacao="${estado === 'desconectada' ? 'conectar' : estado === 'conectada' ? 'mostrar-dot' : 'nada'}" data-estado="${estado}"><i>${ICONES.bt}</i><span>Balança</span><small>${sub}</small></button><span class="es-trilho-sep"></span>`;
       if (st === 'pronto') {
         html += bt('tara', 'tara', 'Tara', { desab: !conectada }) + bt('iniciar', 'play', 'Iniciar', { forte: true })
           + (temGuia ? bt('proxima', 'proxima', 'Próxima', { desab: true }) : '') + bt('zerar', 'zerar', 'Zerar');
@@ -977,6 +1053,7 @@ export function criarEstudio(ctx) {
   function ligar() {
     el.addEventListener('pointerdown', () => { S.ultimoToque = performance.now(); }, { passive: true });
     el.addEventListener('click', e => {
+      if (e.target.closest('#esConexao')) { if (CX.fase === 'ok') esconderCx(); return; }
       if (e.target.closest('#esCafe')) { abrirPainelCafe(); return; }
       const fam = e.target.closest('[data-efam]');
       if (fam) {
@@ -997,6 +1074,7 @@ export function criarEstudio(ctx) {
         else if (a === 'salvar') terminar();
         else if (a === 'sair') fechar();
         else if (a === 'conectar') ctx.conectar(false);
+        else if (a === 'mostrar-dot') repetirCx();
         else if (a === 'musica-alternar') ctx.musica?.alternar();
         else if (a === 'musica-proxima') ctx.musica?.proxima();
         else if (a === 'cafe-ok') fecharPainelCafe(true);

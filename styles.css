@@ -1590,3 +1590,103 @@ body.com-estudio .toast button { color: var(--bl-fundo); text-decoration: underl
   .es-tr { flex: 1; min-height: calc(var(--u) * 12); }
   .es-trilho-sep { display: none; }
 }
+
+/* animação da conexão: a Dot no centro da tela, para o vídeo */
+.es-cx {
+  position: fixed; inset: 0; z-index: 6; display: grid; place-content: center; justify-items: center; gap: calc(var(--u) * 2.4);
+  background: radial-gradient(circle at 50% 44%, rgba(30, 29, 27, .55), rgba(14, 14, 13, .94) 68%);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  opacity: 0; transition: opacity .55s ease; pointer-events: none;
+}
+.es-cx.on { opacity: 1; pointer-events: auto; }
+.es-cx-palco {
+  position: relative; width: calc(var(--u) * 52); height: calc(var(--u) * 52); display: grid; place-items: center;
+  transform: scale(.82); transition: transform .8s cubic-bezier(.2, .9, .25, 1.15);
+}
+.es-cx.on .es-cx-palco { transform: scale(1); }
+.es-cx-palco > * { grid-area: 1 / 1; }
+/* a balança flutuando, com um brilho que passa pela tampa */
+.es-cx-dot { position: relative; width: calc(var(--u) * 31); aspect-ratio: 820 / 911; z-index: 3; animation: esCxFlutua 3.4s ease-in-out infinite; }
+.es-cx.on .es-cx-dot { animation: esCxChega .9s cubic-bezier(.2, .9, .25, 1.2) both, esCxFlutua 3.4s ease-in-out .9s infinite; }
+.es-cx-dot img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 calc(var(--u) * 1.4) calc(var(--u) * 2.4) rgba(0,0,0,.55)) drop-shadow(0 0 calc(var(--u) * 3) color-mix(in srgb, var(--acento) 30%, transparent)) brightness(1.18) contrast(1.05); user-select: none; -webkit-user-drag: none; }
+.es-cx-brilho {
+  position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
+  -webkit-mask: url(marca/balanca-dot.webp) center / contain no-repeat; mask: url(marca/balanca-dot.webp) center / contain no-repeat;
+  background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,.08) 44%, rgba(255,255,255,.5) 50%, rgba(255,255,255,.08) 56%, transparent 62%) 0 0 / 300% 100% no-repeat;
+  animation: esCxBrilho 3.2s ease-in-out .6s infinite;
+}
+.es-cx-sombra { width: calc(var(--u) * 22); height: calc(var(--u) * 2.6); margin-top: calc(var(--u) * 40); border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.6), transparent); z-index: 1; animation: esCxSombra 3.4s ease-in-out .9s infinite; }
+/* ondas de sinal saindo da balança, na cor do café */
+.es-cx-onda {
+  width: calc(var(--u) * 30); height: calc(var(--u) * 30); border-radius: 50%; z-index: 2;
+  border: calc(var(--u) * .3) solid var(--acento); box-shadow: 0 0 calc(var(--u) * 2.4) color-mix(in srgb, var(--acento) 60%, transparent), inset 0 0 calc(var(--u) * 2) color-mix(in srgb, var(--acento) 35%, transparent);
+  opacity: 0; animation: esCxOnda 2.4s cubic-bezier(.15, .6, .35, 1) infinite;
+}
+.es-cx-onda:nth-of-type(3) { animation-delay: .8s; }
+.es-cx-onda:nth-of-type(4) { animation-delay: 1.6s; }
+/* radar girando atrás */
+.es-cx-varre {
+  width: calc(var(--u) * 50); height: calc(var(--u) * 50); border-radius: 50%; z-index: 0;
+  background: conic-gradient(from 0deg, transparent 0 270deg, color-mix(in srgb, var(--acento) 12%, transparent) 320deg, color-mix(in srgb, var(--acento) 55%, transparent) 359deg, transparent 360deg);
+  -webkit-mask: radial-gradient(closest-side, transparent 52%, #000 53%, #000 99%, transparent 100%); mask: radial-gradient(closest-side, transparent 52%, #000 53%, #000 99%, transparent 100%);
+  animation: esCxGira 2.2s linear infinite; transition: opacity .5s;
+}
+/* grãos de luz em órbita */
+.es-cx-orbita { width: 100%; height: 100%; position: relative; z-index: 4; animation: esCxGira 9s linear infinite reverse; transition: opacity .5s; }
+.es-cx-orbita i {
+  position: absolute; left: 50%; top: 50%; width: calc(var(--u) * (.9 + (var(--k) * .12))); aspect-ratio: 1; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 calc(var(--u) * 1.4) var(--acento), 0 0 calc(var(--u) * .6) #fff;
+  transform: rotate(calc(var(--k) * 60deg)) translateX(calc(var(--u) * 21)) translate(-50%, -50%);
+  animation: esCxPisca 1.6s ease-in-out calc(var(--k) * -.27s) infinite;
+}
+.es-cx-orbita i:nth-child(odd) { background: var(--acento); }
+/* conectou: pulo, selo de ok e faíscas */
+.es-cx-ok {
+  width: calc(var(--u) * 7); height: calc(var(--u) * 7); border-radius: 50%; z-index: 5; display: grid; place-items: center;
+  margin: calc(var(--u) * 19) 0 0 calc(var(--u) * 21); background: var(--acento); color: #1D1D1B;
+  box-shadow: 0 0 0 calc(var(--u) * .6) #1A1A18, 0 0 calc(var(--u) * 4) color-mix(in srgb, var(--acento) 90%, transparent);
+  transform: scale(0); opacity: 0;
+}
+.es-cx-ok svg { width: 58%; height: 58%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; }
+.es-cx-faiscas { width: 0; height: 0; position: relative; z-index: 4; }
+.es-cx-faiscas i {
+  position: absolute; left: 0; top: 0; width: calc(var(--u) * 3.2); height: calc(var(--u) * .5); border-radius: 999px; margin: calc(var(--u) * -.25) 0 0 0;
+  background: linear-gradient(90deg, transparent, var(--acento), #fff); transform-origin: 0 50%; opacity: 0;
+  transform: rotate(var(--a)) translateX(calc(var(--u) * 14));
+}
+.es-cx[data-fase="ok"] .es-cx-onda { animation: none; opacity: 0; }
+.es-cx[data-fase="ok"] .es-cx-orbita { opacity: 0; }
+/* conectou: o radar vira um anel aceso, parado */
+.es-cx[data-fase="ok"] .es-cx-varre {
+  background: radial-gradient(closest-side, transparent 92%, color-mix(in srgb, var(--acento) 75%, transparent) 95%, transparent 99%);
+  -webkit-mask: none; mask: none; filter: drop-shadow(0 0 calc(var(--u) * 1.6) var(--acento));
+  animation: esCxAnel .7s cubic-bezier(.3, 1.6, .5, 1) both;
+}
+@keyframes esCxAnel { from { transform: scale(.6); opacity: 0; } to { transform: scale(.82); opacity: 1; } }
+.es-cx[data-fase="ok"] .es-cx-onda:nth-of-type(2) { animation: esCxFlash .9s ease-out both; }
+.es-cx[data-fase="ok"] .es-cx-dot { animation: esCxPulo .7s cubic-bezier(.3, 1.6, .5, 1) both, esCxFlutua 3.4s ease-in-out .7s infinite; }
+.es-cx[data-fase="ok"] .es-cx-ok { animation: esCxSelo .6s cubic-bezier(.3, 1.7, .5, 1) .15s both; }
+.es-cx[data-fase="ok"] .es-cx-ok svg { animation: esCxRisco .45s ease-out .5s both; }
+.es-cx[data-fase="ok"] .es-cx-faiscas i { animation: esCxFaisca .8s cubic-bezier(.1, .7, .3, 1) calc(.08s + var(--d)) both; }
+/* textos */
+.es-cx-txt { display: grid; justify-items: center; gap: calc(var(--u) * .5); text-align: center; opacity: 0; transform: translateY(calc(var(--u) * 2)); transition: opacity .6s .25s, transform .6s .25s; }
+.es-cx.on .es-cx-txt { opacity: 1; transform: none; }
+.es-cx-txt .es-rot { color: var(--acento); font-size: calc(var(--u) * 1.5); }
+.es-cx-txt strong { font-family: var(--bl-serif); font-weight: 500; font-size: calc(var(--u) * 4.6); line-height: 1.15; color: #fff; }
+.es-cx-txt small { font-size: calc(var(--u) * 1.7); color: var(--es-texto2); }
+.es-cx[data-fase="buscando"] .es-cx-txt small::after { content: '…'; display: inline-block; width: 1.2em; text-align: left; animation: esCxReticencias 1.2s steps(4) infinite; overflow: hidden; vertical-align: bottom; }
+.es-cx[data-fase="ok"] .es-cx-txt strong { animation: esCxPulo .6s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes esCxChega { from { opacity: 0; transform: translateY(calc(var(--u) * 8)) scale(.6) rotate(-14deg); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes esCxFlutua { 0%, 100% { transform: translateY(0) rotate(-2.5deg); } 50% { transform: translateY(calc(var(--u) * -1.8)) rotate(2.5deg); } }
+@keyframes esCxSombra { 0%, 100% { transform: scaleX(1); opacity: .9; } 50% { transform: scaleX(.8); opacity: .55; } }
+@keyframes esCxBrilho { 0% { background-position: 120% 0; } 55%, 100% { background-position: -20% 0; } }
+@keyframes esCxOnda { 0% { transform: scale(.75); opacity: 0; } 15% { opacity: .95; } 100% { transform: scale(1.75); opacity: 0; } }
+@keyframes esCxGira { to { transform: rotate(360deg); } }
+@keyframes esCxPisca { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+@keyframes esCxFlash { 0% { transform: scale(.9); opacity: 1; border-width: calc(var(--u) * .8); } 100% { transform: scale(2); opacity: 0; border-width: calc(var(--u) * .1); } }
+@keyframes esCxPulo { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes esCxSelo { 0% { transform: scale(0) rotate(-90deg); opacity: 0; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+@keyframes esCxRisco { to { stroke-dashoffset: 0; } }
+@keyframes esCxFaisca { 0% { opacity: 0; transform: rotate(var(--a)) translateX(calc(var(--u) * 10)) scaleX(.3); } 25% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(calc(var(--u) * 27)) scaleX(1); } }
+@keyframes esCxReticencias { from { width: 0; } to { width: 1.2em; } }
+.es-tr-bal[data-eacao="mostrar-dot"] { cursor: pointer; }
