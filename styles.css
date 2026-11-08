@@ -1564,30 +1564,53 @@ body.com-estudio .toast button { color: var(--bl-fundo); text-decoration: underl
   .es { --u: min(1vh, calc(100vw / 150)); }
 }
 @media (max-aspect-ratio: 4/5) {
-  .es { --u: calc(100vw / 64); overflow-y: auto; gap: calc(var(--u) * 2); padding: calc(var(--u) * 3) calc(var(--u) * 3) calc(var(--u) * 19); }
-  .es-topo { flex-wrap: wrap; }
-  .es-id { order: 3; flex-basis: 100%; padding-left: 0; border-left: 0; }
-  .es-id-cafe { flex-wrap: wrap; }
-  .es-meta { flex-wrap: wrap; white-space: normal; row-gap: calc(var(--u) * .6); }
+  /* celular em pé: tudo numa tela só, sem rolagem; as etapas logo abaixo do gráfico */
+  .es {
+    --u: calc(100vw / 64); overflow: hidden; height: 100dvh; gap: calc(var(--u) * 1.4);
+    padding: calc(var(--u) * 2.2) calc(var(--u) * 2.4) calc(var(--u) * 14.5 + env(safe-area-inset-bottom, 0px));
+  }
+  .es-topo { flex-wrap: wrap; row-gap: calc(var(--u) * 1); }
+  .es-id { order: 3; flex-basis: 100%; padding-left: 0; border-left: 0; gap: calc(var(--u) * .5); }
+  .es-id-cafe { flex-wrap: nowrap; min-width: 0; }
+  .es-meta { flex-wrap: nowrap; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
   .es-cafe-painel { position: fixed; top: auto; bottom: 0; left: 0; width: 100%; border-radius: var(--es-raio) var(--es-raio) 0 0; z-index: 3; }
   .es-cp-campos { grid-template-columns: 1fr; }
   .es-cp-familias { grid-template-columns: repeat(2, 1fr); }
-  .es-palco { flex: none; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "heroi" "grafico" "lado" "etapas"; }
-  .es-sem-receita .es-palco { grid-template-areas: "heroi" "grafico" "lado"; }
-  .es-heroi { grid-template-columns: 1fr 1fr; row-gap: calc(var(--u) * 2.4); }
-  .es-guia { grid-column: 1 / -1; padding-left: 0 !important; }
-  .es-grande { font-size: calc(var(--u) * 8.4); }
-  .es-grafico { height: 62vw; }
-  .es-lado { grid-template-rows: none; grid-template-columns: 1fr 1fr; }
-  .es-card { min-height: calc(var(--u) * 19); }
-  .es-etapas { flex-wrap: wrap; }
-  .es-et { flex: 1 1 40%; }
+  .es-palco {
+    flex: 1 1 auto; min-height: 0; gap: calc(var(--u) * 1.4);
+    grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: "heroi" "grafico" "etapas" "lado";
+  }
+  .es-sem-receita .es-palco { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "heroi" "grafico" "lado"; }
+  /* peso e tempo lado a lado; o que fazer agora numa linha só embaixo */
+  .es-heroi { grid-template-columns: 1fr 1fr; row-gap: calc(var(--u) * 1.4); padding: calc(var(--u) * 2) calc(var(--u) * 2.6); }
+  .es-grande { font-size: calc(var(--u) * 7.6); }
+  .es-guia { grid-column: 1 / -1; padding-left: 0 !important; padding-top: calc(var(--u) * 1.2); border-top: 1px solid rgba(255,255,255,.08); gap: calc(var(--u) * 1.4); }
+  .es-guia-icone { width: calc(var(--u) * 4.4); height: calc(var(--u) * 4.4); }
+  .es-guia-txt { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--u) * 1.4); }
+  .es-guia strong { font-size: calc(var(--u) * 4.6); overflow: visible; }
+  .es-guia small { display: none; }
+  .es-grafico { height: auto; min-height: 0; }
+  /* etapas numa fileira, compactas */
+  .es-etapas { flex-wrap: nowrap; gap: calc(var(--u) * 1); }
+  .es-et { flex: 1 1 0; padding: calc(var(--u) * 1.1) calc(var(--u) * 1.3) calc(var(--u) * 1.4); gap: calc(var(--u) * .15); border-radius: calc(var(--u) * 1.5); }
+  .es-et-n { font-size: calc(var(--u) * 1.6); }
+  .es-et-nome { font-size: calc(var(--u) * 2.1); }
+  .es-et-info { font-size: calc(var(--u) * 1.3); }
+  .es-et-ok { transform: scale(.8); transform-origin: top right; }
+  /* cartões: só os números, três lado a lado */
+  .es-lado { grid-template-rows: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(var(--u) * 1); }
+  .es-card { padding: calc(var(--u) * 1.3) calc(var(--u) * 1.6); gap: calc(var(--u) * .2); }
+  .es-card .es-rot { font-size: calc(var(--u) * 1.15); }
+  .es-card > strong, .es-c-prog strong { font-size: calc(var(--u) * 3.6); }
+  .es-mini, .es-anel, .es-c-status, .es-c-prog-txt small, #esPropAlvo { display: none !important; }
+  .es-c-prog { display: flex; }
   .es-trilho {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; flex-direction: row;
-    padding: calc(var(--u) * 1.2) calc(var(--u) * 2) calc(var(--u) * 1.6 + env(safe-area-inset-bottom, 0px));
+    padding: calc(var(--u) * 1) calc(var(--u) * 2) calc(var(--u) * 1.2 + env(safe-area-inset-bottom, 0px));
     background: #1A1A18; border-top: 1px solid var(--es-borda);
   }
-  .es-tr { flex: 1; min-height: calc(var(--u) * 12); }
+  .es-tr { flex: 1; min-height: calc(var(--u) * 11); }
   .es-trilho-sep { display: none; }
 }
 
