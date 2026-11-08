@@ -1114,7 +1114,7 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 .ex-mus-vazio { color: #A9A6A2; border: 0 !important; }
 
 /* Receitas */
-.ex2-receitas, .ex-historico {
+.ex2-receitas, .ex2-moedores, .ex-historico {
   background: var(--surface); border: 1px solid var(--line-suave); border-radius: 24px;
   box-shadow: var(--sombra); padding: 18px 18px 18px;
 }
@@ -1236,6 +1236,48 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 .rc-previa { background: var(--bl-fundo); padding: 10px 12px; margin: 4px 0 14px; }
 .rc-previa .rc-mini { height: 70px; margin: 0; }
 
+/* Moedores (cliques por moagem) */
+.rc-moedor { margin: 0; font-size: 13px; color: #C9C6C2; }
+.rc-moedor b { color: #fff; font-weight: 600; }
+.md-grade { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.md-card { display: grid; gap: 10px; padding: 14px 16px; border-radius: 18px; background: var(--surface-2); }
+.md-card-topo { display: flex; gap: 10px; align-items: center; }
+.md-card-topo h4 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+.md-card-topo small { color: var(--ink-2); font-size: 13px; }
+.md-card-topo small b { color: var(--ink); font-weight: 600; }
+.md-ic { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--surface); }
+.md-ic svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.md-mini { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.md-mini li { display: grid; gap: 1px; padding: 6px 8px; border-radius: 10px; background: var(--surface); }
+.md-mini span { font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md-mini b { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.md-card-acoes { display: flex; align-items: center; gap: 8px; }
+.md-regulagem { display: grid; gap: 8px; margin: 6px 0 12px; }
+.md-reg-cab h3 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+.md-reg-cab .muted { margin: 2px 0 0; font-size: 13px; }
+.md-tabela { display: grid; gap: 6px; }
+.md-linha { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 12px; border-radius: 14px; background: var(--surface-2); }
+.md-nivel { flex: 1; font-weight: 500; }
+.md-fab { color: var(--ink-2); font-size: 12px; }
+.md-stepper { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface); }
+.md-stepper button { width: 38px; height: 38px; border: 0; border-radius: 50%; background: transparent; color: var(--ink); font-size: 20px; cursor: pointer; }
+.md-stepper button:hover { background: var(--surface-2); }
+.sheet .md-stepper input { margin: 0; width: 3em; min-height: 34px; padding: 0; border: 0; background: transparent; text-align: center; font-size: 18px; font-weight: 600; color: var(--ink); box-shadow: none; font-variant-numeric: tabular-nums; }
+.md-calibrar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2); }
+.md-calibrar > span { flex: 1 1 100%; }
+.md-dica { font-size: 12.5px; line-height: 1.45; }
+.sheet label.md-check { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 4px 0 12px; }
+.sheet label.md-check input { width: auto; min-height: 0; margin: 0; }
+.rc-cliques { margin-top: 10px; display: grid; gap: 4px; }
+.rc-cliques-linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sheet .rc-cliques select { width: auto; margin: 0; min-height: 44px; }
+.rc-cliques-nome { font-weight: 600; }
+.rc-cliques .md-stepper { background: var(--surface-2); }
+.rc-cliques-un { color: var(--ink-2); font-size: 14px; }
+.rc-cliques-info { color: var(--ink-2); font-size: 12.5px; }
+.rc-cliques-info .btn-link { padding: 0; font-size: inherit; min-height: 0; }
+.rc-cliques-vazio { margin: 6px 0 0; font-size: 13px; }
+
 /* Histórico (extrações salvas) */
 .ex-hist-topo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .ex-hist-topo h3 { margin: 0; flex: 1; }
@@ -1267,7 +1309,7 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 @media (min-width: 1024px) {
   #areaExtracao { padding: 4px 48px 64px; max-width: 1440px; }
   .ex2-balanca { padding: 20px 24px 16px; }
-  .ex2-receitas, .ex-historico { padding: 22px 24px 22px; }
+  .ex2-receitas, .ex2-moedores, .ex-historico { padding: 22px 24px 22px; }
 }
 
 /* ---------- Estúdio (tela cheia do preparo) ----------
@@ -1408,6 +1450,18 @@ body.com-estudio .toast button { color: var(--bl-fundo); text-decoration: underl
 .es-cp-familias i { flex: none; width: calc(var(--u) * 1.8); height: calc(var(--u) * 1.8); border-radius: 50%; }
 .es-cp-familias button[aria-pressed="true"] { border-color: #fff; background: rgba(255,255,255,.1); color: #fff; font-weight: 600; }
 .es-cp-acoes { display: flex; justify-content: flex-end; gap: calc(var(--u) * 1); }
+.es-cp-moedor { display: grid; gap: calc(var(--u) * .5); }
+.es-cp-moedor-linha { display: flex; align-items: center; gap: calc(var(--u) * 1.2); flex-wrap: wrap; }
+.es-cp-moedor select {
+  margin: 0; min-height: calc(var(--u) * 4.4); padding: 0 calc(var(--u) * 1.2); font: inherit; font-size: calc(var(--u) * 1.6); color: #fff;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.2); border-radius: 3px;
+}
+.es-cp-moedor select option { color: #1D1D1F; }
+.es-cp-step { display: inline-flex; align-items: center; gap: calc(var(--u) * .4); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: calc(var(--u) * .3); }
+.es-cp-step button { width: calc(var(--u) * 4); height: calc(var(--u) * 4); border-radius: 50%; border: 0; background: rgba(255,255,255,.08); color: #fff; font-size: calc(var(--u) * 2.2); cursor: pointer; }
+.es-cp-step b { min-width: calc(var(--u) * 4); text-align: center; font-size: calc(var(--u) * 2.2); font-weight: 600; font-variant-numeric: tabular-nums; }
+.es-cp-un { color: #C9C6C2; font-size: calc(var(--u) * 1.5); }
+.es-cp-dica { color: #A9A6A2; font-size: calc(var(--u) * 1.4); }
 
 /* palco: controles | peso e tempo + gráfico | cartões; etapas embaixo */
 .es-palco {

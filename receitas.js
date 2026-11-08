@@ -5,6 +5,8 @@
 // Etapas (o que a tela guia): cada despejo vira uma etapa "despejar até X g" seguida de "aguarde até o próximo
 // despejo"; no fim, a drenagem até o tempo total.
 
+import { NIVEIS, chaveNivel, cliquesDoNivel, unidadeDe, modeloDe } from './moedores.js';
+
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -291,6 +293,7 @@ export function criarEditorReceitas(ctx) {
     f.proporcao.value = r.dose ? String(Math.round(proporcaoDe(r) * 10) / 10).replace('.', ',') : '';
     f.temperatura.value = r.temperatura || '';
     f.moagem.value = r.moagem || '';
+    moedorSel = ctx.moedores?.padrao()?.id || null;
     f.tempoTotal.value = r.tempoTotal ? mmss(r.tempoTotal) : '';
     f.obs.value = r.obs || '';
     $('#receitaMoagens').innerHTML = MOAGENS.map(m => `<button type="button" data-moagem="${esc(m)}">${esc(m)}</button>`).join('');
@@ -425,11 +428,61 @@ export function criarEditorReceitas(ctx) {
       pintar(r);
     });
   }
-  const MOAGENS = ['Extra-fina', 'Fina', 'Média-fina', 'Média', 'Média-grossa', 'Grossa'];
+  const MOAGENS = NIVEIS;
   function marcarMoagem() {
     const v = f.moagem.value.trim().toLowerCase();
     $$('#receitaMoagens button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.moagem.toLowerCase() === v)));
+    renderCliques();
   }
+
+  // Cliques do moedor para esta moagem (da tabela do moedor, ou ajustados só nesta receita)
+  let moedorSel = null;
+  const listaMoedores = () => ctx.moedores?.lista() || [];
+  function renderCliques() {
+    const caixa = $('#receitaCliques'); if (!caixa || !atual) return;
+    const ms = listaMoedores();
+    if (!ms.length) { caixa.innerHTML = '<p class="muted rc-cliques-vazio">Cadastre o seu moedor em Extração → Moedores para ver aqui quantos cliques dar.</p>'; return; }
+    const m = ms.find(x => x.id === moedorSel) || ms[0];
+    moedorSel = m.id;
+    const proprio = Number.isFinite(atual.cliques?.[m.id]);
+    const tabela = cliquesDoNivel(m, f.moagem.value);
+    const n = proprio ? atual.cliques[m.id] : tabela;
+    const un = unidadeDe(m) === 'no disco' ? 'no disco' : 'cliques';
+    caixa.innerHTML = `
+      <div class="rc-cliques-linha">
+        ${ms.length > 1 ? `<select id="receitaMoedor" aria-label="Moedor">${ms.map(x => `<option value="${esc(x.id)}"${x.id === m.id ? ' selected' : ''}>${esc(x.nome)}</option>`).join('')}</select>` : `<b class="rc-cliques-nome">${esc(m.nome)}</b>`}
+        <div class="md-stepper">
+          <button type="button" data-cpasso="-1" aria-label="Menos um clique">−</button>
+          <input id="receitaCliquesN" inputmode="numeric" value="${n ?? ''}" placeholder="–" aria-label="Cliques no ${esc(m.nome)}">
+          <button type="button" data-cpasso="1" aria-label="Mais um clique">+</button>
+        </div>
+        <span class="rc-cliques-un">${un}</span>
+      </div>
+      <small class="rc-cliques-info">${proprio
+        ? `Ajustado nesta receita${tabela != null ? ` (a tabela diz ${tabela})` : ''} · <button type="button" class="btn-link" data-cliques="tabela">usar a tabela</button>`
+        : tabela != null ? `Da tabela do moedor para moagem ${esc(chaveNivel(f.moagem.value).toLowerCase())}` : 'Escolha uma moagem acima ou digite os cliques desta receita'}</small>`;
+  }
+  function definirCliques(v) {
+    const m = listaMoedores().find(x => x.id === moedorSel); if (!m) return;
+    atual.cliques = { ...(atual.cliques || {}) };
+    if (v == null || !Number.isFinite(v)) delete atual.cliques[m.id];
+    else atual.cliques[m.id] = Math.max(0, Math.min(modeloDe(m).max, Math.round(v)));
+    renderCliques();
+  }
+  f.addEventListener('change', e => {
+    if (e.target.id === 'receitaMoedor') { moedorSel = e.target.value; renderCliques(); }
+    if (e.target.id === 'receitaCliquesN') { const v = parseFloat(e.target.value.replace(',', '.')); definirCliques(Number.isFinite(v) ? v : null); }
+  });
+  f.addEventListener('click', e => {
+    const p = e.target.closest('[data-cpasso]');
+    if (p) {
+      const m = listaMoedores().find(x => x.id === moedorSel); if (!m) return;
+      const atualN = Number.isFinite(atual.cliques?.[m.id]) ? atual.cliques[m.id] : cliquesDoNivel(m, f.moagem.value);
+      definirCliques((atualN ?? 0) + Number(p.dataset.cpasso));
+      return;
+    }
+    if (e.target.closest('[data-cliques="tabela"]')) definirCliques(null);
+  });
   f.addEventListener('input', e => {
     const b = e.target.closest('.rc-barra');
     if (!b) { if (e.target === f.moagem) marcarMoagem(); return; }
@@ -534,6 +587,7 @@ export function criarEditorReceitas(ctx) {
     lerCampos();
     atual.dose = num(f.dose.value);
     atual.despejos = ordenados(atual).map((x, i) => ({ nome: (x.nome || '').trim() || nomeDespejo(i), ate: Math.round(num(x.ate) * 10) / 10, inicio: x.inicio, fim: x.fim }));
+    if (atual.cliques && !Object.keys(atual.cliques).length) delete atual.cliques;
     atual.agua = atual.despejos.at(-1)?.ate || 0;
     if (!atual.tempoTotal) atual.tempoTotal = (atual.despejos.at(-1)?.fim || 0) + 60;
     const prob = validarReceita(atual);

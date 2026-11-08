@@ -9,6 +9,7 @@
 // mostra) e para toque. Tudo é medido em "u" (--u), que acompanha a altura da tela.
 
 import { ICONES_MUSICA as IM } from './musica.js';
+import { cliquesDaReceita, textoCliques, modeloDe, unidadeDe } from './moedores.js';
 import {
   etapasDaReceita, perfilAlvo, alvoNoTempo, criarGuia, FAMILIAS, FAMILIA_PADRAO, METODOS, mmss,
 } from './receitas.js';
@@ -149,6 +150,7 @@ export function criarEstudio(ctx) {
           <label><span class="es-rot">Notas</span><input id="esCpNotas" maxlength="80" autocomplete="off" placeholder="Ex.: tangerina, mel, chá preto"></label>
           <label class="es-cp-curto"><span class="es-rot">Pontuação</span><input id="esCpPont" maxlength="5" inputmode="decimal" autocomplete="off" placeholder="Ex.: 87"></label>
         </div>
+        <div class="es-cp-moedor" id="esCpMoedor"></div>
         <span class="es-rot">Cor do café: a família da nota que mais se destaca</span>
         <div class="es-cp-familias" id="esCpFamilias"></div>
         <div class="es-cp-acoes">
@@ -209,6 +211,10 @@ export function criarEstudio(ctx) {
     S.notas = opcoes.notas ?? receita?.notas ?? '';
     S.pontuacao = opcoes.pontuacao ?? receita?.pontuacao ?? null;
     S.familia = FAMILIAS[opcoes.familia] ? opcoes.familia : FAMILIAS[receita?.familia] ? receita.familia : FAMILIA_PADRAO;
+    S.moedorId = opcoes.moedorId || null;
+    S.cliquesManual = Number.isFinite(opcoes.cliques);
+    S.cliques = S.cliquesManual ? opcoes.cliques : null;
+    escolherMoedor();
     S.modoEscolhido = !!opcoes.modo;
     S.modo = opcoes.modo || (LIGADA.includes(ctx.conexao()) ? 'balanca' : 'metodo');
     $('#esCafePainel', el).hidden = true;
@@ -458,6 +464,8 @@ export function criarEstudio(ctx) {
     $('#esCpNotas', el).value = S.notas;
     $('#esCpPont', el).value = S.pontuacao ? String(S.pontuacao).replace('.', ',') : '';
     renderFamiliasPainel();
+    S.moedorAntes = { id: S.moedorId, cliques: S.cliques, manual: S.cliquesManual };
+    renderMoedorPainel();
     p.hidden = false;
     $('#esCpNome', el).focus();
   }
@@ -473,9 +481,59 @@ export function criarEstudio(ctx) {
       S.notas = $('#esCpNotas', el).value.trim();
       const n = parseFloat($('#esCpPont', el).value.replace(',', '.'));
       S.pontuacao = n > 0 && n <= 100 ? Math.round(n * 100) / 100 : null;
-    } else if (S.familiaAntes) { S.familia = S.familiaAntes; aplicarCor(); }
+      if (!S.cliquesManual) calcularCliques(); // café novo: procura os cliques que deram certo com ele
+    } else {
+      if (S.familiaAntes) { S.familia = S.familiaAntes; aplicarCor(); }
+      if (S.moedorAntes) { S.moedorId = S.moedorAntes.id; S.cliques = S.moedorAntes.cliques; S.cliquesManual = S.moedorAntes.manual; }
+    }
     p.hidden = true;
     renderTopo();
+  }
+
+  // ---------------- Moedor e cliques do preparo ----------------
+  // ordem: escolhidos à mão (ou do Repetir) > último preparo bom do mesmo café e método > receita/tabela do moedor
+  const moedorAtual = () => (ctx.moedores?.() || []).find(m => m.id === S.moedorId) || null;
+  function escolherMoedor() {
+    const ms = ctx.moedores?.() || [];
+    if (!ms.find(m => m.id === S.moedorId)) S.moedorId = (ctx.moedorPadrao?.() || ms[0])?.id || null;
+    if (!S.cliquesManual) calcularCliques();
+  }
+  function calcularCliques() {
+    const m = moedorAtual();
+    S.sugestao = m ? ctx.sugestaoCliques?.({ cafe: S.cafe, metodo: S.receita?.metodo, moedorId: m.id }) || null : null;
+    S.cliques = S.sugestao ? S.sugestao.cliques : m ? cliquesDaReceita(S.receita, m) : null;
+  }
+  function atualizarMoedor() {
+    if (!S.montado) return;
+    escolherMoedor();
+    if (!$('#esCafePainel', el).hidden) renderMoedorPainel();
+    renderTopo();
+  }
+  function renderMoedorPainel() {
+    const caixa = $('#esCpMoedor', el), ms = ctx.moedores?.() || [];
+    if (!ms.length) { caixa.innerHTML = '<span class="es-rot">Moedor</span><small class="es-cp-dica">Cadastre o seu moedor na área Extração para ver os cliques aqui.</small>'; return; }
+    const m = moedorAtual(), un = unidadeDe(m) === 'no disco' ? 'no disco' : 'cliques';
+    const sug = S.sugestao;
+    caixa.innerHTML = `
+      <span class="es-rot">Moedor</span>
+      <div class="es-cp-moedor-linha">
+        <select id="esCpMoedorSel" aria-label="Moedor">${ms.map(x => `<option value="${esc(x.id)}"${x.id === m.id ? ' selected' : ''}>${esc(x.nome)}</option>`).join('')}</select>
+        <div class="es-cp-step">
+          <button type="button" data-eacao="cliques-menos" aria-label="Menos um clique">−</button>
+          <b id="esCpCliques">${S.cliques ?? '–'}</b>
+          <button type="button" data-eacao="cliques-mais" aria-label="Mais um clique">+</button>
+        </div>
+        <span class="es-cp-un">${un}</span>
+      </div>
+      <small class="es-cp-dica">${S.cliquesManual ? 'Ajustado para este preparo'
+        : sug ? `Da última vez com este café: ${esc(textoCliques(m, sug.cliques))}${sug.avaliacao ? ' ' + '★'.repeat(sug.avaliacao) : ''}`
+        : S.receita?.moagem ? `Pela receita (moagem ${esc(String(S.receita.moagem).toLowerCase())})` : 'Toque em − / + para marcar os cliques'}</small>`;
+  }
+  function mudarCliques(d) {
+    const m = moedorAtual(); if (!m) return;
+    S.cliques = Math.max(0, Math.min(modeloDe(m).max, (S.cliques ?? cliquesDaReceita(S.receita, m) ?? 0) + d));
+    S.cliquesManual = true;
+    renderMoedorPainel();
   }
 
   function terminar() {
@@ -483,9 +541,14 @@ export function criarEstudio(ctx) {
     const final = metodo ? (S.receita?.agua || 0) : aguaFinal();
     ctx.aoTerminar?.({
       receita: S.receita, cafe: S.cafe, notas: S.notas, pontuacao: S.pontuacao, familia: S.familia, semBalanca: metodo,
+      moedor: moedorAtual(), cliques: moedorAtual() ? S.cliques : null,
       tempo: S.tFim, aguaFinal: final, amostras: metodo ? [] : S.amostras, vazaoMedia: S.tFim ? final / S.tFim : 0,
     });
   }
+
+  // na linha da receita: "Moagem média-fina · Comandante 22 cliques" (a marca, curta, para o vídeo)
+  const cliquesTexto = () => { const m = moedorAtual(); return m && S.cliques != null ? textoCliques(m, S.cliques) : ''; };
+  const moedorTexto = () => (cliquesTexto() ? modeloDe(moedorAtual()).nome.split(' ')[0] : '');
 
   // ---------------- Topo: ficha do café e dados da receita ----------------
   function renderTopo() {
@@ -512,8 +575,9 @@ export function criarEstudio(ctx) {
       item('Receita', r.nome, ' es-m-encolhe'),
       !nomeTemMetodo && metodo ? item('Método', metodo) : '',
       item('Proporção', prop(r.agua, r.dose)), item('Alvo', `${g0(r.agua)} g`), item('Pó', `${gs(r.dose)} g`),
-      r.moagem ? item('Moagem', r.moagem) : '', r.temperatura ? item('Temperatura', `${g0(r.temperatura)} °C`) : '',
-    ] : [item('Preparo', 'Livre')]).join('');
+      r.moagem || moedorTexto() ? item('Moagem', [r.moagem, moedorTexto() && `${moedorTexto()} ${cliquesTexto()}`].filter(Boolean).join(' · ')) : '',
+      r.temperatura ? item('Temperatura', `${g0(r.temperatura)} °C`) : '',
+    ] : [item('Preparo', 'Livre'), moedorTexto() ? item('Moedor', `${moedorTexto()} · ${cliquesTexto()}`) : '']).join('');
   }
 
   // ---------------- Controles (coluna da esquerda) ----------------
@@ -1073,6 +1137,8 @@ export function criarEstudio(ctx) {
         else if (a === 'musica-alternar') ctx.musica?.alternar();
         else if (a === 'musica-proxima') ctx.musica?.proxima();
         else if (a === 'cafe-ok') fecharPainelCafe(true);
+        else if (a === 'cliques-menos') mudarCliques(-1);
+        else if (a === 'cliques-mais') mudarCliques(1);
         else if (a === 'cafe-cancelar') fecharPainelCafe(false);
         return;
       }
@@ -1083,6 +1149,12 @@ export function criarEstudio(ctx) {
         if (demo.dataset.demo === 'cafe') bal.colocar(S.receita?.dose || 15);
         else { tarar(); setTimeout(() => { S.receita ? bal.despejarPerfil(S.perfil) : bal.despejar(); }, 900); }
       }
+    });
+    el.addEventListener('change', e => {
+      if (e.target.id !== 'esCpMoedorSel') return;
+      S.moedorId = e.target.value;
+      if (!S.cliquesManual) calcularCliques(); else { S.cliquesManual = false; calcularCliques(); }
+      renderMoedorPainel();
     });
     el.addEventListener('keydown', e => {
       if (!e.target.closest?.('#esCafePainel')) return;
@@ -1107,7 +1179,7 @@ export function criarEstudio(ctx) {
   }
 
   return {
-    abrir, fechar, receberPeso, atualizarConexao, aviso,
+    abrir, fechar, receberPeso, atualizarConexao, aviso, atualizarMoedor,
     get aberto() { return S.aberto; },
   };
 }

@@ -7,6 +7,7 @@
 import { criarBalanca, criarSimulador, temBluetooth } from './balanca.js';
 import { criarEstudio } from './estudio.js';
 import { criarMusica, tamanhoMB, ICONES_MUSICA as IM } from './musica.js';
+import { criarMoedores, cliquesDaReceita, sugestaoDoHistorico, textoCliques, modeloDe } from './moedores.js';
 import {
   METODOS, MODELOS, FAMILIAS, FAMILIA_PADRAO, corDaFamilia, criarEditorReceitas, descricaoReceita, miniPerfil, etapasDaReceita, mmss,
 } from './receitas.js';
@@ -99,8 +100,16 @@ export function criarExtracao(ctx) {
   // ---------------- Estúdio ----------------
   // músicas guardadas neste aparelho, tocadas na área e no estúdio
   const musica = criarMusica({ toast: (...a) => ctx.toast(...a) });
+  // moedores da equipe (cliques por nível de moagem), usados na receita, no estúdio e no salvar
+  const moedores = criarMoedores({
+    store: ctx.store, toast: (...a) => ctx.toast(...a), quem: ctx.quem,
+    aoMudar: () => { renderReceitas(); estudio.atualizarMoedor?.(); },
+  });
   const estudio = criarEstudio({
     musica,
+    moedores: () => moedores.lista(),
+    moedorPadrao: () => moedores.padrao(),
+    sugestaoCliques: o => sugestaoDoHistorico(E.lista, o),
     balanca: () => E.balanca,
     conexao: () => E.conexao,
     nomeBalanca: () => (E.balanca?.tipo === 'simulador' ? 'Demonstração' : E.nomeBalanca),
@@ -163,6 +172,8 @@ export function criarExtracao(ctx) {
           <div class="ex2-grade" id="exReceitas"></div>
         </section>
 
+        <section class="ex2-moedores" id="exMoedores" aria-label="Moedores"></section>
+
         <section class="ex-historico">
           <div class="ex-hist-topo">
             <h3>Extrações salvas</h3>
@@ -172,17 +183,26 @@ export function criarExtracao(ctx) {
         </section>
       </div>`;
     ligar();
+    moedores.ligarBloco($('#exMoedores'));
+    moedores.render($('#exMoedores'));
     atualizarConexao();
     renderReceitas();
   }
 
   // ---------------- Receitas ----------------
-  const editor = criarEditorReceitas({ store: ctx.store, toast: (...a) => ctx.toast(...a), quem: ctx.quem });
+  const editor = criarEditorReceitas({ store: ctx.store, toast: (...a) => ctx.toast(...a), quem: ctx.quem, moedores });
   const todasReceitas = () => [
     ...[...E.receitas].sort((a, b) => String(b.atualizadoEm || '').localeCompare(String(a.atualizadoEm || ''))),
     ...MODELOS,
   ];
   const acharReceita = id => todasReceitas().find(r => r.id === id);
+
+  // "Moagem média-fina · Comandante 20 cliques" no cartão (com o moedor padrão)
+  function linhaMoagem(r) {
+    const m = moedores.padrao(), n = m ? cliquesDaReceita(r, m) : null;
+    if (!r.moagem && n == null) return '';
+    return `<p class="rc-moedor">${r.moagem ? `Moagem ${esc(String(r.moagem).toLowerCase())}` : ''}${n != null ? `${r.moagem ? ' · ' : ''}<b>${esc(modeloDe(m).nome.split(' ')[0])} ${esc(textoCliques(m, n))}</b>` : ''}</p>`;
+  }
 
   function renderReceitas() {
     if (!E.montado) return;
@@ -202,6 +222,7 @@ export function criarExtracao(ctx) {
         ${r.cafe || r.pontuacao ? `<p class="rc-cafe">${r.cafe ? `<span>${esc(r.cafe.toUpperCase())}</span>` : ''}${r.pontuacao ? `<i class="rc-nota">${esc(String(r.pontuacao).replace('.', ','))}</i>` : ''}</p>` : ''}
         ${r.notas ? `<p class="rc-notas">${esc(notasEmFaixa(r.notas))}</p>` : ''}
         <p class="rc-desc">${esc(descricaoReceita(r))}</p>
+        ${linhaMoagem(r)}
         ${miniPerfil(r, 240, 48, cor)}
         <p class="rc-etapas">${et.length} ${et.length === 1 ? 'despejo' : 'despejos'}${et[0] ? ` · ${esc(et[0].nome)} até ${g0(et[0].ate)} g` : ''}</p>
         <div class="rc-acoes">
@@ -427,6 +448,7 @@ export function criarExtracao(ctx) {
       notas: preparo.notas || '', pontuacao: preparo.pontuacao || null,
       metodo: r?.metodo || 'outro', dose: r?.dose || 0, proporcao: r?.dose ? Math.round(r.agua / r.dose * 10) / 10 : 0,
       aguaAlvo: r?.agua || 0, tempoAlvo: r?.tempoTotal || 0, temperatura: r?.temperatura || 0, moagem: r?.moagem || '',
+      moedorId: preparo.moedor?.id || '', moedorNome: preparo.moedor?.nome || '', cliques: Number.isFinite(preparo.cliques) ? preparo.cliques : null,
       aguaFinal: Math.round(preparo.aguaFinal * 10) / 10, tempo: Math.round(preparo.tempo),
       vazaoMedia: Math.round(preparo.vazaoMedia * 10) / 10,
       avaliacao: Number(f.querySelector('input[name=avaliacao]:checked')?.value || 0),
@@ -460,7 +482,7 @@ export function criarExtracao(ctx) {
       return `<article class="ex-card" data-id="${esc(x.id)}" style="--cor:${cor}">
         <div class="ex-card-topo">
           <div><h4>${esc(x.cafe || x.receitaNome || METODOS[x.metodo]?.nome || 'Preparo')}</h4>
-          <small>${esc([x.receitaNome && x.cafe ? x.receitaNome : '', METODOS[x.metodo]?.nome, x.moagem, x.temperatura ? `${g0(x.temperatura)}\u00a0°C` : ''].filter(Boolean).join(' · '))}</small></div>
+          <small>${esc([x.receitaNome && x.cafe ? x.receitaNome : '', METODOS[x.metodo]?.nome, x.moagem, x.moedorNome && Number.isFinite(x.cliques) ? `${x.moedorNome} ${textoCliques(moedores.achar(x.moedorId), x.cliques)}` : '', x.temperatura ? `${g0(x.temperatura)}\u00a0°C` : ''].filter(Boolean).join(' · '))}</small></div>
           ${x.curva?.pesos?.length ? sparkline(x.curva.pesos, cor) : x.balanca === 'Sem balança' ? '<span class="ex-sem-balanca">Sem balança</span>' : ''}
         </div>
         ${x.notas ? `<p class="rc-notas ex-notas" style="${estiloCor(x.familia)}">${esc(notasEmFaixa(x.notas))}</p>` : ''}
@@ -485,6 +507,7 @@ export function criarExtracao(ctx) {
     const r = (x.receitaId && acharReceita(x.receitaId)) || null;
     estudio.abrir(r, {
       cafe: x.cafe || '', notas: x.notas || '', pontuacao: x.pontuacao || null, familia: x.familia || undefined,
+      moedorId: x.moedorId || undefined, cliques: Number.isFinite(x.cliques) ? x.cliques : undefined,
       modo: x.balanca === 'Sem balança' ? 'metodo' : undefined,
       referencia: { nome: `${x.cafe || x.receitaNome || 'Preparo'} · ${quando(x.criadoEm)}`, pesos: x.curva?.pesos || [] },
     });
@@ -556,6 +579,7 @@ export function criarExtracao(ctx) {
     return [
       st.onColecao('extracoes', l => { E.lista = l; renderLista(); }, () => ctx.toast('Erro ao carregar as extrações')),
       st.onColecao('receitas', l => { E.receitas = l; renderReceitas(); }, () => ctx.toast('Erro ao carregar as receitas')),
+      ...moedores.conectar(),
     ];
   }
 
