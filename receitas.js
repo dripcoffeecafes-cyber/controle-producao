@@ -211,6 +211,69 @@ export function miniPerfil(r, w = 160, h = 44, cor = 'currentColor') {
   return `<svg class="rc-mini" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="M${pts}" fill="none" stroke="${cor}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
 }
 
+// ---------------- Despejos que sempre fecham a água da receita ----------------
+// No editor, cada despejo é a água daquele despejo (g); a soma é sempre a água da receita (dose × proporção).
+export const MIN_DESPEJO = 5;
+export const quantidades = despejos => despejos.map((x, i) => Math.round(num(x.ate) - (i ? num(despejos[i - 1].ate) : 0)));
+export const acumular = qs => { let s = 0; return qs.map(q => (s += q)); };
+// Distribui `delta` (g) entre os índices `ids`: tirando, na proporção da folga de cada um (até o mínimo);
+// pondo, na proporção do tamanho de cada um. Devolve o que não coube.
+function distribuir(qs, ids, delta) {
+  if (!ids.length || !delta) return delta;
+  if (delta < 0) {
+    const folga = ids.map(j => Math.max(0, qs[j] - MIN_DESPEJO)), total = folga.reduce((a, b) => a + b, 0);
+    if (!total) return delta;
+    const tira = Math.min(-delta, total);
+    ids.forEach((j, k) => { qs[j] -= tira * folga[k] / total; });
+    return delta + tira;
+  }
+  const base = ids.map(j => Math.max(1, qs[j])), total = base.reduce((a, b) => a + b, 0);
+  ids.forEach((j, k) => { qs[j] += delta * base[k] / total; });
+  return 0;
+}
+// Muda a água do despejo i para v e acerta os outros (primeiro os seguintes, depois os anteriores),
+// para a soma continuar igual à água da receita. Devolve as novas quantidades (inteiros).
+export function ajustarQuantidade(qs, i, v, agua) {
+  const n = qs.length;
+  if (n === 1) return [Math.round(agua)];
+  const q = qs.map(Number);
+  v = Math.round(Math.min(Math.max(v, MIN_DESPEJO), agua - MIN_DESPEJO * (n - 1)));
+  let resto = -(v - q[i]);
+  q[i] = v;
+  const depois = [], antes = [];
+  for (let j = i + 1; j < n; j++) depois.push(j);
+  for (let j = i - 1; j >= 0; j--) antes.push(j);
+  resto = distribuir(q, depois, resto);
+  distribuir(q, antes, resto);
+  return fecharSoma(q, agua, i);
+}
+// Arredonda e corrige a sobra de arredondamento num despejo que não seja o que está sendo mexido
+export function fecharSoma(q, agua, fixo = -1) {
+  const r = q.map(x => Math.max(MIN_DESPEJO, Math.round(x)));
+  let dif = Math.round(agua) - r.reduce((a, b) => a + b, 0);
+  const ordem = r.map((x, j) => j).filter(j => j !== fixo).sort((a, b) => r[b] - r[a]);
+  if (!ordem.length) ordem.push(fixo);
+  for (let k = 0; dif && k < 1000; k++) {
+    const j = ordem[k % ordem.length];
+    if (dif > 0) { r[j]++; dif--; } else if (r[j] > MIN_DESPEJO) { r[j]--; dif++; }
+    else if (ordem.every(x => r[x] <= MIN_DESPEJO)) break;
+  }
+  return r;
+}
+// Reescala as quantidades para uma água nova, mantendo o desenho da receita
+export const reescalarQuantidades = (qs, agua) => {
+  const soma = qs.reduce((a, b) => a + b, 0) || 1;
+  return fecharSoma(qs.map(q => q * agua / soma), agua);
+};
+// Empurra os despejos seguintes para não começarem antes de o anterior terminar
+export function empurrarTempos(despejos, desde = 0) {
+  for (let j = Math.max(1, desde + 1); j < despejos.length; j++) {
+    const ant = despejos[j - 1], x = despejos[j];
+    if (x.inicio < ant.fim) { const dur = x.fim - x.inicio; x.inicio = ant.fim; x.fim = x.inicio + dur; }
+  }
+  return despejos;
+}
+
 // ---------------- Editor de receita (janela #dlgReceita) ----------------
 export function criarEditorReceitas(ctx) {
   // ctx: { store: () => store, toast, quem, aoSalvar(receita) }
@@ -242,17 +305,87 @@ export function criarEditorReceitas(ctx) {
     $('#receitaErro').textContent = '';
   }
 
+  const pct = (v, lo, hi) => `${((v - lo) / (hi - lo || 1)) * 100}%`;
+  const aguaReceita = () => Math.round(ordenados(atual).at(-1)?.ate || atual.agua || 0);
   function renderDespejos() {
+    atual.despejos = ordenados(atual);
     const d = atual.despejos;
     $('#receitaDespejos').innerHTML = d.map((x, i) => `
       <div class="rd-linha" data-i="${i}">
-        <input class="rd-nome" data-campo="nome" value="${esc(x.nome || nomeDespejo(i))}" aria-label="Nome do despejo ${i + 1}">
-        <label class="rd-campo"><span>Até</span><input data-campo="ate" inputmode="decimal" value="${g0(x.ate)}"><em>g</em></label>
-        <label class="rd-campo"><span>De</span><input data-campo="inicio" inputmode="numeric" value="${mmss(x.inicio)}"></label>
-        <label class="rd-campo"><span>a</span><input data-campo="fim" inputmode="numeric" value="${mmss(x.fim)}"></label>
-        <button type="button" class="rd-tirar" data-tirar="${i}" aria-label="Tirar este despejo" ${d.length < 2 ? 'disabled' : ''}>×</button>
+        <div class="rd-topo">
+          <span class="rd-num">${i + 1}</span>
+          <input class="rd-nome" data-campo="nome" value="${esc(x.nome || nomeDespejo(i))}" aria-label="Nome do despejo ${i + 1}">
+          <button type="button" class="rd-tirar" data-tirar="${i}" aria-label="Tirar este despejo" ${d.length < 2 ? 'disabled' : ''}>×</button>
+        </div>
+        <div class="rd-barra rd-barra-agua">
+          <div class="rd-barra-topo"><span>Água deste despejo</span>
+            <span class="rc-barra-valor"><input data-campo="qtd" inputmode="numeric" aria-label="Água do despejo ${i + 1} (g)"><em>g</em></span></div>
+          <input type="range" data-barra="qtd" step="1" aria-label="Água do despejo ${i + 1}">
+          <small class="rd-info" data-info="ate"></small>
+        </div>
+        <div class="rd-tempos">
+          <div class="rd-barra">
+            <div class="rd-barra-topo"><span>Início</span><span class="rc-barra-valor"><input data-campo="inicio" inputmode="numeric" aria-label="Começo do despejo ${i + 1}"></span></div>
+            <input type="range" data-barra="inicio" min="0" max="360" step="5" aria-label="Começo do despejo ${i + 1}">
+          </div>
+          <div class="rd-barra">
+            <div class="rd-barra-topo"><span>Duração</span><span class="rc-barra-valor"><input data-campo="dur" inputmode="numeric" aria-label="Duração do despejo ${i + 1}"></span></div>
+            <input type="range" data-barra="dur" min="5" max="90" step="5" aria-label="Duração do despejo ${i + 1}">
+          </div>
+        </div>
       </div>`).join('');
+    atualizarLinhas();
+  }
+
+  // Põe os números de todos os despejos nas barras e nos campos, sem redesenhar (não atrapalha quem está arrastando)
+  function atualizarLinhas(exceto) {
+    const d = atual.despejos, agua = aguaReceita(), qs = quantidades(d), n = d.length;
+    const max = Math.max(MIN_DESPEJO, agua - MIN_DESPEJO * (n - 1));
+    $$('#receitaDespejos .rd-linha').forEach(l => {
+      const i = Number(l.dataset.i), x = d[i];
+      if (!x) return;
+      const dur = x.fim - x.inicio;
+      const valores = { qtd: qs[i], inicio: x.inicio, dur };
+      $$('input[type=range]', l).forEach(r => {
+        const k = r.dataset.barra;
+        if (k === 'qtd') { r.min = MIN_DESPEJO; r.max = max; r.disabled = n < 2; }
+        r.value = valores[k];
+        r.style.setProperty('--p', pct(Number(r.value), Number(r.min), Number(r.max)));
+      });
+      $$('input[data-campo]', l).forEach(c => {
+        if (c === exceto) return;
+        const k = c.dataset.campo;
+        if (k === 'qtd') c.value = g0(qs[i]);
+        if (k === 'inicio') c.value = mmss(x.inicio);
+        if (k === 'dur') c.value = mmss(dur);
+      });
+      $('[data-info="ate"]', l).textContent = `${Math.round(qs[i] / (agua || 1) * 100)}% da água · a balança chega a ${g0(x.ate)} g`;
+    });
     atualizarResumo();
+  }
+
+  // A água de um despejo mudou: os outros se ajustam e a soma continua sendo a água da receita
+  function mudarQuantidade(i, v) {
+    const agua = aguaReceita();
+    const qs = ajustarQuantidade(quantidades(atual.despejos), i, v, agua);
+    acumular(qs).forEach((a, j) => { atual.despejos[j].ate = a; });
+  }
+  function mudarTempo(i, campo, v) {
+    const d = atual.despejos, x = d[i], dur = x.fim - x.inicio;
+    if (campo === 'inicio') {
+      const min = i ? d[i - 1].fim : 0;
+      x.inicio = Math.max(min, Math.round(v)); x.fim = x.inicio + dur;
+    } else {
+      x.fim = x.inicio + Math.max(5, Math.round(v));
+    }
+    empurrarTempos(d, i);
+    garantirTempoTotal();
+  }
+  function garantirTempoTotal() {
+    const ult = atual.despejos.at(-1);
+    if (ult && atual.tempoTotal && atual.tempoTotal < ult.fim + 30) {
+      atual.tempoTotal = Math.round((ult.fim + 60) / 5) * 5; f.tempoTotal.value = mmss(atual.tempoTotal); sincBarras();
+    }
   }
 
   function atualizarResumo() {
@@ -316,23 +449,24 @@ export function criarEditorReceitas(ctx) {
     const dose = num(f.dose.value), prop = num(f.proporcao.value);
     if (!(dose > 0) || !(prop > 0)) return;
     const novaAgua = Math.round(dose * prop);
-    const velha = atual.agua || ordenados(atual).at(-1)?.ate || novaAgua;
-    const fator = velha ? novaAgua / velha : 1;
     atual.dose = dose;
-    atual.despejos = atual.despejos.map((x, i, arr) => ({ ...x, ate: i === arr.length - 1 ? novaAgua : Math.round(x.ate * fator) }));
+    atual.despejos = ordenados(atual);
+    const qs = reescalarQuantidades(quantidades(atual.despejos), novaAgua);
+    acumular(qs).forEach((a, j) => { atual.despejos[j].ate = a; });
     atual.agua = novaAgua;
-    renderDespejos();
+    atualizarLinhas();
   }
 
   f.addEventListener('input', e => {
     const linha = e.target.closest('.rd-linha');
     if (linha) {
-      const x = atual.despejos[Number(linha.dataset.i)], campo = e.target.dataset.campo;
-      if (campo === 'nome') x.nome = e.target.value;
-      if (campo === 'ate') x.ate = num(e.target.value);
-      if (campo === 'inicio') x.inicio = lerTempo(e.target.value);
-      if (campo === 'fim') x.fim = lerTempo(e.target.value);
-      atualizarResumo();
+      const i = Number(linha.dataset.i), x = atual.despejos[i];
+      if (e.target.dataset.campo === 'nome') { x.nome = e.target.value; return; }
+      const barra = e.target.dataset.barra;
+      if (!barra) return; // campos de número: aplicados ao sair do campo (change)
+      const v = Number(e.target.value);
+      if (barra === 'qtd') mudarQuantidade(i, v); else mudarTempo(i, barra, v);
+      atualizarLinhas();
       return;
     }
     if (e.target === f.dose || e.target === f.proporcao) return; // reescala ao sair do campo
@@ -340,9 +474,15 @@ export function criarEditorReceitas(ctx) {
   });
   f.dose.addEventListener('change', reescalar);
   f.proporcao.addEventListener('change', reescalar);
+  f.addEventListener('change', e => { // número digitado num despejo: aplica com as mesmas regras da barra
+    const linha = e.target.closest('.rd-linha'), c = e.target.dataset?.campo;
+    if (!linha || !c || c === 'nome') return;
+    const i = Number(linha.dataset.i);
+    if (c === 'qtd') { const v = num(e.target.value); if (v > 0) mudarQuantidade(i, v); }
+    else { const v = lerTempo(e.target.value); if (v >= 0) mudarTempo(i, c, v); }
+    atualizarLinhas();
+  });
   f.addEventListener('focusout', e => { // reescreve tempos no formato m:ss
-    const c = e.target.dataset?.campo;
-    if (c === 'inicio' || c === 'fim') e.target.value = mmss(lerTempo(e.target.value));
     if (e.target === f.tempoTotal && f.tempoTotal.value) f.tempoTotal.value = mmss(lerTempo(f.tempoTotal.value));
   });
   f.addEventListener('click', e => {
@@ -353,15 +493,22 @@ export function criarEditorReceitas(ctx) {
     const fam = e.target.closest('[data-familia]');
     if (fam) { atual.familia = fam.dataset.familia; $$('#receitaFamilias button').forEach(b => b.setAttribute('aria-pressed', String(b === fam))); atualizarResumo(); return; }
     const tirar = e.target.closest('[data-tirar]');
-    if (tirar) { atual.despejos.splice(Number(tirar.dataset.tirar), 1); renderDespejos(); return; }
+    if (tirar) { // a água do despejo tirado passa para o seguinte (ou o anterior, se era o último)
+      const i = Number(tirar.dataset.tirar), qs = quantidades(atual.despejos), agua = aguaReceita();
+      const alvo = i < qs.length - 1 ? i + 1 : i - 1;
+      qs[alvo] += qs[i]; qs.splice(i, 1); atual.despejos.splice(i, 1);
+      acumular(fecharSoma(qs, agua)).forEach((a, j) => { atual.despejos[j].ate = a; });
+      renderDespejos(); return;
+    }
   });
-  $('#receitaAddDespejo').onclick = () => {
-    const d = ordenados(atual), ult = d.at(-1);
-    const novo = ult
-      ? { nome: nomeDespejo(d.length), ate: Math.round(ult.ate + Math.max(30, (atual.agua || ult.ate) * 0.2)), inicio: ult.fim + 15, fim: ult.fim + 40 }
-      : { nome: 'Blooming', ate: Math.round((atual.dose || 15) * 3), inicio: 0, fim: 10 };
-    atual.despejos.push(novo);
-    if (atual.tempoTotal && atual.tempoTotal < novo.fim + 30) { atual.tempoTotal = novo.fim + 60; f.tempoTotal.value = mmss(atual.tempoTotal); sincBarras(); }
+  $('#receitaAddDespejo').onclick = () => { // o novo despejo pega água dos anteriores; a soma continua a da receita
+    const d = ordenados(atual), ult = d.at(-1), agua = aguaReceita();
+    if (!ult) { atual.despejos = gerarDespejos(atual.dose || 15, agua || 240, 1).despejos; renderDespejos(); return; }
+    if (agua < MIN_DESPEJO * (d.length + 1)) return;
+    const qs = ajustarQuantidade([...quantidades(d), 0], d.length, Math.round(agua / (d.length + 1)), agua);
+    atual.despejos = [...d, { nome: nomeDespejo(d.length), ate: 0, inicio: ult.fim + 15, fim: ult.fim + 35 }];
+    acumular(qs).forEach((a, j) => { atual.despejos[j].ate = a; });
+    garantirTempoTotal();
     renderDespejos();
   };
   $('#receitaGerar').onclick = () => {
