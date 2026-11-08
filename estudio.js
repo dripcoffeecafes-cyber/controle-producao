@@ -612,11 +612,13 @@ export function criarEstudio(ctx) {
   // ---------------- Etapas (cartões de baixo) ----------------
   function renderEtapasEstrutura() {
     const box = $('#esEtapas', el);
-    box.innerHTML = S.etapas.map((e, i) => `<div class="es-et" data-i="${i}">
+    const dur = (e, i) => Math.max(4, (S.etapas[i + 1]?.inicio ?? e.fim) - e.inicio);
+    box.innerHTML = S.etapas.map((e, i) => `<div class="es-et" data-i="${i}" style="--dur:${dur(e, i).toFixed(1)}">
         <span class="es-et-enche"><i></i></span>
         <b class="es-et-n">${String(i + 1).padStart(2, '0')}.</b><i class="es-et-ok">${ICONES.ok}</i>
         <span class="es-et-nome">${esc(e.nome)}</span>
         <small class="es-et-info">(${Math.round(e.inicio)}–${Math.round(e.fim)}s) [${g0(e.ate)} g]</small>
+        <strong class="es-et-alvo">${g0(e.ate)}<small>g</small></strong>
         <span class="es-et-barra"><i></i></span>
       </div>`).join('');
   }

@@ -1526,6 +1526,30 @@ body.com-estudio .toast button { color: var(--bl-fundo); text-decoration: underl
 .es-et-n { font-size: calc(var(--u) * 1.9); font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .es-et-nome { font-family: var(--bl-serif); font-size: calc(var(--u) * 2.3); font-weight: 500; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .es-et-info { font-size: calc(var(--u) * 1.4); opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.es-et-alvo { display: none; }
+/* variantes de destaque das etapas (em teste) */
+.es-v-foco .es-et, .es-v-linha .es-et {
+  grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto; column-gap: calc(var(--u) * 1.2);
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 2) calc(var(--u) * 2);
+}
+.es-v-foco .es-et > :not(.es-et-alvo):not(.es-et-enche):not(.es-et-barra):not(.es-et-ok), .es-v-linha .es-et > :not(.es-et-alvo):not(.es-et-enche):not(.es-et-barra):not(.es-et-ok) { grid-column: 1; }
+.es-v-foco .es-et-alvo, .es-v-linha .es-et-alvo {
+  display: block; grid-column: 2; grid-row: 1 / 4; align-self: end; position: relative; z-index: 1;
+  font-family: var(--bl-sans, 'Archivo Marca'), sans-serif; font-weight: 700; font-size: calc(var(--u) * 4.4); line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: rgba(255,255,255,.35);
+}
+.es-et-alvo small { font-size: .45em; font-weight: 600; margin-left: .12em; }
+.es-v-foco .es-et-nome, .es-v-linha .es-et-nome { font-size: calc(var(--u) * 2.7); }
+.es-v-foco .es-et.atual .es-et-alvo, .es-v-linha .es-et.atual .es-et-alvo { color: #fff; filter: drop-shadow(0 0 calc(var(--u) * 1.2) color-mix(in srgb, var(--acento) 70%, transparent)); }
+.es-v-foco .es-et.feito .es-et-alvo, .es-v-linha .es-et.feito .es-et-alvo { color: var(--acento); }
+/* A: a etapa da vez cresce */
+.es-v-foco .es-et { transition: flex-grow .5s, background-color .4s, border-color .4s, box-shadow .4s, color .4s; }
+.es-v-foco .es-et.atual { flex-grow: 2.3; }
+.es-v-foco .es-et.atual .es-et-alvo { font-size: calc(var(--u) * 6.4); }
+/* B: linha do tempo, cada etapa do tamanho da sua duração */
+.es-v-linha .es-etapas { gap: calc(var(--u) * .5); }
+.es-v-linha .es-et { flex: var(--dur) 1 0; border-radius: calc(var(--u) * .8); }
+.es-v-linha .es-et:first-child { border-radius: calc(var(--u) * 1.8) calc(var(--u) * .8) calc(var(--u) * .8) calc(var(--u) * 1.8); }
+.es-v-linha .es-et:last-child { border-radius: calc(var(--u) * .8) calc(var(--u) * 1.8) calc(var(--u) * 1.8) calc(var(--u) * .8); }
 .es-et-ok {
   position: absolute; top: calc(var(--u) * 1.2); right: calc(var(--u) * 1.3); width: calc(var(--u) * 2.6); height: calc(var(--u) * 2.6);
   border-radius: 50%; display: none; place-items: center; background: var(--acento); color: #1D1D1B;
