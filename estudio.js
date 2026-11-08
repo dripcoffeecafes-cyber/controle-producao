@@ -124,12 +124,6 @@ export function criarEstudio(ctx) {
           </div>
           <div class="es-meta" id="esMeta"></div>
         </div>
-        <div class="es-musica" id="esMusica" hidden>
-          <button type="button" class="es-mus-bt es-mus-play" data-eacao="musica-alternar" aria-label="Tocar ou pausar a música"></button>
-          <canvas class="es-mus-viz" id="esMusicaViz" aria-hidden="true"></canvas>
-          <span class="es-mus-nome" id="esMusicaNome"></span>
-          <button type="button" class="es-mus-bt" data-eacao="musica-proxima" aria-label="Próxima música">${IM.proxima}</button>
-        </div>
         <div class="es-topo-acoes">
           <div class="es-modo" id="esModo" role="group" aria-label="Como preparar">
             <button type="button" data-emodo="balanca">Com balança</button>
@@ -178,6 +172,15 @@ export function criarEstudio(ctx) {
           <div class="es-card es-c-status" id="esStatus"></div>
         </aside>
         <section class="es-etapas" id="esEtapas" aria-label="Etapas da receita"></section>
+        <section class="es-musica" id="esMusica" aria-label="Música" hidden>
+          <div class="es-mus-botoes">
+            <button type="button" class="es-mus-bt" data-eacao="musica-anterior" aria-label="Música anterior">${IM.anterior}</button>
+            <button type="button" class="es-mus-bt es-mus-play" data-eacao="musica-alternar" aria-label="Tocar ou pausar a música"></button>
+            <button type="button" class="es-mus-bt" data-eacao="musica-proxima" aria-label="Próxima música">${IM.proxima}</button>
+          </div>
+          <div class="es-mus-txt"><span class="es-rot" id="esMusicaRot">Música</span><strong class="es-mus-nome" id="esMusicaNome"></strong><small id="esMusicaInfo"></small></div>
+          <canvas class="es-mus-viz" id="esMusicaViz" aria-hidden="true"></canvas>
+        </section>
       </div>`;
     document.body.appendChild(el);
     ligar();
@@ -933,20 +936,34 @@ export function criarEstudio(ctx) {
   function renderMusica() {
     const m = ctx.musica, caixa = $('#esMusica', el);
     if (!m || !caixa) return;
-    caixa.hidden = !m.lista.length;
+    const tem = !!m.lista.length;
+    caixa.hidden = !tem; el.classList.toggle('es-sem-musica', !tem);
     caixa.classList.toggle('tocando', m.tocando);
-    const f = m.faixa;
+    const f = m.faixa, i = m.atual;
+    $('#esMusicaRot', el).textContent = m.tocando ? 'Tocando agora' : 'Música pausada';
     $('#esMusicaNome', el).textContent = f ? f.nome : 'Suas músicas';
+    $('#esMusicaInfo', el).textContent = tem ? `${f && i >= 0 ? i + 1 : 1} de ${m.lista.length} ${m.lista.length === 1 ? 'música' : 'músicas'}` : '';
     $('.es-mus-play', caixa).innerHTML = m.tocando ? IM.pausar : IM.tocar;
   }
+  // visualizador largo no rodapé: barras espelhadas a partir do meio, azul da água
   function desenharMusica() {
     const m = ctx.musica;
-    if (!m?.tocando) return;
+    if (!m?.lista?.length) return;
     const pr = prepararCanvas($('#esMusicaViz', el)); if (!pr) return;
-    const { c, W, H } = pr, n = 16, v = m.espectro(n), gap = Math.max(1.5, W * 0.025), bw = (W - gap * (n - 1)) / n;
-    const g = c.createLinearGradient(0, H, 0, 0); g.addColorStop(0, '#1565D8'); g.addColorStop(1, '#8FD0FF');
-    c.fillStyle = g; c.shadowColor = 'rgba(77,178,255,0.7)'; c.shadowBlur = 6;
-    v.forEach((x, i) => { const h = Math.max(2, x * H); c.fillRect(i * (bw + gap), (H - h) / 2, bw, h); });
+    const { c, W, H } = pr;
+    const n = Math.max(24, Math.min(96, Math.round(W / 9)));
+    const v = m.tocando ? m.espectro(n) : new Array(n).fill(0);
+    const gap = Math.max(2, (W / n) * 0.35), bw = (W - gap * (n - 1)) / n, meio = H / 2;
+    const g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#8FD0FF'); g.addColorStop(0.5, '#4DB2FF'); g.addColorStop(1, '#8FD0FF');
+    c.fillStyle = m.tocando ? g : 'rgba(255,255,255,0.16)';
+    if (m.tocando) { c.shadowColor = 'rgba(77,178,255,0.75)'; c.shadowBlur = 10; }
+    const raio = Math.min(bw / 2, 3);
+    v.forEach((x, k) => {
+      const h = Math.max(bw, x * (H - 4));
+      const px = k * (bw + gap), py = meio - h / 2;
+      if (c.roundRect) { c.beginPath(); c.roundRect(px, py, bw, h, raio); c.fill(); } else c.fillRect(px, py, bw, h);
+    });
   }
 
   // ---------------- Laço de desenho ----------------
@@ -999,6 +1016,7 @@ export function criarEstudio(ctx) {
         else if (a === 'conectar') ctx.conectar(false);
         else if (a === 'musica-alternar') ctx.musica?.alternar();
         else if (a === 'musica-proxima') ctx.musica?.proxima();
+        else if (a === 'musica-anterior') ctx.musica?.anterior();
         else if (a === 'cafe-ok') fecharPainelCafe(true);
         else if (a === 'cafe-cancelar') fecharPainelCafe(false);
         return;
