@@ -1366,13 +1366,13 @@ body.com-estudio .toast button { color: var(--bl-fundo); text-decoration: underl
 .es-palco {
   flex: 1 1 0; min-height: 0;
   display: grid; gap: calc(var(--u) * 1.4);
-  grid-template-columns: calc(var(--u) * 10) minmax(0, 1fr) calc(var(--u) * 24) calc(var(--u) * 33);
+  grid-template-columns: calc(var(--u) * 10) minmax(0, 1fr) calc(var(--u) * 33);
   grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-areas: "trilho heroi heroi lado" "trilho grafico etapas lado" "trilho musica musica musica";
+  grid-template-areas: "trilho heroi lado" "trilho grafico lado" "trilho musica musica";
 }
-.es-sem-receita .es-palco { grid-template-areas: "trilho heroi heroi lado" "trilho grafico grafico lado" "trilho musica musica musica"; }
-.es-sem-musica .es-palco { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "trilho heroi heroi lado" "trilho grafico etapas lado"; }
-.es-sem-musica.es-sem-receita .es-palco { grid-template-areas: "trilho heroi heroi lado" "trilho grafico grafico lado"; }
+.es-sem-musica .es-palco { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "trilho heroi lado" "trilho grafico lado"; }
+/* as etapas agora são barras dentro do gráfico */
+.es-etapas { display: none !important; }
 .es-sem-receita .es-etapas, .es-sem-receita .es-anel, .es-sem-receita #esPropLinha { display: none; }
 
 /* coluna de controles (botões grandes para o toque) */
@@ -1583,11 +1583,8 @@ body.com-estudio .toast button { color: var(--bl-fundo); text-decoration: underl
   .es-cafe-painel { position: fixed; top: auto; bottom: 0; left: 0; width: 100%; border-radius: var(--es-raio) var(--es-raio) 0 0; z-index: 3; }
   .es-cp-campos { grid-template-columns: 1fr; }
   .es-cp-familias { grid-template-columns: repeat(2, 1fr); }
-  .es-palco { flex: none; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "heroi" "grafico" "etapas" "lado" "musica"; }
-  .es-sem-receita .es-palco { grid-template-areas: "heroi" "grafico" "lado" "musica"; }
-  .es-sem-musica .es-palco { grid-template-rows: none; grid-template-areas: "heroi" "grafico" "etapas" "lado"; }
-  .es-sem-musica.es-sem-receita .es-palco { grid-template-areas: "heroi" "grafico" "lado"; }
-  .es-etapas { flex-direction: row; }
+  .es-palco { flex: none; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "heroi" "grafico" "lado" "musica"; }
+  .es-sem-musica .es-palco { grid-template-rows: none; grid-template-areas: "heroi" "grafico" "lado"; }
   .es-musica { height: auto; flex-wrap: wrap; padding: calc(var(--u) * 2); gap: calc(var(--u) * 1.6) calc(var(--u) * 2.4); }
   .es-mus-txt { flex: 1 1 0; }
   .es-mus-viz { flex: 1 1 100%; order: 3; height: calc(var(--u) * 9); }

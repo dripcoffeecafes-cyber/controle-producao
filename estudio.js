@@ -11,6 +11,7 @@
 import { ICONES_MUSICA as IM } from './musica.js';
 import {
   etapasDaReceita, perfilAlvo, alvoNoTempo, criarGuia, FAMILIAS, FAMILIA_PADRAO, METODOS, mmss,
+  janelaDaEtapa,
 } from './receitas.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -623,6 +624,26 @@ export function criarEstudio(ctx) {
         <span class="es-et-barra"><i></i></span>
       </div>`).join('');
   }
+  // quanto cada etapa já andou (usado nos cartões e nas barras do gráfico)
+  function estadoEtapa(i, t = tempo(), w = pesoMostrado()) {
+    const e = S.etapas[i], metodo = ehMetodo();
+    const k = S.guia ? S.guia.k : -1, fase = S.guia?.fase, fim = S.relogio === 'fim' || fase === 'fim';
+    const feito = fim || i < k, atual = !fim && i === k && S.relogio === 'rodando';
+    let p = feito ? 1 : 0, espera = false, nivel = feito ? e.ate : 0, tempoP = feito ? 1 : 0;
+    if (atual) {
+      if (fase === 'despejo') {
+        p = metodo ? (t - e.inicio) / Math.max(1, e.fim - e.inicio) : (w - e.de) / Math.max(1, e.ate - e.de);
+        p = Math.max(0, Math.min(1, p));
+        nivel = metodo ? e.de + p * (e.ate - e.de) : Math.max(e.de, Math.min(w, e.ate * 1.15));
+      } else if (fase === 'antes') { espera = true; p = 0; nivel = e.de; }
+      else if (fase === 'espera') {
+        espera = true; nivel = metodo ? e.ate : Math.max(e.de, Math.min(w, e.ate * 1.15));
+        const desde = metodo ? e.fim : (S.marcos[i]?.t ?? e.fim);
+        p = (t - desde) / Math.max(1, e.ateTempo - desde); tempoP = p;
+      } else if (fase === 'drenagem') { espera = true; nivel = e.ate; p = (t - e.inicio) / Math.max(1, e.ateTempo - e.inicio); tempoP = p; }
+    }
+    return { feito, atual, espera, p: Math.max(0, Math.min(1, p)), nivel, tempoP: Math.max(0, Math.min(1, tempoP)) };
+  }
   function renderEtapas() {
     if (!S.etapas.length) return;
     const t = tempo(), w = pesoMostrado(), metodo = ehMetodo();
@@ -753,13 +774,63 @@ export function criarEstudio(ctx) {
       c.fillText(`${s}s`, x, pad.t + ph + u * 1.3);
     }
 
-    // etapa atual: coluna clara bem suave
-    if (S.relogio === 'rodando' && S.guia && S.etapas[S.guia.k]) {
-      const e = S.etapas[S.guia.k];
-      const a = e.inicio, b = e.tipo === 'despejo' ? (e.ateTempo ?? e.fim) : e.fim;
-      const col = c.createLinearGradient(0, pad.t, 0, pad.t + ph);
-      col.addColorStop(0, 'rgba(255,255,255,0)'); col.addColorStop(1, 'rgba(255,255,255,0.06)');
-      c.fillStyle = col; c.fillRect(X(a), pad.t, Math.max(2, X(b) - X(a)), ph);
+    // etapas como barras dentro do gráfico: cada uma vai do 0 ao alvo de água e enche com a cor do café
+    if (S.etapas.length) {
+      const cafe = S.cor || '#CD9A50', y0 = pad.t + ph, folga = Math.max(2, u * 0.35);
+      S.etapas.forEach((e, i) => {
+        const [a, b] = janelaDaEtapa(S.etapas, i);
+        const x0 = X(a) + folga, x1 = X(Math.min(b, tFim)) - folga, bw = x1 - x0;
+        if (bw < 4) return;
+        const yT = Y(e.ate), alt = y0 - yT, raio = Math.min(u * 1.1, bw / 3);
+        const st = estadoEtapa(i, t);
+        const caixa = () => { c.beginPath(); c.roundRect ? c.roundRect(x0, yT, bw, alt, [raio, raio, 0, 0]) : c.rect(x0, yT, bw, alt); };
+        // molde da barra: até onde a água tem que chegar
+        caixa();
+        c.fillStyle = st.atual ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)'; c.fill();
+        c.lineWidth = st.atual ? Math.max(1.5, u * 0.22) : 1;
+        c.strokeStyle = st.atual ? 'rgba(255,255,255,0.75)' : st.feito ? hexA(cafe, 0.55) : 'rgba(255,255,255,0.12)';
+        c.stroke();
+        // água dentro da barra
+        if (st.nivel > 0.2) {
+          const yN = Math.max(Y(st.nivel), yT - u * 2);
+          c.save(); caixa(); c.clip();
+          const gr = c.createLinearGradient(0, yN, 0, y0);
+          gr.addColorStop(0, hexA(cafe, st.feito ? 0.42 : 0.62)); gr.addColorStop(1, hexA(cafe, st.feito ? 0.1 : 0.16));
+          c.fillStyle = gr; c.fillRect(x0, yN, bw, y0 - yN);
+          // nível aceso
+          c.fillStyle = hexA(cafe, st.feito ? 0.7 : 1);
+          if (st.atual) { c.shadowColor = hexA(cafe, 0.9); c.shadowBlur = u * 1.6; }
+          c.fillRect(x0, yN, bw, Math.max(2, u * 0.3)); c.shadowBlur = 0;
+          c.restore();
+        }
+        // espera e drenagem: o tempo corre na base da barra
+        if (st.espera && st.tempoP > 0) {
+          c.fillStyle = 'rgba(255,255,255,0.85)'; c.shadowColor = 'rgba(255,255,255,0.6)'; c.shadowBlur = u * 0.8;
+          c.fillRect(x0, y0 - Math.max(3, u * 0.45), bw * st.tempoP, Math.max(3, u * 0.45)); c.shadowBlur = 0;
+        }
+        // nome e alvo, embaixo dentro da barra
+        const cabe = bw > u * 7.5;
+        c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+        const lx = x0 + u * 0.9, ly = y0 - u * 1.3;
+        const corTxt = st.atual || st.feito ? '#FFFFFF' : 'rgba(255,255,255,0.55)';
+        c.font = `600 ${Math.round(u * 1.25)}px ${FONTE}`; c.fillStyle = st.atual || st.feito ? cafe : 'rgba(255,255,255,0.45)';
+        const num = String(i + 1).padStart(2, '0');
+        if (alt > u * 6) {
+          if (cabe) {
+            c.fillText(`${g0(e.ate)} g`, lx, ly);
+            c.font = `500 ${Math.round(u * 1.7)}px ${SERIFA}`; c.fillStyle = corTxt;
+            let nome = e.nome; const max = bw - u * 1.8;
+            while (nome.length > 3 && c.measureText(`${num} ${nome}`).width > max) nome = nome.slice(0, -2) + '…';
+            c.fillText(`${num} ${nome}`, lx, ly - u * 2);
+          } else c.fillText(num, lx, ly);
+        }
+        if (st.feito && bw > u * 3.5 && alt > u * 4) {
+          const cx = x1 - u * 1.6, cy = yT + u * 1.6, rr = u * 0.95;
+          c.fillStyle = cafe; c.beginPath(); c.arc(cx, cy, rr, 0, Math.PI * 2); c.fill();
+          c.strokeStyle = '#1D1D1B'; c.lineWidth = Math.max(1.5, u * 0.22);
+          c.beginPath(); c.moveTo(cx - rr * 0.45, cy); c.lineTo(cx - rr * 0.1, cy + rr * 0.35); c.lineTo(cx + rr * 0.45, cy - rr * 0.35); c.stroke();
+        }
+      });
     }
     // preparo anterior (quando repete um preparo salvo)
     if (ref.length > 1) {
