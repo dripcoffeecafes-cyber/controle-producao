@@ -230,6 +230,9 @@ export function criarEditorReceitas(ctx) {
     f.moagem.value = r.moagem || '';
     f.tempoTotal.value = r.tempoTotal ? mmss(r.tempoTotal) : '';
     f.obs.value = r.obs || '';
+    $('#receitaMoagens').innerHTML = MOAGENS.map(m => `<button type="button" data-moagem="${esc(m)}">${esc(m)}</button>`).join('');
+    marcarMoagem();
+    sincBarras();
     $('#receitaMetodos').innerHTML = Object.entries(METODOS).map(([k, m]) =>
       `<button type="button" data-metodo="${k}" aria-pressed="${k === r.metodo}">${esc(m.nome)}</button>`).join('');
     $('#receitaFamilias').innerHTML = Object.entries(FAMILIAS).map(([k, fa]) =>
@@ -273,6 +276,41 @@ export function criarEditorReceitas(ctx) {
     atual.obs = f.obs.value.trim();
   }
 
+  // Barras de arrastar: cada uma anda junto com o campo de número (dá para arrastar ou digitar)
+  const virgula = v => String(Math.round(v * 100) / 100).replace('.', ',');
+  const BARRAS = {
+    dose: { ler: num, escrever: virgula },
+    proporcao: { ler: num, escrever: virgula },
+    temperatura: { ler: num, escrever: v => String(v) },
+    tempoTotal: { ler: lerTempo, escrever: mmss },
+  };
+  const pintar = r => r.style.setProperty('--p', `${((r.value - r.min) / (r.max - r.min)) * 100}%`);
+  function sincBarras() {
+    $$('.rc-barra', f).forEach(b => {
+      const k = b.dataset.barra, r = $('input[type=range]', b), v = BARRAS[k].ler(f[k].value);
+      if (v > 0) r.value = v;
+      pintar(r);
+    });
+  }
+  const MOAGENS = ['Extra-fina', 'Fina', 'Média-fina', 'Média', 'Média-grossa', 'Grossa'];
+  function marcarMoagem() {
+    const v = f.moagem.value.trim().toLowerCase();
+    $$('#receitaMoagens button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.moagem.toLowerCase() === v)));
+  }
+  f.addEventListener('input', e => {
+    const b = e.target.closest('.rc-barra');
+    if (!b) { if (e.target === f.moagem) marcarMoagem(); return; }
+    const k = b.dataset.barra, r = $('input[type=range]', b);
+    if (e.target === r) {
+      f[k].value = BARRAS[k].escrever(Number(r.value));
+      pintar(r);
+      if (k === 'dose' || k === 'proporcao') reescalar(); else lerCampos();
+    } else {
+      const v = BARRAS[k].ler(e.target.value);
+      if (v > 0) { r.value = v; pintar(r); }
+    }
+  });
+
   // Mudar dose ou proporção reescala os despejos (a receita mantém o mesmo desenho)
   function reescalar() {
     const dose = num(f.dose.value), prop = num(f.proporcao.value);
@@ -308,6 +346,8 @@ export function criarEditorReceitas(ctx) {
     if (e.target === f.tempoTotal && f.tempoTotal.value) f.tempoTotal.value = mmss(lerTempo(f.tempoTotal.value));
   });
   f.addEventListener('click', e => {
+    const moa = e.target.closest('[data-moagem]');
+    if (moa) { f.moagem.value = moa.dataset.moagem.toLowerCase(); marcarMoagem(); lerCampos(); return; }
     const met = e.target.closest('[data-metodo]');
     if (met) { atual.metodo = met.dataset.metodo; $$('#receitaMetodos button').forEach(b => b.setAttribute('aria-pressed', String(b === met))); return; }
     const fam = e.target.closest('[data-familia]');
@@ -321,7 +361,7 @@ export function criarEditorReceitas(ctx) {
       ? { nome: nomeDespejo(d.length), ate: Math.round(ult.ate + Math.max(30, (atual.agua || ult.ate) * 0.2)), inicio: ult.fim + 15, fim: ult.fim + 40 }
       : { nome: 'Blooming', ate: Math.round((atual.dose || 15) * 3), inicio: 0, fim: 10 };
     atual.despejos.push(novo);
-    if (atual.tempoTotal && atual.tempoTotal < novo.fim + 30) { atual.tempoTotal = novo.fim + 60; f.tempoTotal.value = mmss(atual.tempoTotal); }
+    if (atual.tempoTotal && atual.tempoTotal < novo.fim + 30) { atual.tempoTotal = novo.fim + 60; f.tempoTotal.value = mmss(atual.tempoTotal); sincBarras(); }
     renderDespejos();
   };
   $('#receitaGerar').onclick = () => {
@@ -330,6 +370,7 @@ export function criarEditorReceitas(ctx) {
     const gerado = gerarDespejos(dose, Math.round(dose * prop), quantos);
     atual.dose = dose; atual.despejos = gerado.despejos; atual.tempoTotal = gerado.tempoTotal;
     f.tempoTotal.value = mmss(gerado.tempoTotal);
+    sincBarras();
     renderDespejos();
   };
   $$('[data-fechar]', dlg).forEach(b => b.addEventListener('click', () => dlg.close()));

@@ -250,14 +250,27 @@
           <label>Pontuação SCA<input name="pontuacao" inputmode="decimal" maxlength="5" placeholder="Ex.: 87"></label>
         </div>
         <fieldset class="campo-categoria"><legend>Cor do café: a família de sabor da nota que mais se destaca</legend><div class="rc-familias" id="receitaFamilias"></div></fieldset>
-        <div class="rc-dupla">
-          <label>Dose (g)<input name="dose" inputmode="decimal"></label>
-          <label>Proporção 1:<input name="proporcao" inputmode="decimal"></label>
+        <div class="rc-barras">
+          <div class="rc-barra" data-barra="dose">
+            <div class="rc-barra-topo"><label for="rc_dose">Dose de café</label><span class="rc-barra-valor"><input id="rc_dose" name="dose" inputmode="decimal" autocomplete="off"><em>g</em></span></div>
+            <input type="range" min="8" max="40" step="0.5" aria-label="Dose de café">
+            <div class="rc-barra-marcas"><span>8 g</span><span>40 g</span></div>
+          </div>
+          <div class="rc-barra" data-barra="proporcao">
+            <div class="rc-barra-topo"><label for="rc_proporcao">Proporção</label><span class="rc-barra-valor"><em>1:</em><input id="rc_proporcao" name="proporcao" inputmode="decimal" autocomplete="off"></span></div>
+            <input type="range" min="10" max="20" step="0.5" aria-label="Proporção">
+            <div class="rc-barra-marcas"><span>1:10 · mais encorpado</span><span>1:20 · mais leve</span></div>
+          </div>
+          <div class="rc-barra" data-barra="temperatura">
+            <div class="rc-barra-topo"><label for="rc_temperatura">Temperatura da água</label><span class="rc-barra-valor"><input id="rc_temperatura" name="temperatura" inputmode="decimal" autocomplete="off"><em>°C</em></span></div>
+            <input type="range" min="80" max="100" step="1" aria-label="Temperatura da água">
+            <div class="rc-barra-marcas"><span>80 °C</span><span>100 °C</span></div>
+          </div>
         </div>
-        <div class="rc-dupla">
-          <label>Temperatura °C<input name="temperatura" inputmode="decimal"></label>
-          <label>Moagem<input name="moagem" autocomplete="off" maxlength="40" placeholder="Ex.: média-fina"></label>
-        </div>
+        <fieldset class="campo-categoria rc-moagem"><legend>Moagem</legend>
+          <div class="rc-escolhas" id="receitaMoagens"></div>
+          <input name="moagem" autocomplete="off" maxlength="40" placeholder="Ou escreva a sua, ex.: 22 cliques no Comandante">
+        </fieldset>
         <div class="rc-despejos-cab">
           <h3>Despejos</h3>
           <span class="rc-agua"><b id="receitaAgua">240 g de água</b> <span id="receitaProporcaoReal"></span></span>
@@ -270,7 +283,11 @@
           <label class="rc-gerar">Refazer em <select id="receitaQuantos" aria-label="Quantos despejos"><option>2</option><option selected>3</option><option>4</option><option>5</option></select> despejos</label>
           <button type="button" class="btn btn-sm" id="receitaGerar">Refazer</button>
         </div>
-        <label>Tempo total, com a drenagem<input name="tempoTotal" inputmode="numeric" placeholder="3:00"></label>
+          <div class="rc-barra" data-barra="tempoTotal">
+            <div class="rc-barra-topo"><label for="rc_tempoTotal">Tempo total, com a drenagem</label><span class="rc-barra-valor"><input id="rc_tempoTotal" name="tempoTotal" inputmode="numeric" autocomplete="off"></span></div>
+            <input type="range" min="90" max="420" step="5" aria-label="Tempo total, com a drenagem">
+            <div class="rc-barra-marcas"><span>1:30</span><span>7:00</span></div>
+          </div>
         <div class="rc-previa" id="receitaPrevia" aria-hidden="true"></div>
         <label>Observações<textarea name="obs" rows="2"></textarea></label>
         <p id="receitaErro" class="erro" role="alert"></p>

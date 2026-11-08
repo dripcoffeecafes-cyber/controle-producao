@@ -1180,6 +1180,27 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 .rc-familias i { width: 18px; height: 18px; border-radius: 50%; flex: none; }
 .rc-familias button[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); font-weight: 600; }
 .rc-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* barras de arrastar do editor de receita */
+.rc-barras { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 18px; margin: 4px 0 10px; }
+.rc-barra { display: grid; gap: 6px; margin: 0 0 6px; }
+.rc-barra-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sheet .rc-barra-topo label { margin: 0; font-size: 14px; color: var(--ink-2); }
+.rc-barra-valor { display: inline-flex; align-items: baseline; gap: 3px; padding: 4px 12px; border-radius: 999px; background: var(--surface-2); font-variant-numeric: tabular-nums; }
+.rc-barra-valor em { font-style: normal; font-size: 14px; color: var(--ink-2); }
+.sheet .rc-barra-valor input { margin: 0; width: 4.2em; min-height: 32px; padding: 0; border: 0; background: transparent; text-align: right; font-size: 18px; font-weight: 600; color: var(--ink); box-shadow: none; }
+.sheet .rc-barra[data-barra="proporcao"] .rc-barra-valor input { text-align: left; width: 3em; }
+.sheet .rc-barra[data-barra="tempoTotal"] .rc-barra-valor input { text-align: center; }
+.sheet .rc-barra-valor input:focus { outline: none; }
+.rc-barra-valor:focus-within { box-shadow: 0 0 0 2px var(--ink); }
+.rc-barra input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 34px; margin: 0; padding: 0; background: transparent; cursor: pointer; touch-action: pan-y;
+}
+.rc-barra input[type="range"]::-webkit-slider-runnable-track { height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--ink) var(--p, 50%), var(--line) var(--p, 50%)); }
+.rc-barra input[type="range"]::-moz-range-track { height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--ink) var(--p, 50%), var(--line) var(--p, 50%)); }
+.rc-barra input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; margin-top: -10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.rc-barra input[type="range"]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.rc-barra-marcas { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); margin-top: -4px; }
+.rc-moagem .rc-escolhas { margin-bottom: 8px; }
 .rc-despejos-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 10px; }
 .rc-despejos-cab h3 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
 .rc-agua { font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
