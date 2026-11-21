@@ -17,6 +17,8 @@ const dinheiroFino = v => {
   if (n && Math.abs(n) < 0.1) return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
   return brl.format(n);
 };
+// impressão por lado: sempre 3 casas, como no estudo (R$ 0,063)
+const dinheiro3 = v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 const pct = v => `${(Number(v) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
 const num = v => (Number(v) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 function lerNumero(txt) {
@@ -30,8 +32,40 @@ const paraCampo = n => (n || n === 0) && n !== '' ? String(n).replace('.', ',') 
 
 export const UNIDADES = { g: 'grama (g)', ml: 'mililitro (ml)', un: 'unidade (un)' };
 // Revenda = produto comprado pronto para ir na box (xícara, coador, acessório): custo fixo por unidade.
-export const GRUPOS_INSUMO = ['Café', 'Embalagem', 'Material', 'Frete', 'Revenda', 'Outro'];
+// Impressão = custo de imprimir UM LADO de um sachê (tinta/toner + peças e desgaste); unidade "lado".
+export const GRUPOS_INSUMO = ['Café', 'Embalagem', 'Material', 'Impressão', 'Frete', 'Revenda', 'Outro'];
 export const REVENDA = 'Revenda';
+export const IMPRESSAO = 'Impressão';
+export const LADOS = { frente: 'Frente', verso: 'Verso' };
+// Estudo de custo de impressão e amortização da Drip Coffee Label (21/11/2026): sachê kraft 10 x 12 cm,
+// cobertura de 6% a 15% do sachê, rendimentos de tinta/toner e peças cortados pela metade (50% de vida útil)
+// para absorver o desgaste das bordas seladas e das limpezas de cabeçote. Valores por lado impresso.
+// Aparecem sozinhos na aba Insumos; editar grava no Firebase com o mesmo id; excluir só esconde (apagado: true).
+const OBS_ESTUDO = 'Estudo de custo de impressão (21/11/2026): cobertura de 6% a 15% do sachê; rendimentos cortados pela metade (50% de vida útil).';
+export const IMPRESSAO_PADRAO = [
+  { id: 'imp-base', nome: 'Custo-base padrão (teto)', tinta: null, desgaste: null, preco: 0.10,
+    obs: 'Valor para a precificação: cobre arte em preto e colorida na Canon GX4010, com reserva para cabeça de impressão, caixa de manutenção e tinta pigmentada. Kit de 50: R$ 5,00. ' + OBS_ESTUDO },
+  { id: 'imp-gx4010-preto', nome: 'Canon MAXIFY GX4010 · preto', tinta: 0.017, desgaste: 0.046,
+    obs: 'Tinta GI-16BK. Peças: cabeça QY6-0091-000 e caixa de manutenção MC-G03. Impressão a frio, sem risco de empenar as soldas. ' + OBS_ESTUDO },
+  { id: 'imp-gx4010-cor', nome: 'Canon MAXIFY GX4010 · com detalhes coloridos', tinta: 0.042, desgaste: 0.046,
+    obs: 'Kit de tintas GI-16. Peças: cabeça QY6-0091-000 e caixa de manutenção MC-G03. Cerca de 63% mais barata que a laser colorida. ' + OBS_ESTUDO },
+  { id: 'imp-l6412-preto', nome: 'Brother HL-L6412DW · preto (reserva)', tinta: 0.021, desgaste: 0.050,
+    obs: 'Toner TN-3662XL. Laser monocromática de reserva. ' + OBS_ESTUDO },
+  { id: 'imp-l8360-preto', nome: 'Brother HL-L8360CDW · preto', tinta: 0.065, desgaste: 0.096,
+    obs: 'Toner TN-419BK. Laser colorida (fusor quente). ' + OBS_ESTUDO },
+  { id: 'imp-l8360-cor', nome: 'Brother HL-L8360CDW · com detalhes coloridos', tinta: 0.145, desgaste: 0.096,
+    obs: 'Kit de toners TN-419. Laser colorida (fusor quente). ' + OBS_ESTUDO },
+].map(i => ({ grupo: IMPRESSAO, unidade: 'lado', rende: 1, perda: 0, padrao: true, ...i,
+  preco: i.preco ?? Math.round(((i.tinta || 0) + (i.desgaste || 0)) * 10000) / 10000 }));
+export const ehImpressaoPadrao = id => IMPRESSAO_PADRAO.some(i => i.id === id);
+// junta os padrões do estudo com o que está salvo (o salvo vence; apagado some)
+export function mesclarInsumos(salvos) {
+  const porId = new Map(salvos.map(i => [i.id, i]));
+  const extras = IMPRESSAO_PADRAO.filter(i => !porId.has(i.id));
+  return [...salvos, ...extras].filter(i => !i.apagado);
+}
+// lado impresso do sachê na ficha: componente { tipo: 'insumo', ref, qtd: 1, lado: 'frente' | 'verso' }
+export const ehLado = c => !!(c && c.lado && LADOS[c.lado]);
 export const TIPOS_PRODUTO = ['Café', 'Drip', 'Box', 'Kit', 'Outro'];
 // Box e Kit usam o montador por blocos em vez da ficha livre
 export const ehBox = tipo => tipo === 'Box' || tipo === 'Kit';
@@ -105,7 +139,7 @@ export function resultadoDoPreco(preco, custo, canal) {
 
 export function criarCustos(ctx) {
   // ctx: { store: () => store, toast, quem }
-  const D = { insumos: [], processos: [], produtos: [], canais: [], itens: [], aba: 'produtos', busca: '', canalId: '' };
+  const D = { insumos: mesclarInsumos([]), insumosSalvos: [], processos: [], produtos: [], canais: [], itens: [], aba: 'produtos', busca: '', canalId: '' };
   const area = $('#areaCustos');
   const lista = $('#custosLista');
 
@@ -196,10 +230,19 @@ export function criarCustos(ctx) {
         <button type="button" class="prod-linha custo-linha" data-id="${esc(i.id)}" data-cacao="editar">
           <span class="custo-linha-txt">
             <span class="item-nome">${esc(i.nome)}</span>
-            <small>${i.grupo === REVENDA ? `custo fixo${i.origemItem ? ' · da aba Produtos' : ''}` : `${dinheiro(i.preco)} rende ${num(i.rende)} ${esc(i.unidade || 'un')}${Number(i.perda) ? ` · perda ${pct(i.perda)}` : ''}`}</small>
+            <small>${resumoInsumo(i)}</small>
           </span>
-          <span class="custo-unit"><b>${dinheiroFino(custoInsumo(i))}</b><small>por ${esc(i.unidade || 'un')}</small></span>
+          <span class="custo-unit"><b>${i.grupo === IMPRESSAO ? dinheiro3(custoInsumo(i)) : dinheiroFino(custoInsumo(i))}</b><small>por ${esc(i.unidade || 'un')}</small></span>
         </button>`).join('')}`).join('')}</div>`;
+  }
+
+  function resumoInsumo(i) {
+    if (i.grupo === REVENDA) return `custo fixo${i.origemItem ? ' · da aba Produtos' : ''}`;
+    if (i.grupo === IMPRESSAO) {
+      const partes = Number(i.tinta) || Number(i.desgaste) ? `tinta ${dinheiro3(i.tinta)} + desgaste ${dinheiro3(i.desgaste)}` : 'custo fechado';
+      return `${partes} · kit de 50 ${dinheiro(custoInsumo(i) * 50)}${i.padrao ? ' · do estudo' : ''}`;
+    }
+    return `${dinheiro(i.preco)} rende ${num(i.rende)} ${esc(i.unidade || 'un')}${Number(i.perda) ? ` · perda ${pct(i.perda)}` : ''}`;
   }
 
   async function importarDaAbaProdutos() {
@@ -284,22 +327,40 @@ export function criarCustos(ctx) {
     fIns.rende.value = paraCampo(d.rende);
     fIns.unidade.value = d.unidade || 'un';
     fIns.perda.value = paraCampo(d.perda);
+    fIns.tinta.value = paraCampo(d.tinta);
+    fIns.desgaste.value = paraCampo(d.desgaste);
     fIns.obs.value = d.obs || '';
     modoInsumo();
     dlgInsumo.showModal();
     if (!i) fIns.nome.focus();
   }
   const ehRevenda = () => fIns.grupo.value === REVENDA;
-  // Revenda: só o custo fixo por unidade (rende 1 un, sem perda)
+  const ehImpressao = () => fIns.grupo.value === IMPRESSAO;
+  // Revenda: só o custo fixo por unidade (rende 1 un, sem perda). Impressão: custo por lado (tinta + desgaste).
   function modoInsumo() {
-    const rev = ehRevenda();
-    $('#insumoCompra').hidden = rev;
-    $('#insumoCampoRende').hidden = rev;
+    const rev = ehRevenda(), imp = ehImpressao();
+    $('#insumoCompra').hidden = rev || imp;
+    $('#insumoCampoRende').hidden = rev || imp;
     $('#insumoRevenda').hidden = !rev;
-    $('#insumoRotuloPreco').textContent = rev ? 'Custo por unidade (R$)' : 'Preço pago (R$)';
+    $('#insumoImpressao').hidden = !imp;
+    $('#insumoRotuloPreco').textContent = rev ? 'Custo por unidade (R$)' : imp ? 'Custo por lado (R$)' : 'Preço pago (R$)';
     previaInsumo();
   }
+  // impressão com tinta e desgaste preenchidos: o custo por lado é a soma
+  function somaImpressao() {
+    const t = lerNumero(fIns.tinta.value), d = lerNumero(fIns.desgaste.value);
+    return t || d ? Math.round((t + d) * 10000) / 10000 : null;
+  }
   function previaInsumo() {
+    if (ehImpressao()) {
+      const soma = somaImpressao();
+      if (soma != null && document.activeElement !== fIns.preco) fIns.preco.value = paraCampo(soma);
+      const c = soma ?? lerNumero(fIns.preco.value);
+      $('#insumoPrevia').innerHTML = c
+        ? `Custo por lado: <b>${dinheiro3(c)}</b> · frente e verso <b>${dinheiro3(c * 2)}</b> · kit de 50 sachês (1 lado) <b>${dinheiro(c * 50)}</b>`
+        : 'Informe a tinta e o desgaste por lado, ou o custo fechado por lado.';
+      return;
+    }
     if (ehRevenda()) {
       const c = lerNumero(fIns.preco.value);
       $('#insumoPrevia').innerHTML = c ? `Custo por unidade: <b>${dinheiro(c)}</b> (item comprado pronto, custo fixo)` : 'Informe o custo de 1 unidade.';
@@ -316,15 +377,19 @@ export function criarCustos(ctx) {
   fIns.addEventListener('submit', async e => {
     e.preventDefault();
     const nome = fIns.nome.value.trim();
-    const rev = ehRevenda();
-    const preco = lerNumero(fIns.preco.value), rende = rev ? 1 : lerNumero(fIns.rende.value);
+    const rev = ehRevenda(), imp = ehImpressao();
+    const soma = imp ? somaImpressao() : null;
+    const preco = soma ?? lerNumero(fIns.preco.value), rende = rev || imp ? 1 : lerNumero(fIns.rende.value);
     if (!nome) { $('#insumoErro').textContent = 'Dê um nome ao insumo.'; fIns.nome.focus(); return; }
     if (!rende) { $('#insumoErro').textContent = 'Informe quanto rende (ex.: 1000 g, 100 un).'; fIns.rende.focus(); return; }
     const d = {
       ...(editando || {}), id: editando?.id || novoId(), nome, grupo: fIns.grupo.value, preco, rende,
-      unidade: rev ? 'un' : fIns.unidade.value, perda: rev ? 0 : lerNumero(fIns.perda.value), obs: fIns.obs.value.trim(),
+      unidade: rev ? 'un' : imp ? 'lado' : fIns.unidade.value, perda: rev || imp ? 0 : lerNumero(fIns.perda.value), obs: fIns.obs.value.trim(),
       criadoEm: editando?.criadoEm || new Date().toISOString(), criadoPor: editando?.criadoPor || ctx.quem(),
     };
+    if (imp) { d.tinta = lerNumero(fIns.tinta.value) || null; d.desgaste = lerNumero(fIns.desgaste.value) || null; }
+    else { delete d.tinta; delete d.desgaste; }
+    delete d.apagado;
     dlgInsumo.close();
     await salvar('insumos', d, editando ? 'Insumo salvo' : 'Insumo cadastrado');
   });
@@ -333,6 +398,13 @@ export function criarCustos(ctx) {
     if (usado.length && !confirm(`${editando.nome} entra em ${usado.length} produto(s): ${usado.map(p => p.nome).join(', ')}. Excluir mesmo assim?`)) return;
     if (!usado.length && !confirm(`Excluir ${editando.nome}?`)) return;
     dlgInsumo.close();
+    // os do estudo não somem de verdade: ficam marcados como apagados (senão voltariam sozinhos)
+    if (ehImpressaoPadrao(editando.id)) {
+      const d = { ...editando };
+      await ctx.store().salvarDoc('custos_insumos', { ...d, apagado: true });
+      ctx.toast(`${d.nome} excluído`, { texto: 'Desfazer', fn: () => { const v = { ...d }; delete v.apagado; ctx.store().salvarDoc('custos_insumos', v); } });
+      return;
+    }
     await excluir('insumos', editando);
   });
 
@@ -441,6 +513,7 @@ export function criarCustos(ctx) {
     fProd.precoAtual.value = paraCampo(d.precoAtual);
     fProd.obs.value = d.obs || '';
     rascunho = { id: editando ? d.id : '__novo__', componentes: (d.componentes || []).map(c => ({ ...c })) };
+    if (!p) impressaoInicial();
     preencherOpcoesComponente();
     modoFicha();
     dlgProd.showModal();
@@ -460,9 +533,43 @@ export function criarCustos(ctx) {
     $('.comp-add', fProd).hidden = box;
     $('#compLista').hidden = box;
     $('#compRotulo').textContent = box ? 'Monte a box (1 unidade)' : 'Composição de 1 unidade';
+    $('#fichaImpressao').hidden = box;
+    renderImpressao();
     if (box) renderBox(); else renderComponentes();
   }
-  fProd.tipo.addEventListener('change', modoFicha);
+  // Impressão do sachê: um insumo do grupo Impressão para a frente e outro para o verso (1 lado cada)
+  const ladoDe = lado => rascunho.componentes.find(c => c.lado === lado);
+  function renderImpressao() {
+    const opcoes = D.insumos.filter(i => i.grupo === IMPRESSAO)
+      .sort((a, b) => (b.id === 'imp-base') - (a.id === 'imp-base') || ordenar(a, b));
+    Object.keys(LADOS).forEach(lado => {
+      const sel = $(`#fichaImpressao [data-lado="${lado}"]`);
+      const atual = ladoDe(lado);
+      const faltando = atual && !opcoes.some(i => i.id === atual.ref);
+      sel.innerHTML = '<option value="">Sem impressão</option>'
+        + opcoes.map(i => `<option value="${esc(i.id)}" ${atual?.ref === i.id ? 'selected' : ''}>${esc(i.nome)} · ${esc(dinheiro3(custoInsumo(i)))}</option>`).join('')
+        + (faltando ? `<option value="${esc(atual.ref)}" selected>(insumo apagado)</option>` : '');
+    });
+  }
+  $('#fichaImpressao').addEventListener('change', e => {
+    const lado = e.target.dataset.lado; if (!lado) return;
+    const i = rascunho.componentes.findIndex(c => c.lado === lado);
+    if (i >= 0) rascunho.componentes.splice(i, 1);
+    if (e.target.value) {
+      const novo = { tipo: 'insumo', ref: e.target.value, qtd: 1, lado };
+      // frente antes do verso, logo no começo da lista
+      const pos = lado === 'frente' ? 0 : rascunho.componentes.filter(c => c.lado === 'frente').length;
+      rascunho.componentes.splice(pos, 0, novo);
+    }
+    if (ehBox(fProd.tipo.value)) renderBox(); else renderComponentes();
+  });
+  // ficha nova de drip: frente e verso já começam no custo-base do estudo (dá para trocar)
+  function impressaoInicial() {
+    if (fProd.tipo.value !== 'Drip' || rascunho.componentes.some(ehLado)) return;
+    if (!D.insumos.some(i => i.id === 'imp-base')) return;
+    rascunho.componentes.unshift({ tipo: 'insumo', ref: 'imp-base', qtd: 1, lado: 'frente' }, { tipo: 'insumo', ref: 'imp-base', qtd: 1, lado: 'verso' });
+  }
+  fProd.tipo.addEventListener('change', () => { if (!editando) impressaoInicial(); modoFicha(); });
 
   // Blocos do montador de box. Cada item pode ser produto (ficha), insumo ou processo.
   const BLOCOS_BOX = [
@@ -485,7 +592,7 @@ export function criarCustos(ctx) {
     if (c.tipo === 'processo') { const p = D.processos.find(x => x.id === c.ref); return p ? { nome: p.nome, unit: custoProcesso(p), unidade: 'un' } : null; }
     const s = D.produtos.find(x => x.id === c.ref); return s ? { nome: s.nome, unit: custoProduto(s, D, [rascunho.id]).total, unidade: 'un' } : null;
   }
-  const qtdDe = c => Number(rascunho.componentes.find(x => x.tipo === c.tipo && x.ref === c.ref)?.qtd) || 0;
+  const qtdDe = c => Number(rascunho.componentes.find(x => x.tipo === c.tipo && x.ref === c.ref && !ehLado(x))?.qtd) || 0;
 
   function renderBox() {
     const html = BLOCOS_BOX.map(b => {
@@ -514,7 +621,7 @@ export function criarCustos(ctx) {
     renderResumoProduto(p, custoProduto(p, D));
   }
   function definirQtd(tipo, ref, qtd) {
-    const i = rascunho.componentes.findIndex(x => x.tipo === tipo && x.ref === ref);
+    const i = rascunho.componentes.findIndex(x => x.tipo === tipo && x.ref === ref && !ehLado(x));
     if (qtd > 0) { if (i >= 0) rascunho.componentes[i].qtd = qtd; else rascunho.componentes.push({ tipo, ref, qtd }); }
     else if (i >= 0) rascunho.componentes.splice(i, 1);
   }
@@ -570,7 +677,7 @@ export function criarCustos(ctx) {
     const tipo = $('#compTipo').value, ref = $('#compRef').value, qtd = lerNumero($('#compQtd').value);
     if (!ref) return;
     if (!qtd) { $('#compQtd').focus(); return; }
-    const ja = rascunho.componentes.find(c => c.tipo === tipo && c.ref === ref);
+    const ja = rascunho.componentes.find(c => c.tipo === tipo && c.ref === ref && !ehLado(c));
     if (ja) ja.qtd = Number(ja.qtd) + qtd; else rascunho.componentes.push({ tipo, ref, qtd });
     $('#compQtd').value = '';
     renderComponentes();
@@ -591,10 +698,10 @@ export function criarCustos(ctx) {
     $('#compLista').innerHTML = r.linhas.length ? r.linhas.map((l, i) => `
       <li class="comp-linha ${l.faltando || l.ciclo ? 'comp-erro' : ''}" data-i="${i}">
         <span class="comp-txt">
-          <span class="comp-nome">${esc(l.nome)}${l.faltando ? ' (apagado)' : ''}${l.ciclo ? ' (produto dentro dele mesmo)' : ''}</span>
-          <small>${tipoNome[l.tipo]} · ${dinheiroFino(l.unit)} por ${esc(l.unidade || 'un')}</small>
+          <span class="comp-nome">${ehLado(l) ? `<span class="comp-lado">${LADOS[l.lado]}</span>` : ''}${esc(l.nome)}${l.faltando ? ' (apagado)' : ''}${l.ciclo ? ' (produto dentro dele mesmo)' : ''}</span>
+          <small>${ehLado(l) ? 'Impressão' : tipoNome[l.tipo]} · ${ehLado(l) ? dinheiro3(l.unit) : dinheiroFino(l.unit)} por ${esc(l.unidade || 'un')}</small>
         </span>
-        <span class="comp-qtd"><input type="text" inputmode="decimal" value="${esc(paraCampo(l.qtd))}" aria-label="Quantidade de ${esc(l.nome)}" data-comp="qtd"><small>${esc(l.unidade || 'un')}</small></span>
+        <span class="comp-qtd"><input type="text" inputmode="decimal" value="${esc(paraCampo(l.qtd))}" aria-label="Quantidade de ${esc(l.nome)}" data-comp="qtd" ${ehLado(l) ? 'readonly title="1 lado por unidade"' : ''}><small>${esc(l.unidade || 'un')}</small></span>
         <b class="comp-sub">${dinheiro(l.sub)}</b>
         <button type="button" class="icon-btn comp-remover" data-comp="remover" aria-label="Tirar ${esc(l.nome)}">×</button>
       </li>`).join('') : '<li class="comp-vazio">Adicione os insumos, processos e produtos que compõem este item.</li>';
@@ -612,6 +719,7 @@ export function criarCustos(ctx) {
   $('#compLista').addEventListener('click', e => {
     const b = e.target.closest('[data-comp="remover"]'); if (!b) return;
     rascunho.componentes.splice(Number(b.closest('[data-i]').dataset.i), 1);
+    renderImpressao();
     renderComponentes();
   });
   fProd.perda.addEventListener('input', () => { const p = produtoDoForm(); renderResumoProduto(p, custoProduto(p, D)); });
@@ -625,7 +733,10 @@ export function criarCustos(ctx) {
       r.linhas.forEach(l => { const b = blocoDe(l); soma[b] = (soma[b] || 0) + l.sub; });
       BLOCOS_BOX.forEach(b => { if (soma[b.id]) linhas.push([b.titulo, dinheiro(soma[b.id])]); });
     } else {
-      if (r.insumos) linhas.push(['Insumos', dinheiro(r.insumos)]);
+      const imp = r.linhas.filter(ehLado);
+      const somaImp = imp.reduce((s, l) => s + l.sub, 0);
+      if (r.insumos - somaImp > 0.00001) linhas.push(['Insumos', dinheiro(r.insumos - somaImp)]);
+      if (imp.length) linhas.push([`Impressão (${imp.map(l => LADOS[l.lado].toLowerCase()).join(' + ')})`, dinheiro3(somaImp)]);
       if (r.processos) linhas.push(['Processos', dinheiro(r.processos)]);
       if (r.subprodutos) linhas.push(['Outros produtos', dinheiro(r.subprodutos)]);
     }
@@ -649,7 +760,8 @@ export function criarCustos(ctx) {
     e.preventDefault();
     const nome = fProd.nome.value.trim();
     if (!nome) { $('#produtoCustoErro').textContent = 'Dê um nome ao produto.'; fProd.nome.focus(); return; }
-    const comps = rascunho.componentes.filter(c => Number(c.qtd) > 0).map(c => ({ tipo: c.tipo, ref: c.ref, qtd: Number(c.qtd) }));
+    const comps = rascunho.componentes.filter(c => Number(c.qtd) > 0)
+      .map(c => ehLado(c) ? { tipo: c.tipo, ref: c.ref, qtd: 1, lado: c.lado } : { tipo: c.tipo, ref: c.ref, qtd: Number(c.qtd) });
     const d = {
       ...(editando || {}), id: editando?.id || novoId(), nome, tipo: fProd.tipo.value, componentes: comps,
       ciclo: ehBox(fProd.tipo.value) ? fProd.ciclo.value.trim() : '',
@@ -697,7 +809,7 @@ export function criarCustos(ctx) {
     if (!st.onColecao) return [];
     const erro = () => ctx.toast('Erro ao carregar os custos');
     return [
-      st.onColecao('custos_insumos', l => { D.insumos = l; render(); }, erro),
+      st.onColecao('custos_insumos', l => { D.insumosSalvos = l; D.insumos = mesclarInsumos(l); render(); }, erro),
       st.onColecao('custos_processos', l => { D.processos = l; render(); }, erro),
       st.onColecao('custos_produtos', l => { D.produtos = l; render(); }, erro),
       st.onColecao('custos_canais', l => { D.canais = l; render(); }, erro),

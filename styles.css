@@ -727,6 +727,13 @@ body[data-area="orcar"] .toast { bottom: calc(230px + var(--safe-bottom)); }
 .custos-aviso { margin: 6px 2px 10px; }
 .previa-custo { margin: 2px 0 14px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--caramelo-claro); font-size: 14px; color: var(--ink); }
 .previa-custo b { font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Ficha: impressão do sachê, frente e verso (custo por lado) */
+.ficha-impressao { border: 1px solid var(--line-suave); border-radius: var(--radius-lg); background: var(--surface); padding: 10px 14px 2px; margin-bottom: 12px; }
+.ficha-imp-titulo { margin: 0 0 6px; font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.ficha-imp-lados { display: grid; grid-template-columns: 1fr; gap: 0 12px; }
+@media (min-width: 1024px) { .ficha-imp-lados { grid-template-columns: 1fr 1fr; } }
+.ficha-imp-titulo small { font-weight: 400; color: var(--ink-2); font-size: 12px; }
+.comp-lado { display: inline-block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--caramelo); margin-right: 4px; }
 .muted-inline { color: var(--ink-2); }
 .erro-inline { color: var(--vermelho); font-weight: 500; }
 

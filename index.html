@@ -398,6 +398,13 @@
           </div>
           <p class="muted">"Rende" é quanto dessa compra vira produto, na unidade de uso: um pacote de 1 kg de café rende 1000 g; uma caixa com 100 filtros rende 100 un. A perda é o que se desperdiça no manuseio (pó que fica na máquina, sachê que rasga).</p>
         </div>
+        <div id="insumoImpressao" hidden>
+          <div class="grid2">
+            <label>Tinta / toner por lado (R$)<input name="tinta" inputmode="decimal" autocomplete="off" placeholder="Ex.: 0,017"></label>
+            <label>Peças e desgaste por lado (R$)<input name="desgaste" inputmode="decimal" autocomplete="off" placeholder="Ex.: 0,046"></label>
+          </div>
+          <p class="muted">Custo de imprimir <b>um lado</b> de um sachê. Preenchendo tinta e desgaste, o custo por lado é a soma dos dois; deixando em branco, vale o custo fechado acima. Na ficha do drip você escolhe a impressão da frente e a do verso.</p>
+        </div>
         <p id="insumoRevenda" class="muted" hidden>Item comprado pronto para ir na box (xícara, coador, acessório). Informe só o custo de 1 unidade.</p>
         <p id="insumoPrevia" class="previa-custo"></p>
         <label>Observações<textarea name="obs" rows="2" placeholder="Fornecedor, data da última compra, combinados"></textarea></label>
@@ -488,6 +495,13 @@
         <label id="campoCiclo" hidden>Ciclo / mês<input name="ciclo" autocomplete="off" placeholder="Ex.: Novembro 2026"></label>
         <p class="kit-rotulo" id="compRotulo">Composição de 1 unidade</p>
         <div id="boxBlocos" class="box-blocos" hidden></div>
+        <div id="fichaImpressao" class="ficha-impressao" hidden>
+          <p class="ficha-imp-titulo">Impressão do sachê <small>custo por lado</small></p>
+          <div class="ficha-imp-lados">
+            <label>Frente<select id="impFrente" data-lado="frente"></select></label>
+            <label>Verso<select id="impVerso" data-lado="verso"></select></label>
+          </div>
+        </div>
         <div class="comp-add">
           <select id="compTipo" aria-label="Tipo do componente">
             <option value="insumo">Insumo</option>
